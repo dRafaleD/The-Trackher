@@ -1,7 +1,7 @@
 import asyncio
 import queue
 import threading
-import sys
+import platform
 from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox
@@ -9,20 +9,26 @@ from PIL import Image
 
 try:
     import customtkinter as ctk
-except ImportError:
-    print("customtkinter module is missing! Install it via 'pip install customtkinter'")
-    sys.exit(1)
+except ImportError as exc:
+    raise ImportError(
+        "customtkinter eksik; 'pip install -r requirements.txt' çalıştırın"
+    ) from exc
 
 # Gerekli Modüller (Importing necessary modules)
 from osint.checker import check_email
-from osint.services import ALL_SERVICES
+from osint.services import ALL_SERVICES, PASSIVE_SERVICES
 from osint.username_checker import USERNAME_PLATFORMS, check_username_async
 from osint.dorking import generate_dorks
 from footprint.shell import clean_shell_history
 from footprint.browser import clean_browser_data
 from footprint.system import clean_system_traces
 from footprint.shredder import shred_file, shred_directory
-from utils.helpers import expand_path, format_size, is_valid_email
+from utils.helpers import (
+    expand_path,
+    format_size,
+    is_valid_email,
+    is_valid_username_query,
+)
 
 # Theme Settings (Terminal & Hacker dark theme)
 ctk.set_appearance_mode("dark")
@@ -40,8 +46,16 @@ class TrackherApp(ctk.CTk):
         # Terminal Colors
         self.bg_color = "#0c0c0c"
         self.fg_color = "#00ff00"
-        self.font_terminal = ctk.CTkFont(family="Consolas", size=13)
-        self.font_ui = ctk.CTkFont(family="Segoe UI", size=13, weight="bold")
+        font_map = {
+            "Windows": ("Consolas", "Segoe UI"),
+            "Darwin": ("Menlo", "Helvetica Neue"),
+            "Linux": ("DejaVu Sans Mono", "DejaVu Sans"),
+        }
+        terminal_font, ui_font = font_map.get(
+            platform.system(), ("Courier", "Helvetica")
+        )
+        self.font_terminal = ctk.CTkFont(family=terminal_font, size=13)
+        self.font_ui = ctk.CTkFont(family=ui_font, size=13, weight="bold")
         
         self.configure(fg_color="#181818")
         
@@ -52,7 +66,8 @@ class TrackherApp(ctk.CTk):
         # Logo Loading
         logo_path = Path(__file__).parent / "assets" / "logo.jpg"
         if logo_path.exists():
-            img = Image.open(logo_path)
+            with Image.open(logo_path) as source_image:
+                img = source_image.copy()
             self.logo_image = ctk.CTkImage(light_image=img, dark_image=img, size=(40, 40))
             self.lbl_logo = ctk.CTkLabel(self.header_frame, image=self.logo_image, text="")
             self.lbl_logo.pack(side="left", padx=(0, 10))
@@ -152,7 +167,11 @@ class TrackherApp(ctk.CTk):
             return
         self.btn_email.configure(state="disabled")
         self.print_to_terminal(f"\n[+] OSINT: Initiating Email recon for '{target}'...")
-        self.print_to_terminal(f"  -> Email service pool: {len(ALL_SERVICES)} services.")
+        self.print_to_terminal(
+            f"  -> Email catalog: {len(ALL_SERVICES)} services; "
+            f"{len(PASSIVE_SERVICES)} passive checks, "
+            f"{len(ALL_SERVICES) - len(PASSIVE_SERVICES)} side-effectful checks skipped."
+        )
         self.run_in_thread(self.do_email_osint, target)
 
     def do_email_osint(self, target: str):
@@ -160,6 +179,7 @@ class TrackherApp(ctk.CTk):
             results = asyncio.run(check_email(target))
             found = [r for r in results if r["found"]]
             unknown_count = sum(1 for r in results if r.get("status") == "unknown")
+            skipped_count = sum(1 for r in results if r.get("status") == "skipped")
 
             for result in found:
                 detail = f" - {result.get('detail', '')}" if result.get('detail') else ""
@@ -167,14 +187,16 @@ class TrackherApp(ctk.CTk):
 
             self.print_to_terminal(
                 f"[!] Total {len(found)} verified matches. "
-                f"(Scanned {len(results)}, {unknown_count} could not be verified)"
+                f"(Catalog {len(results)}, {unknown_count} unknown, "
+                f"{skipped_count} safely skipped)"
             )
         finally:
             self.post_ui(self.btn_email.configure, state="normal")
 
     def start_username_osint(self):
         target = self.osint_entry.get().strip()
-        if not target:
+        if not is_valid_username_query(target):
+            self.print_to_terminal("  [-] ERROR: Username must be 1-100 printable characters.")
             return
         self.btn_user.configure(state="disabled")
         self.print_to_terminal(f"\n[+] OSINT: Initiating Username recon for '{target}'...")
@@ -269,7 +291,7 @@ class TrackherApp(ctk.CTk):
                 all_items.extend(clean_browser_data(dry_run=dry_run))
 
             if clean_system:
-                self.print_to_terminal("  -> Shredding system temporary files...")
+                self.print_to_terminal("  -> Cleaning system temporary files...")
                 all_items.extend(clean_system_traces(dry_run=dry_run))
 
             total_size = sum(item.get("size", 0) for item in all_items)
@@ -293,7 +315,12 @@ class TrackherApp(ctk.CTk):
     def setup_shredder_tab(self):
         tab = self.tabview.tab("☢️ Shredder")
         
-        lbl = ctk.CTkLabel(tab, text="WARNING: Files wiped from here are unrecoverable!", text_color="#e74c3c", font=self.font_ui)
+        lbl = ctk.CTkLabel(
+            tab,
+            text="WARNING: Permanent overwrite is best-effort and cannot be undone!",
+            text_color="#e74c3c",
+            font=self.font_ui,
+        )
         lbl.grid(row=0, column=0, columnspan=2, pady=(15,5))
         
         self.shred_path = ctk.CTkEntry(tab, placeholder_text="Absolute path to file or directory...", width=500, font=self.font_ui)
@@ -308,7 +335,7 @@ class TrackherApp(ctk.CTk):
             return
 
         try:
-            target = expand_path(path_str)
+            target = expand_path(path_str, resolve_symlinks=False)
         except Exception:
             self.print_to_terminal("  [-] ERROR: Invalid path format!")
             return
@@ -318,7 +345,8 @@ class TrackherApp(ctk.CTk):
             return
         if not messagebox.askyesno(
             "Confirm secure wipe",
-            f"This operation cannot be undone:\n\n{target}\n\nContinue?",
+            "This operation cannot be undone. SSD/COW storage may retain copies:\n\n"
+            f"{target}\n\nContinue?",
             parent=self,
         ):
             return

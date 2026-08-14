@@ -4,6 +4,9 @@ Cross-Platform: Windows, macOS, Linux
 
 - Linux/macOS : shred veya rm -P komutu, Python fallback
 - Windows     : Üzerine yazma (Python) — SDelete aracı varsa onu kullan
+
+Bu yöntem SSD, ağ diski, sıkıştırılmış veya kopyala-yaz dosya sistemlerinde
+fiziksel verinin yok edildiğini garanti etmez.
 """
 
 from __future__ import annotations
@@ -17,10 +20,11 @@ from utils.helpers import (
     collect_files,
     expand_path,
     get_file_size,
+    is_critical_path,
     safe_remove,
     should_exclude,
 )
-from utils.platform_utils import is_windows, is_macos
+from utils.platform_utils import is_linux, is_macos, is_windows
 
 
 def _python_shred(file_path: Path, passes: int = 3) -> bool:
@@ -121,15 +125,15 @@ def _linux_shred(file_path: Path, passes: int) -> bool:
     """
     try:
         result = subprocess.run(
-            ["shred", "-vfz", "-n", str(passes), str(file_path)],
+            ["shred", "-fz", "-n", str(passes), str(file_path)],
             capture_output=True, text=True, timeout=120,
         )
         if result.returncode == 0:
             try:
                 file_path.unlink()
             except OSError:
-                pass
-            return True
+                return False
+            return not file_path.exists()
     except (OSError, subprocess.TimeoutExpired):
         pass
 
@@ -157,7 +161,7 @@ def shred_file(
     Returns:
         İşlemin başarılı olup olmadığı.
     """
-    target = expand_path(file_path)
+    target = expand_path(file_path, resolve_symlinks=False)
 
     if target.is_symlink() or not target.is_file():
         print_error(f"Dosya bulunamadı veya normal bir dosya değil: {target}")
@@ -189,9 +193,11 @@ def shred_file(
     elif is_macos():
         method = "rm -P/python"
         success = _macos_shred(target, passes)
-    else:
+    elif is_linux():
         method = "shred/python"
         success = _linux_shred(target, passes)
+    else:
+        success = _python_shred(target, passes)
 
     if success:
         print_success(
@@ -220,10 +226,14 @@ def shred_directory(
     Returns:
         İşlenen dosyaların bilgilerini içeren liste.
     """
-    target = expand_path(dir_path)
+    target = expand_path(dir_path, resolve_symlinks=False)
 
-    if not target.is_dir():
+    if target.is_symlink() or not target.is_dir():
         print_error(f"Dizin bulunamadı: {target}")
+        return []
+
+    if is_critical_path(target):
+        print_error(f"Kritik sistem veya kullanıcı dizini silinemez: {target}")
         return []
 
     if should_exclude(target):

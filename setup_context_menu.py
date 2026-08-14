@@ -13,24 +13,24 @@ def setup_windows_context_menu():
         command = f'"{python_exe}" "{script_path}" --shred "%1"'
         
         # Klasörler için sağ tık menüsü
-        key_path_dir = r"Directory\shell\FootprintShred"
-        with winreg.CreateKey(winreg.HKEY_CLASSES_ROOT, key_path_dir) as key:
+        key_path_dir = r"Software\Classes\Directory\shell\FootprintShred"
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path_dir) as key:
             winreg.SetValue(key, "", winreg.REG_SZ, "🛡️ Footprint ile Güvenli Sil (Shred)")
             winreg.SetValueEx(key, "Icon", 0, winreg.REG_SZ, "imageres.dll,-53")
             with winreg.CreateKey(key, "command") as cmd_key:
                 winreg.SetValue(cmd_key, "", winreg.REG_SZ, command)
                 
         # Dosyalar için sağ tık menüsü
-        key_path_file = r"*\shell\FootprintShred"
-        with winreg.CreateKey(winreg.HKEY_CLASSES_ROOT, key_path_file) as key:
+        key_path_file = r"Software\Classes\*\shell\FootprintShred"
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path_file) as key:
             winreg.SetValue(key, "", winreg.REG_SZ, "🛡️ Footprint ile Güvenli Sil (Shred)")
             winreg.SetValueEx(key, "Icon", 0, winreg.REG_SZ, "imageres.dll,-53")
             with winreg.CreateKey(key, "command") as cmd_key:
                 winreg.SetValue(cmd_key, "", winreg.REG_SZ, command)
                 
-        print("[OK] Windows sağ tık menüsüne başarıyla eklendi!")
+        print("[OK] Windows kullanıcı sağ tık menüsüne başarıyla eklendi!")
     except PermissionError:
-        print("[HATA] İzin Hatası: Lütfen bu komut dosyasını Yönetici (Administrator) olarak çalıştırın.")
+        print("[HATA] Kullanıcı kayıt defterine yazma izni alınamadı.")
     except Exception as e:
         print(f"[HATA] Hata oluştu: {e}")
 
@@ -39,6 +39,7 @@ def setup_linux_context_menu():
 Type=Action
 Name=Footprint ile Güvenli Sil (Shred)
 Icon=user-trash
+Terminal=true
 Profiles=profile-zero;
 
 [X-Action-Profile profile-zero]
@@ -52,6 +53,7 @@ Name=Default profile
     def quote_exec_arg(value: str) -> str:
         escaped = value.replace("\\", "\\\\").replace('"', '\\"')
         escaped = escaped.replace("`", "\\`").replace("$", "\\$")
+        escaped = escaped.replace("%", "%%")
         return f'"{escaped}"'
     
     content = desktop_file.format(
@@ -75,4 +77,4 @@ if __name__ == "__main__":
     elif platform.system() == "Linux":
         setup_linux_context_menu()
     else:
-        print("[UYARI] Bu işletim sistemi için sağ tık menüsü henüz desteklenmiyor.")
+        print("[UYARI] Sağ tık menüsü yalnızca Windows ve Linux'ta destekleniyor.")

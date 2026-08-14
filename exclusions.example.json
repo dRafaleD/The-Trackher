@@ -1,0 +1,6 @@
+{
+  "exclude": [
+    "~/Documents/keep-this-folder",
+    "~/Downloads/keep-this-file.txt"
+  ]
+}

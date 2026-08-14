@@ -75,6 +75,16 @@ class UsernameDetectionTests(unittest.TestCase):
         self.assertFalse(result["found"])
         self.assertEqual(result["status"], "unknown")
 
+    def test_malformed_platform_configuration_is_isolated(self):
+        result = self.run_check(
+            lambda request: httpx.Response(500),
+            platform={"name": "Broken Platform"},
+        )
+
+        self.assertFalse(result["found"])
+        self.assertEqual(result["status"], "unknown")
+        self.assertIn("yapılandırma", result["detail"])
+
     def test_successful_bot_challenge_page_is_unknown(self):
         result = self.run_check(
             lambda request: httpx.Response(
@@ -165,6 +175,16 @@ class UsernamePlatformTests(unittest.TestCase):
         names = [item["name"] for item in USERNAME_PLATFORMS]
 
         self.assertEqual(len(names), len(set(names)))
+
+    def test_all_platform_urls_are_https_and_renderable(self):
+        for platform in USERNAME_PLATFORMS:
+            with self.subTest(platform=platform["name"]):
+                self.assertTrue(platform["url"].startswith("https://"))
+                self.assertTrue(platform["url"].format("probe").startswith("https://"))
+                if "probe_url" in platform:
+                    self.assertTrue(
+                        platform["probe_url"].format("probe").startswith("https://")
+                    )
 
 
 class UsernameReportTests(unittest.TestCase):

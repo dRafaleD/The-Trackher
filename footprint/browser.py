@@ -14,8 +14,8 @@ from pathlib import Path
 from utils.display import print_success, print_warning, print_info
 from utils.helpers import get_file_size, get_dir_size, safe_remove, should_exclude
 from utils.platform_utils import (
-    home, appdata_dir, localappdata_dir,
-    is_windows, is_macos,
+    appdata_dir, cache_dir, home, localappdata_dir,
+    is_linux, is_macos, is_windows,
 )
 
 
@@ -71,6 +71,9 @@ def _browser_targets() -> list[tuple[str, Path, list[str]]]:
             ("Firefox",
              appdata / "Mozilla" / "Firefox" / "Profiles",
              _FIREFOX_CACHE_DIRS),
+            ("Firefox (Cache)",
+             local / "Mozilla" / "Firefox" / "Profiles",
+             _FIREFOX_CACHE_DIRS),
             ("Google Chrome",
              local / "Google" / "Chrome" / "User Data",
              _CHROMIUM_CACHE_DIRS),
@@ -104,6 +107,9 @@ def _browser_targets() -> list[tuple[str, Path, list[str]]]:
             ("Firefox",
              app_support / "Firefox" / "Profiles",
              _FIREFOX_CACHE_DIRS),
+            ("Firefox (Cache)",
+             caches / "Firefox" / "Profiles",
+             _FIREFOX_CACHE_DIRS),
             ("Google Chrome",
              app_support / "Google" / "Chrome",
              _CHROMIUM_CACHE_DIRS),
@@ -130,32 +136,57 @@ def _browser_targets() -> list[tuple[str, Path, list[str]]]:
              _CHROMIUM_CACHE_DIRS),
         ]
 
-    else:  # Linux
-        config = h / ".config"
+    elif is_linux():
+        config = appdata_dir() or (h / ".config")
+        caches = cache_dir() or (h / ".cache")
 
         targets = [
             ("Firefox",
              h / ".mozilla" / "firefox",
              _FIREFOX_CACHE_DIRS),
+            ("Firefox (Cache)",
+             caches / "mozilla" / "firefox",
+             _FIREFOX_CACHE_DIRS),
             ("Google Chrome",
              config / "google-chrome",
+             _CHROMIUM_CACHE_DIRS),
+            ("Google Chrome (Cache)",
+             caches / "google-chrome",
              _CHROMIUM_CACHE_DIRS),
             ("Microsoft Edge",
              config / "microsoft-edge",
              _CHROMIUM_CACHE_DIRS),
+            ("Microsoft Edge (Cache)",
+             caches / "microsoft-edge",
+             _CHROMIUM_CACHE_DIRS),
             ("Brave Browser",
              config / "BraveSoftware" / "Brave-Browser",
+             _CHROMIUM_CACHE_DIRS),
+            ("Brave Browser (Cache)",
+             caches / "BraveSoftware" / "Brave-Browser",
              _CHROMIUM_CACHE_DIRS),
             ("Opera",
              config / "opera",
              _CHROMIUM_CACHE_DIRS),
+            ("Opera (Cache)",
+             caches / "opera",
+             _CHROMIUM_CACHE_DIRS),
             ("Vivaldi",
              config / "vivaldi",
+             _CHROMIUM_CACHE_DIRS),
+            ("Vivaldi (Cache)",
+             caches / "vivaldi",
              _CHROMIUM_CACHE_DIRS),
             ("Chromium",
              config / "chromium",
              _CHROMIUM_CACHE_DIRS),
+            ("Chromium (Cache)",
+             caches / "chromium",
+             _CHROMIUM_CACHE_DIRS),
         ]
+
+    else:
+        return []
 
     return targets
 

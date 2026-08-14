@@ -15,7 +15,7 @@ from utils.display import print_success, print_warning, print_info
 from utils.helpers import get_file_size, should_exclude
 from utils.platform_utils import (
     home, appdata_dir, localappdata_dir,
-    is_windows, is_macos,
+    is_linux, is_macos, is_windows,
 )
 
 
@@ -26,6 +26,9 @@ def _history_targets() -> list[tuple[str, Path]]:
     """
     h = home()
     targets: list[tuple[str, Path]] = []
+
+    if not (is_windows() or is_macos() or is_linux()):
+        return targets
 
     # ── Ortak (tüm platformlarda aranır) ─────────────────────────
     common: list[tuple[str, Path]] = [
@@ -96,12 +99,13 @@ def _history_targets() -> list[tuple[str, Path]]:
         targets.extend(macos_targets)
 
     # ── Linux ─────────────────────────────────────────────────────
-    else:
+    elif is_linux():
+        data_home = localappdata_dir() or (h / ".local" / "share")
         linux_targets: list[tuple[str, Path]] = [
             ("Bash geçmişi",            h / ".bash_history"),
             ("Zsh geçmişi",             h / ".zsh_history"),
             ("Fish geçmişi",
-             h / ".local" / "share" / "fish" / "fish_history"),
+             data_home / "fish" / "fish_history"),
             ("Nano arama geçmişi",      h / ".nano" / "search_history"),
             ("Less geçmişi",            h / ".lesshst"),
             ("Neovim ShaDa",

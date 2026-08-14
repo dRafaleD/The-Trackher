@@ -10,6 +10,8 @@ from rich.console import Console
 from rich.table import Table
 from rich import box
 
+from utils import __version__
+
 
 for stream in (sys.stdout, sys.stderr):
     reconfigure = getattr(stream, "reconfigure", None)
@@ -43,7 +45,7 @@ def show_banner() -> None:
         "  [dim]Linux · macOS · Windows — Dijital Ayak İzi Temizleyici & E-posta OSINT Aracı[/dim]"
     )
     console.print(
-        f"  [dim]github.com/digitalayakizi  •  v1.1.0  •  "
+        f"  [dim]Trackher  •  v{__version__}  •  "
         f"OS: {os_name} {os_ver}  •  Python {py_ver}[/dim]\n"
     )
 
@@ -136,7 +138,8 @@ def print_email_results(email: str, results: list[dict]) -> None:
 
     found_count = 0
     unknown_count = 0
-    status_order = {"found": 0, "unknown": 1, "not_found": 2}
+    skipped_count = 0
+    status_order = {"found": 0, "unknown": 1, "skipped": 2, "not_found": 3}
     sorted_results = sorted(
         results,
         key=lambda item: status_order.get(
@@ -152,6 +155,9 @@ def print_email_results(email: str, results: list[dict]) -> None:
         elif result_status == "unknown":
             status = "[yellow]DOĞRULANAMADI[/yellow]"
             unknown_count += 1
+        elif result_status == "skipped":
+            status = "[cyan]ATLANDI[/cyan]"
+            skipped_count += 1
         else:
             status = "[dim]bulunamadı[/dim]"
         table.add_row(r["service"], status, r.get("detail", ""))
@@ -160,8 +166,9 @@ def print_email_results(email: str, results: list[dict]) -> None:
     console.print(
         f"\n  [bold cyan]Toplam:[/bold cyan] "
         f"[bold white]{found_count}[/bold white] doğrulanmış kayıt, "
-        f"[bold yellow]{unknown_count}[/bold yellow] sonuç doğrulanamadı "
-        f"([dim]{len(results)} servis tarandı[/dim]).\n"
+        f"[bold yellow]{unknown_count}[/bold yellow] sonuç doğrulanamadı, "
+        f"[bold cyan]{skipped_count}[/bold cyan] riskli sorgu atlandı "
+        f"([dim]{len(results)} katalog öğesi değerlendirildi[/dim]).\n"
     )
 
 def print_username_results(username: str, results: list[dict]) -> None:

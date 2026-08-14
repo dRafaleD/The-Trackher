@@ -9,10 +9,54 @@ from __future__ import annotations
 import json
 import os
 import re
+import tempfile
 from pathlib import Path
 
 # Global exclusion list
 _EXCLUSIONS: list[Path] = []
+
+
+def is_critical_path(path: Path, *, allow_temp_root: bool = False) -> bool:
+    """Toplu silme için işletim sistemi ve kullanıcı köklerini korur."""
+    resolved = Path(path).resolve()
+    user_home = Path.home().resolve()
+    runtime_temp = Path(tempfile.gettempdir()).resolve()
+    is_allowed_temp = allow_temp_root and resolved == runtime_temp
+    protected_exact = {user_home, *user_home.parents}
+    if not allow_temp_root:
+        protected_exact.add(runtime_temp)
+    protected_trees: set[Path] = set()
+
+    if os.name == "nt":
+        for variable in ("SystemRoot", "ProgramFiles", "ProgramFiles(x86)", "ProgramData"):
+            value = os.environ.get(variable)
+            if value:
+                protected_trees.add(Path(value).resolve())
+    else:
+        protected_trees.update(
+            Path(item)
+            for item in (
+                "/bin", "/boot", "/dev", "/etc", "/lib", "/lib64", "/opt",
+                "/proc", "/root", "/run", "/sbin", "/srv", "/sys", "/usr",
+                "/var", "/Applications", "/Library", "/System",
+            )
+        )
+
+    if resolved in protected_exact:
+        return True
+    if any(root == resolved for root in protected_trees):
+        return True
+    if not is_allowed_temp and any(root in resolved.parents for root in protected_trees):
+        return True
+
+    users_root = user_home.parent
+    is_users_root = users_root.name.casefold() in {"home", "users"}
+    is_other_user = (
+        is_users_root
+        and users_root in resolved.parents
+        and user_home not in resolved.parents
+    )
+    return is_other_user
 
 
 def load_exclusions(config_path: str) -> int:
@@ -81,9 +125,12 @@ def format_size(size_bytes: int) -> str:
     return f"{size:.2f} {units[unit_index]}"
 
 
-def expand_path(path_str: str) -> Path:
+def expand_path(path_str: str, *, resolve_symlinks: bool = True) -> Path:
     """~ ve ortam değişkenlerini genişletip mutlak Path döndürür."""
-    return Path(os.path.expandvars(os.path.expanduser(path_str))).resolve()
+    expanded = Path(os.path.expandvars(os.path.expanduser(path_str)))
+    if resolve_symlinks:
+        return expanded.resolve()
+    return Path(os.path.abspath(expanded))
 
 
 def get_dir_size(path: Path) -> int:
@@ -126,8 +173,16 @@ def get_file_size(path: Path) -> int:
 
 def is_valid_email(email: str) -> bool:
     """Temel e-posta formatı doğrulaması."""
+    if not 3 <= len(email) <= 254:
+        return False
     pattern = r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$"
-    return bool(re.match(pattern, email))
+    return re.fullmatch(pattern, email) is not None
+
+
+def is_valid_username_query(username: str) -> bool:
+    """URL ve terminal çıktısı için makul uzunlukta, yazdırılabilir hedef doğrular."""
+    value = username.strip()
+    return 1 <= len(value) <= 100 and all(character.isprintable() for character in value)
 
 
 def safe_remove(path: Path, dry_run: bool = False) -> bool:
@@ -136,7 +191,7 @@ def safe_remove(path: Path, dry_run: bool = False) -> bool:
     dry_run=True ise silmez, sadece True döndürür.
     """
     path = Path(path)
-    if should_exclude(path):
+    if is_critical_path(path) or should_exclude(path):
         return False
 
     if dry_run:

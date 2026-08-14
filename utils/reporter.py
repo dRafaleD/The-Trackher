@@ -1,11 +1,21 @@
 import json
 from datetime import datetime
 from html import escape
+from urllib.parse import urlparse
+
 from utils.display import print_success, print_error
 
 
 def _html(value: object) -> str:
     return escape(str(value), quote=True)
+
+
+def _safe_url(value: object) -> str:
+    text = str(value)
+    parsed = urlparse(text)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return ""
+    return _html(text)
 
 def export_to_json(data: dict, filepath: str) -> None:
     """Sonuçları JSON dosyası olarak kaydeder."""
@@ -36,6 +46,7 @@ def export_to_html(data: dict, filepath: str) -> None:
                 .found {{ color: #00ff88; font-weight: bold; }}
                 .not-found {{ color: #ff4d4d; }}
                 .unknown {{ color: #ffc857; }}
+                .skipped {{ color: #52c7d9; }}
                 .error {{ color: #ffa500; }}
                 .footer {{ margin-top: 30px; text-align: center; font-size: 0.9em; color: #888; }}
             </style>
@@ -51,10 +62,13 @@ def export_to_html(data: dict, filepath: str) -> None:
             results = data["osint_email"]["results"]
             found_count = sum(1 for r in results if r["found"])
             unknown_count = sum(1 for r in results if r.get("status") == "unknown")
+            skipped_count = sum(1 for r in results if r.get("status") == "skipped")
             
             html_content += f"""
                 <h2>E-posta OSINT ({email})</h2>
-                <p>Toplam <strong>{found_count}</strong> doğrulanmış kayıt bulundu; <strong>{unknown_count}</strong> sonuç doğrulanamadı.</p>
+                <p>Toplam <strong>{found_count}</strong> doğrulanmış kayıt bulundu;
+                <strong>{unknown_count}</strong> sonuç doğrulanamadı ve
+                <strong>{skipped_count}</strong> riskli sorgu güvenle atlandı.</p>
                 <table>
                     <tr><th>Platform</th><th>Durum</th><th>Detay</th></tr>
             """
@@ -66,11 +80,13 @@ def export_to_html(data: dict, filepath: str) -> None:
                 status_class = {
                     "found": "found",
                     "unknown": "unknown",
+                    "skipped": "skipped",
                     "not_found": "not-found",
                 }.get(result_status, "unknown")
                 status_text = {
                     "found": "Bulundu",
                     "unknown": "Doğrulanamadı",
+                    "skipped": "Atlandı",
                     "not_found": "Bulunamadı",
                 }.get(result_status, "Doğrulanamadı")
                 service = _html(res.get("service", "Bilinmiyor"))
@@ -110,7 +126,7 @@ def export_to_html(data: dict, filepath: str) -> None:
                     "not_found": "Bulunamadı",
                 }.get(result_status, "Doğrulanamadı")
                 platform_name = _html(res.get("platform", "Bilinmiyor"))
-                url = _html(res.get("url", ""))
+                url = _safe_url(res.get("url", ""))
                 html_content += f"""
                     <tr>
                         <td>{platform_name}</td>
@@ -133,7 +149,7 @@ def export_to_html(data: dict, filepath: str) -> None:
             for d in dorks:
                 engine = _html(d.get("engine", "Bilinmiyor"))
                 dork_type = _html(d.get("type", "Bilinmiyor"))
-                url = _html(d.get("url", ""))
+                url = _safe_url(d.get("url", ""))
                 html_content += f"""
                     <tr>
                         <td>{engine}</td>

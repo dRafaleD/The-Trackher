@@ -3,16 +3,16 @@
 """
 Dijital Ayak İzi Temizleyici & E-posta OSINT Aracı
 
-Linux sistemlerinde kullanıcının dijital ayak izlerini temizleyen
-ve e-posta adreslerinin hangi platformlarda kayıtlı olduğunu tespit eden
+Windows, macOS ve Linux sistemlerinde kullanıcının dijital ayak izlerini temizleyen
+ve e-posta adreslerinin açık web izlerini kanıta dayalı olarak inceleyen
 modüler bir CLI aracı.
 
 Kullanım:
     python main.py --help
     python main.py --email ornek@domain.com
-    python main.py --clean-all
+    python main.py --clean-all --dry-run
     python main.py --clean-shell --dry-run
-    python main.py --shred /path/to/secret.txt
+    python main.py --shred /path/to/secret.txt --yes
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ import argparse
 import sys
 import platform
 
+from utils import __version__
 from utils.display import (
     console,
     show_banner,
@@ -32,7 +33,7 @@ from utils.display import (
     print_dry_run_table,
     print_email_results,
 )
-from utils.helpers import is_valid_email
+from utils.helpers import is_valid_email, is_valid_username_query
 
 
 def positive_int(value: str) -> int:
@@ -49,8 +50,8 @@ def build_parser() -> argparse.ArgumentParser:
         prog="digitalayakizi",
         description=(
             "🛡️  Dijital Ayak İzi Temizleyici & E-posta OSINT Aracı\n"
-            "    Linux sistemlerinde dijital izlerinizi temizleyin ve\n"
-            "    e-posta adreslerinizin kayıtlı olduğu platformları tespit edin."
+            "    Windows, macOS ve Linux'ta dijital izlerinizi temizleyin ve\n"
+            "    e-posta adreslerinizin açık web izlerini güvenli biçimde inceleyin."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
@@ -58,15 +59,15 @@ def build_parser() -> argparse.ArgumentParser:
             "  %(prog)s --email kullanici@gmail.com\n"
             "  %(prog)s --username kullanici_adi\n"
             "  %(prog)s --clean-all --dry-run\n"
-            "  %(prog)s --clean-shell --clean-browser\n"
-            "  %(prog)s --shred ~/gizli_belge.pdf\n"
+            "  %(prog)s --clean-shell --clean-browser --yes\n"
+            "  %(prog)s --shred ~/gizli_belge.pdf --yes\n"
         ),
     )
 
     # ── E-posta OSINT ─────────────────────────────────────────────
     osint_group = parser.add_argument_group(
         "E-posta İz Sürücü (OSINT)",
-        "Girilen e-posta adresinin hangi platformlarda kayıtlı olduğunu tespit eder.",
+        "Yan etkisiz kontroller ve açık web aramalarıyla e-posta izlerini inceler.",
     )
     osint_group.add_argument(
         "--email", "-e",
@@ -115,7 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
     # ── Güvenli Silme ─────────────────────────────────────────────
     shred_group = parser.add_argument_group(
         "Güvenli Silme (Shred)",
-        "Dosya veya dizini geri getirilemez şekilde imha eder.",
+        "Dosyanın üzerine yazarak silmeyi dener; SSD/COW sistemlerinde garanti vermez.",
     )
     shred_group.add_argument(
         "--shred", "-s",
@@ -134,9 +135,20 @@ def build_parser() -> argparse.ArgumentParser:
     # ── Genel Bayraklar ───────────────────────────────────────────
     general_group = parser.add_argument_group("Genel Seçenekler")
     general_group.add_argument(
+        "--version",
+        action="version",
+        version=f"Trackher {__version__}",
+        help="Sürüm bilgisini gösterir ve çıkar",
+    )
+    general_group.add_argument(
         "--dry-run", "-d",
         action="store_true",
         help="Gerçek silme yapmadan neyin silineceğini raporlar",
+    )
+    general_group.add_argument(
+        "--yes", "-y",
+        action="store_true",
+        help="Etkileşimli onayı atlayarak kalıcı silme veya zamanlama yapar",
     )
     general_group.add_argument(
         "--report", "-r",
@@ -160,7 +172,7 @@ def build_parser() -> argparse.ArgumentParser:
     general_group.add_argument(
         "--setup-context",
         action="store_true",
-        help="İşletim sistemi sağ tık menüsüne 'Güvenli Sil' seçeneğini ekler",
+        help="Windows/Linux sağ tık menüsüne 'Güvenli Sil' seçeneğini ekler",
     )
     general_group.add_argument(
         "--no-banner",
@@ -169,6 +181,34 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     return parser
+
+
+def confirm_destructive_action(args: argparse.Namespace) -> bool:
+    """Kalıcı işlemler için etkileşimli onay veya açık --yes onayı ister."""
+    cleaning = any(
+        (args.clean_shell, args.clean_browser, args.clean_system, args.clean_all)
+    )
+    destructive = not args.dry_run and bool(cleaning or args.shred or args.schedule)
+    if not destructive or args.yes:
+        return True
+
+    if not sys.stdin.isatty():
+        print_error(
+            "Kalıcı işlem onaylanmadı. Önce --dry-run kullanın veya bilinçli "
+            "olarak --yes ekleyin."
+        )
+        return False
+
+    try:
+        answer = input("Kalıcı silme/zamanlama yapılacak. Devam edilsin mi? [e/H]: ")
+    except (EOFError, KeyboardInterrupt):
+        console.print()
+        return False
+
+    if answer.strip().casefold() in {"e", "evet", "y", "yes"}:
+        return True
+    print_warning("İşlem kullanıcı tarafından iptal edildi.")
+    return False
 
 
 def handle_email(email: str) -> dict:
@@ -182,9 +222,13 @@ def handle_email(email: str) -> dict:
     console.print()
 
     from osint.checker import run_email_check
-    from osint.services import ALL_SERVICES
+    from osint.services import ALL_SERVICES, PASSIVE_SERVICES
 
-    print_info(f"E-posta listesi: [bold]{len(ALL_SERVICES)}[/bold] servis taranacak.")
+    print_info(
+        f"E-posta kataloğu: [bold]{len(ALL_SERVICES)}[/bold] servis; "
+        f"[bold]{len(PASSIVE_SERVICES)}[/bold] yan etkisiz kontrol değerlendirilecek, "
+        f"[bold]{len(ALL_SERVICES) - len(PASSIVE_SERVICES)}[/bold] riskli sorgu atlanacak."
+    )
 
     results = run_email_check(email)
     print_email_results(email, results)
@@ -193,6 +237,10 @@ def handle_email(email: str) -> dict:
 
 def handle_username(username: str) -> dict:
     """Kullanıcı adı OSINT taramasını çalıştırır."""
+    if not is_valid_username_query(username):
+        print_error("Kullanıcı adı 1-100 yazdırılabilir karakter olmalıdır.")
+        sys.exit(1)
+
     print_section("Kullanıcı Adı İz Sürücü (OSINT)")
     print_info(f"Taranıyor: [bold]{username}[/bold]")
     console.print()
@@ -277,7 +325,7 @@ def handle_shred(args: argparse.Namespace) -> None:
 
     from utils.helpers import expand_path
 
-    target = expand_path(args.shred)
+    target = expand_path(args.shred, resolve_symlinks=False)
 
     if not target.exists():
         print_error(f"Dosya veya dizin bulunamadı: {target}")
@@ -298,6 +346,11 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
+    if args.email:
+        args.email = args.email.strip()
+    if args.username:
+        args.username = args.username.strip()
+
     # Hiçbir argüman verilmemişse yardım göster
     has_action = any([
         args.email,
@@ -312,8 +365,8 @@ def main() -> None:
         args.setup_context,
     ])
 
-    if not has_action:
-        # Hiçbir argüman verilmediyse GUI'yi başlat
+    if not has_action and len(sys.argv) == 1:
+        # Gerçekten hiçbir argüman verilmediyse GUI'yi başlat
         try:
             import gui
             app = gui.TrackherApp()
@@ -323,7 +376,19 @@ def main() -> None:
             show_banner()
             parser.print_help()
             print_error("\nGUI modülleri yüklenemedi. ('pip install customtkinter' gerekebilir)")
-            sys.exit(0)
+            sys.exit(1)
+        except Exception as exc:
+            show_banner()
+            parser.print_help()
+            print_error(f"\nGUI başlatılamadı: {exc}. CLI seçeneklerini kullanabilirsiniz.")
+            sys.exit(1)
+
+    if not has_action:
+        if not args.no_banner:
+            show_banner()
+        parser.print_help()
+        print_error("Bir işlem belirtin; örneğin --email, --username veya --clean-all.")
+        sys.exit(2)
 
     if not args.no_banner:
         show_banner()
@@ -346,6 +411,9 @@ def main() -> None:
             f"Dışlama listesi yüklendi: {args.exclude} "
             f"({exclusion_count} korunan yol)\n"
         )
+
+    if not confirm_destructive_action(args):
+        sys.exit(2)
 
     report_data = {}
 
@@ -372,7 +440,7 @@ def main() -> None:
     if args.schedule:
         from utils.scheduler import schedule_task
         print_section("Otomasyon (Görev Zamanlayıcı)")
-        schedule_task(args.schedule)
+        schedule_task(args.schedule, dry_run=args.dry_run)
 
     if args.setup_context:
         print_section("Sistem Entegrasyonu (Sağ Tık Menüsü)")
@@ -382,7 +450,7 @@ def main() -> None:
         elif platform.system() == "Linux":
             setup_context_menu.setup_linux_context_menu()
         else:
-            print_error("Bu sistemde desteklenmiyor.")
+            print_error("Sağ tık menüsü entegrasyonu macOS'ta henüz desteklenmiyor.")
 
     if args.report and report_data:
         from utils.reporter import generate_report

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import platform
+import tempfile
 from enum import Enum
 from pathlib import Path
 
@@ -51,20 +52,8 @@ def home() -> Path:
 
 
 def temp_dir() -> Path:
-    """İşletim sistemine göre geçici dosya dizini."""
-    if is_windows():
-        # %LOCALAPPDATA%\Temp  veya  %TEMP%
-        local = os.environ.get("LOCALAPPDATA", "")
-        if local:
-            p = Path(local) / "Temp"
-            if p.is_dir():
-                return p
-        tmp = os.environ.get("TEMP") or os.environ.get("TMP", "")
-        return Path(tmp) if tmp else Path("C:/Windows/Temp")
-    if is_macos():
-        return Path("/private/var/folders") if Path("/private/var/folders").is_dir() else home() / ".Trash"
-    # Linux
-    return Path("/tmp")
+    """Python'ın mevcut kullanıcı için seçtiği geçici dosya dizini."""
+    return Path(tempfile.gettempdir()).resolve()
 
 
 def cache_dir() -> Path | None:
@@ -74,7 +63,10 @@ def cache_dir() -> Path | None:
         return Path(local) if local else None
     if is_macos():
         return home() / "Library" / "Caches"
-    return home() / ".cache"
+    if is_linux():
+        xdg = os.environ.get("XDG_CACHE_HOME", "")
+        return Path(xdg) if xdg else home() / ".cache"
+    return None
 
 
 def trash_dir() -> Path | None:
@@ -85,7 +77,9 @@ def trash_dir() -> Path | None:
         return None
     if is_macos():
         return home() / ".Trash"
-    return home() / ".local" / "share" / "Trash"
+    if is_linux():
+        return home() / ".local" / "share" / "Trash"
+    return None
 
 
 def appdata_dir(app: str = "") -> Path | None:
@@ -95,8 +89,11 @@ def appdata_dir(app: str = "") -> Path | None:
         base = Path(appdata) if appdata else None
     elif is_macos():
         base = home() / "Library" / "Application Support"
+    elif is_linux():
+        xdg = os.environ.get("XDG_CONFIG_HOME", "")
+        base = Path(xdg) if xdg else home() / ".config"
     else:
-        base = home() / ".config"
+        base = None
 
     if base is None:
         return None
@@ -110,9 +107,11 @@ def localappdata_dir(app: str = "") -> Path | None:
         base = Path(local) if local else None
     elif is_macos():
         base = home() / "Library" / "Application Support"
-    else:
+    elif is_linux():
         xdg = os.environ.get("XDG_DATA_HOME", "")
         base = Path(xdg) if xdg else home() / ".local" / "share"
+    else:
+        base = None
 
     if base is None:
         return None

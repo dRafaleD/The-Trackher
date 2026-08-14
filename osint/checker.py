@@ -1,8 +1,8 @@
 """
 Dijital Ayak İzi Temizleyici — Asenkron E-posta Arama Motoru
 
-Tüm servis kontrol fonksiyonlarını eşzamanlı olarak çalıştırır
-ve sonuçları toplar. Rich progress bar ile ilerleme gösterir.
+Güvenli servis kontrol fonksiyonlarını eşzamanlı çalıştırır, yan etkili katalog
+öğelerini yerel olarak atlar ve sonuçları toplar.
 """
 
 from __future__ import annotations
@@ -20,15 +20,12 @@ from rich.progress import (
     TimeElapsedColumn,
 )
 
-from osint.services import ALL_SERVICES
+from osint.services import ALL_SERVICES, PASSIVE_SERVICE_FUNCTIONS
+from utils import __version__
 from utils.display import console
 
 
-# Tarayıcı benzeri User-Agent başlığı
-USER_AGENT = (
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
-)
+USER_AGENT = f"Trackher/{__version__}"
 
 
 async def _run_check(
@@ -54,9 +51,25 @@ async def _run_check(
     return result
 
 
+async def _skip_side_effectful_check(
+    name: str,
+    progress: Progress,
+    task_id: Any,
+) -> dict:
+    """Yan etki üretebilecek eski bir kontrolü ağ isteği göndermeden atlar."""
+    progress.update(task_id, advance=1, description=f"[dim]{name} (atlandı)[/dim]")
+    return {
+        "service": name,
+        "found": False,
+        "status": "skipped",
+        "detail": "Yan etkili parola sıfırlama/OTP isteği güvenlik için gönderilmedi",
+    }
+
+
 async def check_email(email: str) -> list[dict]:
     """
-    E-posta adresini tüm tanımlı servislerde eşzamanlı olarak kontrol eder.
+    E-posta adresini yan etkisiz servislerde eşzamanlı olarak kontrol eder.
+    Katalogdaki yan etkili kontroller ağ isteği göndermeden 'skipped' döner.
 
     Args:
         email: Kontrol edilecek e-posta adresi.
@@ -103,6 +116,8 @@ async def check_email(email: str) -> list[dict]:
 
             tasks = [
                 _run_check(name, fn, email, client, progress, task_id)
+                if fn in PASSIVE_SERVICE_FUNCTIONS
+                else _skip_side_effectful_check(name, progress, task_id)
                 for name, fn in ALL_SERVICES
             ]
 

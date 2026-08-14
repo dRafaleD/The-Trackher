@@ -16,11 +16,11 @@ import os
 from pathlib import Path
 
 from utils.display import print_success, print_warning, print_info
-from utils.helpers import get_dir_size, get_file_size, safe_remove
+from utils.helpers import get_dir_size, get_file_size, is_critical_path, safe_remove
 from utils.platform_utils import (
-    home, temp_dir,
+    cache_dir, home, temp_dir, trash_dir,
     localappdata_dir, appdata_dir,
-    is_windows, is_macos,
+    is_linux, is_macos, is_windows,
 )
 
 
@@ -99,16 +99,18 @@ def _system_targets() -> list[tuple[str, Path, str]]:
              lib / "Developer" / "CoreSimulator" / "Caches",     "dir"),
         ]
 
-    else:  # Linux
+    elif is_linux():
+        user_cache = cache_dir() or (h / ".cache")
+        user_trash = trash_dir() or (h / ".local" / "share" / "Trash")
         targets = [
             ("Kullanıcı Önbelleği (~/.cache)",
-             h / ".cache",                                        "dir"),
+             user_cache,                                           "dir"),
             ("Küçük Resim Önbelleği (Thumbnails)",
-             h / ".cache" / "thumbnails",                        "dir"),
+             user_cache / "thumbnails",                           "dir"),
             ("Son Kullanılan Dosyalar (recently-used)",
              h / ".local" / "share" / "recently-used.xbel",     "file"),
             ("Çöp Kutusu (~/.local/share/Trash)",
-             h / ".local" / "share" / "Trash",                  "dir"),
+             user_trash,                                           "dir"),
             # Flatpak var cache
             ("Flatpak Var Önbelleği",
              h / ".var" / "app",                                 "flatpak"),
@@ -116,6 +118,9 @@ def _system_targets() -> list[tuple[str, Path, str]]:
             ("Snap Önbelleği",
              h / "snap",                                         "snap"),
         ]
+
+    else:
+        return []
 
     return targets
 
@@ -132,8 +137,26 @@ def _clean_temp_files(dry_run: bool = False) -> list[dict]:
     results: list[dict] = []
     tmp_path = temp_dir()
 
-    if not tmp_path.is_dir():
+    if (
+        not (is_windows() or is_macos() or is_linux())
+        or not tmp_path.is_dir()
+        or is_critical_path(tmp_path, allow_temp_root=True)
+    ):
         return results
+
+    resolved_home = home().resolve()
+    if is_windows() and resolved_home not in tmp_path.resolve().parents:
+        return results
+    if is_macos():
+        resolved_temp = tmp_path.resolve()
+        macos_temp_roots = (Path("/private/var/folders"), Path("/var/folders"))
+        in_user_tree = resolved_home in resolved_temp.parents
+        in_macos_temp = any(
+            root.resolve() == resolved_temp or root.resolve() in resolved_temp.parents
+            for root in macos_temp_roots
+        )
+        if not (in_user_tree or in_macos_temp):
+            return results
 
     # Windows'ta UID kavramı farklı — TEMP klasörü zaten kullanıcıya özel
     if is_windows():
@@ -149,12 +172,13 @@ def _clean_temp_files(dry_run: bool = False) -> list[dict]:
         else:
             # Tüm alt dosyaları teker teker sil (dizinin kendisini değil)
             deleted = 0
-            for entry in tmp_path.iterdir():
-                try:
-                    if safe_remove(entry):
-                        deleted += 1
-                except Exception:
-                    pass
+            try:
+                entries = list(tmp_path.iterdir())
+            except (PermissionError, OSError):
+                return results
+            for entry in entries:
+                if safe_remove(entry):
+                    deleted += 1
             if deleted:
                 print_success(f"{label} temizlendi — {deleted} öğe kaldırıldı")
                 results.append(item)
@@ -201,8 +225,10 @@ def _clean_flatpak_cache(base: Path, dry_run: bool) -> list[dict]:
         return results
     try:
         for app_dir in base.iterdir():
-            cache = app_dir / "data" / ".cache"
-            if cache.is_dir():
+            cache_candidates = (app_dir / "cache", app_dir / "data" / ".cache")
+            for cache in cache_candidates:
+                if not cache.is_dir():
+                    continue
                 size = get_dir_size(cache)
                 if size == 0:
                     continue
@@ -232,14 +258,14 @@ def clean_system_traces(dry_run: bool = False) -> list[dict]:
         Silinen/silinecek öğelerin bilgilerini içeren liste.
     """
     results: list[dict] = []
-    processed_paths: set[str] = set()
+    processed_paths: set[Path] = set()
 
     for description, target, target_type in _system_targets():
 
         target_str = str(target)
         # Zaten üst dizin temizlendiyse alt dizini atla
-        if any(target_str.startswith(p) and p != target_str
-               for p in processed_paths):
+        if any(processed != target and processed in target.parents
+               for processed in processed_paths):
             continue
 
         # Özel tipler
@@ -294,7 +320,7 @@ def clean_system_traces(dry_run: bool = False) -> list[dict]:
                     results.append(item)
                 else:
                     print_warning(f"{description} temizlenemedi  →  {target}")
-            processed_paths.add(target_str)
+            processed_paths.add(target)
 
         elif target_type == "file":
             if not target.is_file():

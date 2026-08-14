@@ -4,13 +4,19 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+htmlcov/
 
 .venv/
 venv/
 .env
 .env.*
 
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+
 footprint_report_*.html
 footprint_report_*.json
 footprint_report_*.csv
-

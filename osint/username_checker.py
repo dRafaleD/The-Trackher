@@ -14,7 +14,9 @@ from rich.progress import (
     TextColumn,
 )
 
+from utils import __version__
 from utils.display import console
+from utils.helpers import is_valid_username_query
 
 # JSON probes require an exact username match. HTML probes require both a
 # successful response and an exact username in visible page text.
@@ -61,7 +63,7 @@ USERNAME_PLATFORMS = [
     {"name": "Ekşi Sözlük", "url": "https://eksisozluk.com/biri/{}"},
     {"name": "DonanımHaber", "url": "https://forum.donanimhaber.com/profil/{}"},
     {"name": "KızlarSoruyor", "url": "https://www.kizlarsoruyor.com/uye/{}"},
-    {"name": "İnci Sözlük", "url": "http://www.incisozluk.com.tr/w/{}"},
+    {"name": "İnci Sözlük", "url": "https://www.incisozluk.com.tr/w/{}"},
     {"name": "R10.net", "url": "https://www.r10.net/members/{}"},
     {"name": "Technopat", "url": "https://www.technopat.net/sosyal/uye/{}"},
     {"name": "ShiftDelete", "url": "https://forum.shiftdelete.net/uyeler/{}"},
@@ -462,19 +464,20 @@ def _check_html_response(
 
 async def check_single_username(username: str, platform: dict, client: httpx.AsyncClient) -> dict:
     """Bir platformda kullanıcı adını kanıta dayalı olarak doğrular."""
-    encoded_username = quote(username.strip(), safe="._-~")
-    url = platform["url"].format(encoded_username)
-    probe_url = platform.get("probe_url", platform["url"]).format(encoded_username)
-    method = platform.get("check", "html")
     result = {
-        "platform": platform["name"],
-        "url": url,
+        "platform": str(platform.get("name", "Bilinmeyen")),
+        "url": "",
         "found": False,
         "status": "unknown",
         "detail": "",
     }
 
     try:
+        encoded_username = quote(username.strip(), safe="._-~")
+        url_template = platform["url"]
+        result["url"] = url_template.format(encoded_username)
+        probe_url = platform.get("probe_url", url_template).format(encoded_username)
+        method = platform.get("check", "html")
         request_headers = (
             {"Accept": platform.get("accept", "application/json")}
             if method in {"json", "json_list"}
@@ -490,31 +493,23 @@ async def check_single_username(username: str, platform: dict, client: httpx.Asy
         return _check_html_response(username, response, result)
     except httpx.HTTPError as exc:
         return _set_result(result, "unknown", type(exc).__name__)
+    except (KeyError, IndexError, TypeError, ValueError) as exc:
+        return _set_result(result, "unknown", f"Platform yapılandırma hatası: {type(exc).__name__}")
 
 
 async def check_username_async(username: str) -> list[dict]:
     """Kullanıcı adını platformlara özel, kanıta dayalı yöntemlerle tarar."""
     username = username.strip()
-    if not username:
+    if not is_valid_username_query(username):
         return []
 
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "User-Agent": f"Trackher/{__version__}",
+        "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
         "DNT": "1",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "none",
-        "Sec-Fetch-User": "?1",
-        "sec-ch-ua": '"Google Chrome";v="125", "Chromium";v="125"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Windows"',
     }
-    limits = httpx.Limits(max_connections=25, max_keepalive_connections=15)
+    limits = httpx.Limits(max_connections=10, max_keepalive_connections=5)
     
     results = []
     
