@@ -15,6 +15,70 @@ DORK_TEMPLATES = [
 
 PLATFORM_DORK_CHUNK_SIZE = 12
 
+PRIORITY_EMAIL_TRACE_DOMAINS = [
+    # Eğitim, kurs, sertifika ve öğrenme abonelikleri
+    "sorbil.org",
+    "udemy.com",
+    "coursera.org",
+    "edx.org",
+    "khanacademy.org",
+    "skillshare.com",
+    "linkedin.com",
+    "pluralsight.com",
+    "codecademy.com",
+    "datacamp.com",
+    "brilliant.org",
+    "masterclass.com",
+    "domestika.org",
+    "futurelearn.com",
+    "udacity.com",
+    "freecodecamp.org",
+    "educative.io",
+    "memrise.com",
+    "duolingo.com",
+    "busuu.com",
+    "babbel.com",
+    "alison.com",
+    "openlearning.com",
+    "classcentral.com",
+    "maven.com",
+    "teachable.com",
+    "kajabi.com",
+    "btkakademi.gov.tr",
+    "turkcellakademi.com",
+    "bilgeis.net",
+    "istanbulisletmeenstitusu.com",
+    "enstitu.istanbul",
+    "universiteplus.com",
+    # İçerik, medya, üretkenlik ve üyelik/abonelik servisleri
+    "netflix.com",
+    "disneyplus.com",
+    "primevideo.com",
+    "spotify.com",
+    "youtube.com",
+    "blutv.com",
+    "exxen.com",
+    "todtv.com.tr",
+    "gain.tv",
+    "mubi.com",
+    "puhutv.com",
+    "storytel.com",
+    "scribd.com",
+    "everand.com",
+    "audible.com",
+    "canva.com",
+    "notion.so",
+    "figma.com",
+    "adobe.com",
+    "dropbox.com",
+    "zoom.us",
+    "grammarly.com",
+    "quillbot.com",
+    "medium.com",
+    "substack.com",
+    "patreon.com",
+]
+
 
 def _looks_like_email(target: str) -> bool:
     return "@" in target and "." in target.rsplit("@", 1)[-1]
@@ -48,6 +112,29 @@ def get_username_platform_domains() -> list[str]:
     return domains
 
 
+def get_priority_email_trace_domains() -> list[str]:
+    """E-posta izi için öncelikli eğitim ve abonelik domainlerini döndürür."""
+    seen: set[str] = set()
+    domains: list[str] = []
+    for domain in PRIORITY_EMAIL_TRACE_DOMAINS:
+        normalized = domain.lower().removeprefix("www.")
+        if normalized and normalized not in seen:
+            domains.append(normalized)
+            seen.add(normalized)
+    return domains
+
+
+def get_email_trace_domains() -> list[str]:
+    """E-posta dork'larında aranacak tüm domainleri tek havuzda toplar."""
+    seen: set[str] = set()
+    domains: list[str] = []
+    for domain in get_priority_email_trace_domains() + get_username_platform_domains():
+        if domain not in seen:
+            domains.append(domain)
+            seen.add(domain)
+    return domains
+
+
 def _chunks(items: list[str], size: int) -> list[list[str]]:
     return [items[index:index + size] for index in range(0, len(items), size)]
 
@@ -57,13 +144,13 @@ def _email_platform_dorks(target: str) -> list[dict]:
     dorks = []
 
     for index, domains in enumerate(
-        _chunks(get_username_platform_domains(), PLATFORM_DORK_CHUNK_SIZE),
+        _chunks(get_email_trace_domains(), PLATFORM_DORK_CHUNK_SIZE),
         start=1,
     ):
         site_query = "+OR+".join(f"site:{domain}" for domain in domains)
         dorks.append({
             "engine": "Google",
-            "type": f"Platform Domain Arama #{index}",
+            "type": f"Eğitim/Abonelik + Platform Arama #{index}",
             "url": f"https://www.google.com/search?q={encoded_target}+{site_query}",
         })
 
