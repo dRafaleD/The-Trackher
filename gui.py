@@ -15,7 +15,8 @@ except ImportError:
 
 # Gerekli Modüller (Importing necessary modules)
 from osint.checker import check_email
-from osint.username_checker import check_username_async
+from osint.services import ALL_SERVICES
+from osint.username_checker import USERNAME_PLATFORMS, check_username_async
 from osint.dorking import generate_dorks
 from footprint.shell import clean_shell_history
 from footprint.browser import clean_browser_data
@@ -151,6 +152,7 @@ class TrackherApp(ctk.CTk):
             return
         self.btn_email.configure(state="disabled")
         self.print_to_terminal(f"\n[+] OSINT: Initiating Email recon for '{target}'...")
+        self.print_to_terminal(f"  -> Email service pool: {len(ALL_SERVICES)} services.")
         self.run_in_thread(self.do_email_osint, target)
 
     def do_email_osint(self, target: str):
@@ -176,6 +178,9 @@ class TrackherApp(ctk.CTk):
             return
         self.btn_user.configure(state="disabled")
         self.print_to_terminal(f"\n[+] OSINT: Initiating Username recon for '{target}'...")
+        self.print_to_terminal(
+            f"  -> Username platform pool: {len(USERNAME_PLATFORMS)} platforms."
+        )
         self.run_in_thread(self.do_username_osint, target)
 
     def do_username_osint(self, target: str):

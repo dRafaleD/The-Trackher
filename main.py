@@ -56,6 +56,7 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "Örnekler:\n"
             "  %(prog)s --email kullanici@gmail.com\n"
+            "  %(prog)s --username kullanici_adi\n"
             "  %(prog)s --clean-all --dry-run\n"
             "  %(prog)s --clean-shell --clean-browser\n"
             "  %(prog)s --shred ~/gizli_belge.pdf\n"
@@ -181,6 +182,9 @@ def handle_email(email: str) -> dict:
     console.print()
 
     from osint.checker import run_email_check
+    from osint.services import ALL_SERVICES
+
+    print_info(f"E-posta listesi: [bold]{len(ALL_SERVICES)}[/bold] servis taranacak.")
 
     results = run_email_check(email)
     print_email_results(email, results)
@@ -193,8 +197,12 @@ def handle_username(username: str) -> dict:
     print_info(f"Taranıyor: [bold]{username}[/bold]")
     console.print()
 
-    from osint.username_checker import run_username_check
+    from osint.username_checker import USERNAME_PLATFORMS, run_username_check
     from utils.display import print_username_results
+
+    print_info(
+        f"Kullanıcı adı listesi: [bold]{len(USERNAME_PLATFORMS)}[/bold] platform taranacak."
+    )
 
     results = run_username_check(username)
     print_username_results(username, results)
