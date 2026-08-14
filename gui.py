@@ -178,11 +178,15 @@ class TrackherApp(ctk.CTk):
         try:
             results = asyncio.run(check_username_async(target))
             found = [r for r in results if r["found"]]
+            unknown_count = sum(1 for r in results if r.get("status") == "unknown")
 
             for result in found:
                 self.print_to_terminal(f"  [+] FOUND: {result['platform']} -> {result['url']}")
 
-            self.print_to_terminal(f"[!] Total {len(found)} platforms matched. (Scanned {len(results)})")
+            self.print_to_terminal(
+                f"[!] Total {len(found)} verified matches. "
+                f"(Scanned {len(results)}, {unknown_count} could not be verified)"
+            )
         finally:
             self.post_ui(self.btn_user.configure, state="normal")
         

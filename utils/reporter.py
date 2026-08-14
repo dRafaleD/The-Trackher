@@ -35,6 +35,7 @@ def export_to_html(data: dict, filepath: str) -> None:
                 th {{ background-color: #2a2a2a; color: #00d2ff; }}
                 .found {{ color: #00ff88; font-weight: bold; }}
                 .not-found {{ color: #ff4d4d; }}
+                .unknown {{ color: #ffc857; }}
                 .error {{ color: #ffa500; }}
                 .footer {{ margin-top: 30px; text-align: center; font-size: 0.9em; color: #888; }}
             </style>
@@ -83,8 +84,19 @@ def export_to_html(data: dict, filepath: str) -> None:
                     <tr><th>Platform</th><th>URL</th><th>Durum</th></tr>
             """
             for res in results:
-                status_class = "found" if res["found"] else "not-found"
-                status_text = "Bulundu" if res["found"] else "Bulunamadı"
+                result_status = res.get(
+                    "status", "found" if res.get("found") else "not_found"
+                )
+                status_class = {
+                    "found": "found",
+                    "unknown": "unknown",
+                    "not_found": "not-found",
+                }.get(result_status, "unknown")
+                status_text = {
+                    "found": "Bulundu",
+                    "unknown": "Doğrulanamadı",
+                    "not_found": "Bulunamadı",
+                }.get(result_status, "Doğrulanamadı")
                 platform_name = _html(res.get("platform", "Bilinmiyor"))
                 url = _html(res.get("url", ""))
                 html_content += f"""

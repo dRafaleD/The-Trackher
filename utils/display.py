@@ -143,7 +143,6 @@ def print_email_results(email: str, results: list[dict]) -> None:
             status = "[dim]bulunamadı[/dim]"
         table.add_row(r["service"], status, r.get("detail", ""))
 
-
     console.print(table)
     console.print(
         f"\n  [bold cyan]Toplam:[/bold cyan] "
@@ -161,14 +160,27 @@ def print_username_results(username: str, results: list[dict]) -> None:
         padding=(0, 1),
     )
     table.add_column("Platform", style="white", ratio=2)
-    table.add_column("Durum", width=14, justify="center")
+    table.add_column("Durum", width=16, justify="center")
     table.add_column("URL", style="blue", ratio=3)
 
     found_count = 0
-    for r in sorted(results, key=lambda x: not x["found"]):
-        if r["found"]:
+    unknown_count = 0
+    status_order = {"found": 0, "unknown": 1, "not_found": 2}
+    sorted_results = sorted(
+        results,
+        key=lambda item: status_order.get(
+            item.get("status", "found" if item.get("found") else "not_found"),
+            1,
+        ),
+    )
+    for r in sorted_results:
+        result_status = r.get("status", "found" if r.get("found") else "not_found")
+        if result_status == "found":
             status = "[bold green]KAYITLI ✔[/bold green]"
             found_count += 1
+        elif result_status == "unknown":
+            status = "[yellow]DOĞRULANAMADI[/yellow]"
+            unknown_count += 1
         else:
             status = "[dim]bulunamadı[/dim]"
         table.add_row(r["platform"], status, r.get("url", ""))
@@ -177,7 +189,7 @@ def print_username_results(username: str, results: list[dict]) -> None:
     console.print(
         f"\n  [bold magenta]Toplam:[/bold magenta] "
         f"[bold white]{found_count}[/bold white] platformda kayıt tespit edildi "
-        f"([dim]{len(results)} servis tarandı[/dim]).\n"
+        f"([dim]{len(results)} servis tarandı, {unknown_count} sonuç doğrulanamadı[/dim]).\n"
     )
 
 

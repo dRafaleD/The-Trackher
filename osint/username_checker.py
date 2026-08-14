@@ -1,28 +1,55 @@
 from __future__ import annotations
 import asyncio
+import html
+import re
+import unicodedata
+from urllib.parse import quote, unquote
+
 import httpx
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TaskProgressColumn,
+    TextColumn,
+)
+
 from utils.display import console
 
-# Detection method per platform:
-# check="404" means: if HTTP response is 404 -> not found (most reliable)
-# check="content" means: 200 for both cases -> must scan body for negative keywords
-# check="redirect" means: non-existent users get redirected elsewhere
+# JSON probes require an exact username match. HTML probes require both a
+# successful response and an exact username in visible page text.
 
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-]
+
+def _discourse_platform(name: str, base_url: str) -> dict:
+    return {
+        "name": name,
+        "url": f"{base_url}/u/{{}}/summary",
+        "probe_url": f"{base_url}/u/{{}}.json",
+        "check": "json",
+        "json_path": "user.username",
+    }
+
 
 USERNAME_PLATFORMS = [
     # --- Core Global Social Media ---
-    {"name": "GitHub", "url": "https://github.com/{}", "check": "404"},
+    {
+        "name": "GitHub",
+        "url": "https://github.com/{}",
+        "probe_url": "https://api.github.com/users/{}",
+        "check": "json",
+        "json_path": "login",
+    },
     {"name": "Twitter/X", "url": "https://twitter.com/{}", "check": "content"},
     {"name": "Instagram", "url": "https://www.instagram.com/{}/", "check": "content"},
     {"name": "TikTok", "url": "https://www.tiktok.com/@{}", "check": "content"},
     {"name": "Pinterest", "url": "https://www.pinterest.com/{}/", "check": "404"},
-    {"name": "Reddit", "url": "https://www.reddit.com/user/{}/about.json", "check": "404"},
+    {
+        "name": "Reddit",
+        "url": "https://www.reddit.com/user/{}/",
+        "probe_url": "https://www.reddit.com/user/{}/about.json",
+        "check": "json",
+        "json_path": "data.name",
+    },
     {"name": "Facebook", "url": "https://www.facebook.com/{}", "check": "content"},
     {"name": "Snapchat", "url": "https://www.snapchat.com/add/{}", "check": "content"},
     {"name": "Telegram", "url": "https://t.me/{}"},
@@ -55,8 +82,13 @@ USERNAME_PLATFORMS = [
     {"name": "GitLab", "url": "https://gitlab.com/{}"},
     {"name": "Bitbucket", "url": "https://bitbucket.org/{}/"},
     {"name": "Gitea", "url": "https://gitea.com/{}"},
-    {"name": "StackOverflow", "url": "https://stackoverflow.com/users/{}"},
-    {"name": "HackerNews", "url": "https://news.ycombinator.com/user?id={}"},
+    {
+        "name": "HackerNews",
+        "url": "https://news.ycombinator.com/user?id={}",
+        "probe_url": "https://hacker-news.firebaseio.com/v0/user/{}.json",
+        "check": "json",
+        "json_path": "id",
+    },
     {"name": "Kaggle", "url": "https://www.kaggle.com/{}"},
     {"name": "LeetCode", "url": "https://leetcode.com/{}"},
     {"name": "HackerRank", "url": "https://www.hackerrank.com/{}"},
@@ -68,12 +100,9 @@ USERNAME_PLATFORMS = [
     {"name": "PyPi", "url": "https://pypi.org/user/{}"},
     {"name": "Codepen", "url": "https://codepen.io/{}"},
     {"name": "Replit", "url": "https://replit.com/@{}"},
-    {"name": "XDA Developers", "url": "https://forum.xda-developers.com/m/{}"},
     
     # Oyun (Gaming)
     {"name": "Steam", "url": "https://steamcommunity.com/id/{}"},
-    {"name": "Roblox", "url": "https://www.roblox.com/user.aspx?username={}"},
-    {"name": "Xbox", "url": "https://xboxgamertag.com/search/{}"},
     {"name": "PSNProfiles", "url": "https://psnprofiles.com/{}"},
     {"name": "NameMC (Minecraft)", "url": "https://namemc.com/profile/{}"},
     {"name": "Chess.com", "url": "https://www.chess.com/member/{}"},
@@ -87,7 +116,6 @@ USERNAME_PLATFORMS = [
     {"name": "WordPress", "url": "https://{}.wordpress.com/"},
     {"name": "Substack", "url": "https://{}.substack.com/"},
     {"name": "Wattpad", "url": "https://www.wattpad.com/user/{}"},
-    {"name": "Goodreads", "url": "https://www.goodreads.com/user/show/{}"},
     {"name": "Fandom", "url": "https://www.fandom.com/u/{}"},
     {"name": "Flickr", "url": "https://www.flickr.com/people/{}/"},
     {"name": "Dribbble", "url": "https://dribbble.com/{}"},
@@ -111,7 +139,6 @@ USERNAME_PLATFORMS = [
     {"name": "Wikipedia", "url": "https://en.wikipedia.org/wiki/User:{}"},
     {"name": "Gravatar", "url": "https://en.gravatar.com/{}"},
     {"name": "Tinder", "url": "https://tinder.com/@{}"},
-    {"name": "Badoo", "url": "https://badoo.com/profile/{}"},
     {"name": "9GAG", "url": "https://9gag.com/u/{}"},
     {"name": "Imgur", "url": "https://imgur.com/user/{}"},
     {"name": "Giphy", "url": "https://giphy.com/{}"},
@@ -124,28 +151,19 @@ USERNAME_PLATFORMS = [
     {"name": "DonanımArşivi", "url": "https://forum.donanimarsivi.com/uyeler/{}/"},
     {"name": "Memurlar.net", "url": "https://forum.memurlar.net/profil/{}/"},
     {"name": "KadınlarKulübü", "url": "https://www.kadinlarkulubu.com/uyeler/{}/"},
-    {"name": "CHIP Online", "url": "https://www.chip.com.tr/forum/member.php?u={}"},
     {"name": "Paticik", "url": "https://forum.paticik.com/profile/{}/"},
     
     # Yazılım, IT ve Hacker Forumları
-    {"name": "Ubuntu Forums", "url": "https://ubuntuforums.org/member.php?u={}"},
     {"name": "LinuxQuestions", "url": "https://www.linuxquestions.org/questions/user/{}-1/"},
     {"name": "Raspberry Pi", "url": "https://forums.raspberrypi.com/memberlist.php?mode=viewprofile&un={}"},
-    {"name": "Arduino Forum", "url": "https://forum.arduino.cc/u/{}/summary"},
-    {"name": "StackExchange", "url": "https://stackexchange.com/users/{}"},
-    {"name": "SuperUser", "url": "https://superuser.com/users/{}"},
-    {"name": "ServerFault", "url": "https://serverfault.com/users/{}"},
-    {"name": "AskUbuntu", "url": "https://askubuntu.com/users/{}"},
+    _discourse_platform("Arduino Forum", "https://forum.arduino.cc"),
     {"name": "Codeforces", "url": "https://codeforces.com/profile/{}"},
     {"name": "TopCoder", "url": "https://www.topcoder.com/members/{}"},
     {"name": "CodeChef", "url": "https://www.codechef.com/users/{}"},
     {"name": "Hashnode", "url": "https://hashnode.com/@{}"},
     {"name": "SourceHut", "url": "https://sr.ht/~{}/"},
-    {"name": "BlackHatWorld", "url": "https://www.blackhatworld.com/members/{}/"},
-    {"name": "HackForums", "url": "https://hackforums.net/member.php?action=profile&uid={}"},
     
     # Kripto, Finans ve Ticaret
-    {"name": "BitcoinTalk", "url": "https://bitcointalk.org/index.php?action=profile;u={}"},
     {"name": "TradingView", "url": "https://www.tradingview.com/u/{}/"},
     {"name": "StockTwits", "url": "https://stocktwits.com/{}"},
     {"name": "CoinMarketCap", "url": "https://coinmarketcap.com/community/profile/{}/"},
@@ -170,7 +188,6 @@ USERNAME_PLATFORMS = [
     {"name": "GameSpot", "url": "https://www.gamespot.com/profile/{}/"},
     {"name": "Speedrun.com", "url": "https://www.speedrun.com/users/{}"},
     {"name": "ModDB", "url": "https://www.moddb.com/members/{}"},
-    {"name": "NexusMods", "url": "https://www.nexusmods.com/users/{}"},
     {"name": "Itch.io", "url": "https://{}.itch.io/"},
     {"name": "Kongregate", "url": "https://www.kongregate.com/accounts/{}"},
     {"name": "Newgrounds", "url": "https://{}.newgrounds.com/"},
@@ -196,10 +213,7 @@ USERNAME_PLATFORMS = [
     {"name": "PushSquare", "url": "https://www.pushsquare.com/users/{}"},
     {"name": "PureXbox", "url": "https://www.purexbox.com/users/{}"},
     {"name": "MMORPG.com", "url": "https://forums.mmorpg.com/profile/{}"},
-    {"name": "GBAtemp", "url": "https://gbatemp.net/members/?username={}"},
-    {"name": "Se7enSins", "url": "https://www.se7ensins.com/members/?username={}"},
     {"name": "GOG Forum", "url": "https://www.gog.com/forum/user/{}"},
-    {"name": "SteamREP", "url": "https://steamrep.com/search?q={}"},
     
     # Video, Müzik ve Yayın (Genişletilmiş)
     {"name": "Rumble", "url": "https://rumble.com/c/{}"},
@@ -214,12 +228,9 @@ USERNAME_PLATFORMS = [
     {"name": "Quora", "url": "https://www.quora.com/profile/{}"},
     {"name": "Zhihu", "url": "https://www.zhihu.com/people/{}"},
     {"name": "LiveJournal", "url": "https://{}.livejournal.com/"},
-    {"name": "FanFiction", "url": "https://www.fanfiction.net/u/{}/"},
     {"name": "ArchiveOfOurOwn", "url": "https://archiveofourown.org/users/{}/profile"},
-    {"name": "RoyalRoad", "url": "https://www.royalroad.com/profile/{}"},
     {"name": "Letterboxd", "url": "https://letterboxd.com/{}/"},
     {"name": "Trakt", "url": "https://trakt.tv/users/{}"},
-    {"name": "TV Time", "url": "https://www.tvtime.com/en/user/{}"},
     {"name": "BoardGameGeek", "url": "https://boardgamegeek.com/user/{}"},
     {"name": "Discogs", "url": "https://www.discogs.com/user/{}"},
     {"name": "RateYourMusic", "url": "https://rateyourmusic.com/~{}"},
@@ -228,7 +239,6 @@ USERNAME_PLATFORMS = [
     {"name": "Vivino", "url": "https://www.vivino.com/users/{}"},
     
     # Fitness, Doğa ve Spor
-    {"name": "Strava", "url": "https://www.strava.com/athletes/{}"},
     {"name": "Runkeeper", "url": "https://runkeeper.com/user/{}/profile"},
     {"name": "Bodybuilding.com", "url": "https://bodyspace.bodybuilding.com/{}"},
     {"name": "AllTrails", "url": "https://www.alltrails.com/members/{}"},
@@ -243,11 +253,66 @@ USERNAME_PLATFORMS = [
     {"name": "ProductHunt", "url": "https://www.producthunt.com/@{}"},
 ]
 
-# ------------------------------------------------------------------
-# Negative keywords for "content" mode - false positive prevention
-# ------------------------------------------------------------------
+
+_ENTERTAINMENT_FORUM_PLATFORMS = [
+    # Anime, manga, film ve dizi platformları
+    {"name": "Anime-Planet", "url": "https://www.anime-planet.com/users/{}"},
+    {
+        "name": "Kitsu",
+        "url": "https://kitsu.app/users/{}",
+        "probe_url": "https://kitsu.io/api/edge/users?filter[name]={}",
+        "check": "json_list",
+        "accept": "application/vnd.api+json",
+        "json_list_path": "data",
+        "json_path": "attributes.name",
+        "profile_id_path": "id",
+        "profile_url": "https://kitsu.app/users/{}",
+    },
+    {
+        "name": "Bangumi",
+        "url": "https://bgm.tv/user/{}",
+        "probe_url": "https://api.bgm.tv/v0/users/{}",
+        "check": "json",
+        "json_path": "username",
+    },
+    {"name": "Shikimori", "url": "https://shikimori.one/{}"},
+    {"name": "MyDramaList", "url": "https://mydramalist.com/profile/{}"},
+    {"name": "TMDB", "url": "https://www.themoviedb.org/u/{}"},
+    {"name": "TasteDive", "url": "https://tastedive.com/users/{}"},
+    {"name": "TV Tropes", "url": "https://tvtropes.org/pmwiki/pmwiki.php/Tropers/{}"},
+
+    # Film/dizi ve Türkçe fantastik kültür forumları
+    _discourse_platform("Trakt Forums", "https://forums.trakt.tv"),
+    _discourse_platform("Kayıp Rıhtım Forum", "https://forum.kayiprihtim.com"),
+
+    # Doğrulanabilir JSON kullanıcı profili sunan yabancı forumlar
+    _discourse_platform("Discourse Meta", "https://meta.discourse.org"),
+    _discourse_platform("Python Discuss", "https://discuss.python.org"),
+    _discourse_platform("OpenAI Developer Community", "https://community.openai.com"),
+    _discourse_platform("Mozilla Discourse", "https://discourse.mozilla.org"),
+    _discourse_platform("Unreal Engine Forums", "https://forums.unrealengine.com"),
+    _discourse_platform("Brave Community", "https://community.brave.com"),
+    _discourse_platform("Elastic Discuss", "https://discuss.elastic.co"),
+    _discourse_platform("Ubuntu Community Hub", "https://discourse.ubuntu.com"),
+    _discourse_platform("Signal Community", "https://community.signalusers.org"),
+    _discourse_platform("Obsidian Forum", "https://forum.obsidian.md"),
+    _discourse_platform("Home Assistant Community", "https://community.home-assistant.io"),
+    _discourse_platform("Hugging Face Forums", "https://discuss.huggingface.co"),
+    _discourse_platform("PyTorch Forums", "https://discuss.pytorch.org"),
+    _discourse_platform("Rust Users Forum", "https://users.rust-lang.org"),
+    _discourse_platform("Jupyter Community", "https://discourse.jupyter.org"),
+    _discourse_platform("Django Forum", "https://forum.djangoproject.com"),
+    _discourse_platform("KDE Discuss", "https://discuss.kde.org"),
+    _discourse_platform("Godot Forum", "https://forum.godotengine.org"),
+    _discourse_platform("YazBel Forum", "https://forum.yazbel.com"),
+    _discourse_platform("Pardus Forumları", "https://forum.pardus.org.tr"),
+]
+
+USERNAME_PLATFORMS.extend(_ENTERTAINMENT_FORUM_PLATFORMS)
+
 _NEGATIVE_KEYWORDS = [
-    "page not found", "doesn't exist", "could not be found",
+    "page not found", "not found", "doesn't exist", "does not exist",
+    "could not be found", "page does not exist", "member not found",
     "this summoner is not registered", "no player found", "no user found",
     "no such user", "profile not found", "this account does not exist",
     "we couldn't find", "player not found", "user not found",
@@ -255,40 +320,184 @@ _NEGATIVE_KEYWORDS = [
     "that page doesn't exist", "the user could not be found",
     "no results found", "oops! that page can",
     "looking for doesn't exist", "this summoner doesn't appear",
-    "hasn't been played", "hmm, this page doesn",
-    # Turkish negative keywords
+    "hasn't been played", "hmm, this page doesn", "unknown user",
+    # Türkçe ve yaygın yabancı hata metinleri
     "kayitli degil", "bulunamadi", "boyle bir kullanici yok",
-    "kullanici bulunamadi", "sayfa bulunamadi",
-    # Hacker News API special case: null response = not found
-    "null",
+    "kullanici bulunamadi", "uye bulunamadi", "sayfa bulunamadi",
+    "profil bulunamadi", "sayfa mevcut degil", "utilisateur introuvable",
+    "usuario no encontrado", "benutzer nicht gefunden",
+    "用户不存在", "用户不存在或已被删除",
+]
+
+_BLOCKED_KEYWORDS = [
+    "just a moment", "attention required", "access denied",
+    "enable javascript and cookies", "checking your browser",
+    "verify you are human", "captcha",
 ]
 
 
-async def check_single_username(username: str, platform: dict, client: httpx.AsyncClient) -> dict:
-    """Check a single platform with the correct detection strategy."""
-    url = platform["url"].format(username)
-    method = platform.get("check", "404")
-    result = {"platform": platform["name"], "url": url, "found": False}
-    try:
-        resp = await client.get(url, follow_redirects=True)
+def _normalize_text(value: object) -> str:
+    if value is None:
+        return ""
+    text = html.unescape(str(value))
+    decomposed = unicodedata.normalize("NFKD", text)
+    return "".join(char for char in decomposed if not unicodedata.combining(char)).casefold()
 
-        if method == "404":
-            # Reliable: site returns 404 when user does not exist
-            result["found"] = resp.status_code == 200
 
-        elif method == "content":
-            # Unreliable: site returns 200 even when user is missing
-            # So we ONLY mark found if 200 AND no negative keywords present
-            if resp.status_code == 200:
-                body = resp.text.lower()
-                result["found"] = not any(kw in body for kw in _NEGATIVE_KEYWORDS)
+def _visible_page_text(page: str) -> str:
+    title_match = re.search(r"<title[^>]*>(.*?)</title>", page, flags=re.I | re.S)
+    title = title_match.group(1) if title_match else ""
+    body = re.sub(
+        r"<(script|style|noscript|svg)\b[^>]*>.*?</\1>",
+        " ",
+        page,
+        flags=re.I | re.S,
+    )
+    body = re.sub(r"<[^>]+>", " ", body)
+    return re.sub(r"\s+", " ", f"{title} {body}")
 
-    except Exception:
-        pass  # Network error / timeout -> default False
+
+def _contains_exact_username(text: str, username: str) -> bool:
+    normalized_text = _normalize_text(text)
+    normalized_username = _normalize_text(username).strip()
+    if not normalized_username:
+        return False
+    pattern = rf"(?<![\w.-]){re.escape(normalized_username)}(?![\w.-])"
+    return re.search(pattern, normalized_text) is not None
+
+
+def _contains_negative_marker(text: str) -> bool:
+    normalized = _normalize_text(text)
+    return any(_normalize_text(keyword) in normalized for keyword in _NEGATIVE_KEYWORDS)
+
+
+def _contains_block_marker(text: str) -> bool:
+    normalized = _normalize_text(text)
+    return any(_normalize_text(keyword) in normalized for keyword in _BLOCKED_KEYWORDS)
+
+
+def _json_value(data: object, path: str) -> object | None:
+    current = data
+    for part in path.split("."):
+        if not isinstance(current, dict) or part not in current:
+            return None
+        current = current[part]
+    return current
+
+
+def _set_result(result: dict, status: str, detail: str = "") -> dict:
+    result["status"] = status
+    result["found"] = status == "found"
+    result["detail"] = detail
     return result
 
+
+def _check_json_response(
+    username: str,
+    platform: dict,
+    response: httpx.Response,
+    result: dict,
+) -> dict:
+    if response.status_code in {404, 410}:
+        return _set_result(result, "not_found", f"HTTP {response.status_code}")
+    if response.status_code != 200:
+        return _set_result(result, "unknown", f"HTTP {response.status_code}")
+
+    try:
+        data = response.json()
+    except ValueError:
+        return _set_result(result, "unknown", "Geçersiz JSON yanıtı")
+
+    method = platform.get("check")
+    if method == "json_list":
+        items = _json_value(data, platform["json_list_path"])
+        if not isinstance(items, list):
+            return _set_result(result, "unknown", "JSON listesi bulunamadı")
+
+        for item in items:
+            value = _json_value(item, platform["json_path"])
+            if _normalize_text(value) != _normalize_text(username):
+                continue
+
+            profile_id = _json_value(item, platform.get("profile_id_path", "id"))
+            if profile_id is not None and platform.get("profile_url"):
+                result["url"] = platform["profile_url"].format(profile_id)
+            return _set_result(result, "found", "JSON kullanıcı adı eşleşti")
+
+        return _set_result(result, "not_found", "JSON eşleşmesi yok")
+
+    value = _json_value(data, platform["json_path"])
+    if _normalize_text(value) == _normalize_text(username):
+        return _set_result(result, "found", "JSON kullanıcı adı eşleşti")
+    return _set_result(result, "not_found", "JSON eşleşmesi yok")
+
+
+def _check_html_response(
+    username: str,
+    response: httpx.Response,
+    result: dict,
+) -> dict:
+    if response.status_code in {404, 410}:
+        return _set_result(result, "not_found", f"HTTP {response.status_code}")
+    if response.status_code != 200:
+        return _set_result(result, "unknown", f"HTTP {response.status_code}")
+
+    visible_text = _visible_page_text(response.text)
+    if _contains_block_marker(visible_text):
+        return _set_result(result, "unknown", "Site otomatik taramayı engelledi")
+
+    if _contains_negative_marker(visible_text):
+        return _set_result(result, "not_found", "Bulunamadı işareti görüldü")
+
+    if response.history and not _contains_exact_username(
+        unquote(str(response.url)), username
+    ):
+        return _set_result(result, "not_found", "Genel sayfaya yönlendirildi")
+
+    if _contains_exact_username(visible_text, username):
+        return _set_result(result, "found", "Sayfada kullanıcı adı doğrulandı")
+
+    return _set_result(result, "unknown", "Profil kanıtı bulunamadı")
+
+
+async def check_single_username(username: str, platform: dict, client: httpx.AsyncClient) -> dict:
+    """Bir platformda kullanıcı adını kanıta dayalı olarak doğrular."""
+    encoded_username = quote(username.strip(), safe="._-~")
+    url = platform["url"].format(encoded_username)
+    probe_url = platform.get("probe_url", platform["url"]).format(encoded_username)
+    method = platform.get("check", "html")
+    result = {
+        "platform": platform["name"],
+        "url": url,
+        "found": False,
+        "status": "unknown",
+        "detail": "",
+    }
+
+    try:
+        request_headers = (
+            {"Accept": platform.get("accept", "application/json")}
+            if method in {"json", "json_list"}
+            else None
+        )
+        response = await client.get(
+            probe_url,
+            follow_redirects=True,
+            headers=request_headers,
+        )
+        if method in {"json", "json_list"}:
+            return _check_json_response(username, platform, response, result)
+        return _check_html_response(username, response, result)
+    except httpx.HTTPError as exc:
+        return _set_result(result, "unknown", type(exc).__name__)
+
+
 async def check_username_async(username: str) -> list[dict]:
-    """Main async scan - uses rotating browser headers and per-platform detection."""
+    """Kullanıcı adını platformlara özel, kanıta dayalı yöntemlerle tarar."""
+    username = username.strip()
+    if not username:
+        return []
+
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
@@ -330,7 +539,12 @@ async def check_username_async(username: str) -> list[dict]:
             for coro in asyncio.as_completed(tasks):
                 res = await coro
                 results.append(res)
-                status = "[green]FOUND[/green]" if res["found"] else "[dim]---[/dim]"
+                if res["status"] == "found":
+                    status = "[green]FOUND[/green]"
+                elif res["status"] == "unknown":
+                    status = "[yellow]?[/yellow]"
+                else:
+                    status = "[dim]---[/dim]"
                 progress.update(task_id, advance=1, description=f"{status} {res['platform']}")
                 
     return results
