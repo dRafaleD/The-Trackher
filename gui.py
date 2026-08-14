@@ -157,12 +157,16 @@ class TrackherApp(ctk.CTk):
         try:
             results = asyncio.run(check_email(target))
             found = [r for r in results if r["found"]]
+            unknown_count = sum(1 for r in results if r.get("status") == "unknown")
 
             for result in found:
                 detail = f" - {result.get('detail', '')}" if result.get('detail') else ""
                 self.print_to_terminal(f"  [+] FOUND: {result['service']}{detail}")
 
-            self.print_to_terminal(f"[!] Total {len(found)} records found across {len(results)} services.")
+            self.print_to_terminal(
+                f"[!] Total {len(found)} verified matches. "
+                f"(Scanned {len(results)}, {unknown_count} could not be verified)"
+            )
         finally:
             self.post_ui(self.btn_email.configure, state="normal")
 

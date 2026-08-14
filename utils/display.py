@@ -121,7 +121,7 @@ def print_email_results(email: str, results: list[dict]) -> None:
     """
     E-posta OSINT sonuçlarını tablo olarak basar.
 
-    Her result dict: {"service": str, "found": bool, "detail": str}
+    Her result dict: {"service": str, "found": bool, "status": str, "detail": str}
     """
     table = Table(
         title=f"E-posta İz Sürücü — {email}",
@@ -135,10 +135,23 @@ def print_email_results(email: str, results: list[dict]) -> None:
     table.add_column("Detay", style="dim", ratio=3)
 
     found_count = 0
-    for r in sorted(results, key=lambda x: not x["found"]):
-        if r["found"]:
+    unknown_count = 0
+    status_order = {"found": 0, "unknown": 1, "not_found": 2}
+    sorted_results = sorted(
+        results,
+        key=lambda item: status_order.get(
+            item.get("status", "found" if item.get("found") else "not_found"),
+            1,
+        ),
+    )
+    for r in sorted_results:
+        result_status = r.get("status", "found" if r.get("found") else "not_found")
+        if result_status == "found":
             status = "[bold green]KAYITLI ✔[/bold green]"
             found_count += 1
+        elif result_status == "unknown":
+            status = "[yellow]DOĞRULANAMADI[/yellow]"
+            unknown_count += 1
         else:
             status = "[dim]bulunamadı[/dim]"
         table.add_row(r["service"], status, r.get("detail", ""))
@@ -146,7 +159,8 @@ def print_email_results(email: str, results: list[dict]) -> None:
     console.print(table)
     console.print(
         f"\n  [bold cyan]Toplam:[/bold cyan] "
-        f"[bold white]{found_count}[/bold white] platformda kayıt tespit edildi "
+        f"[bold white]{found_count}[/bold white] doğrulanmış kayıt, "
+        f"[bold yellow]{unknown_count}[/bold yellow] sonuç doğrulanamadı "
         f"([dim]{len(results)} servis tarandı[/dim]).\n"
     )
 

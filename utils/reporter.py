@@ -50,17 +50,29 @@ def export_to_html(data: dict, filepath: str) -> None:
             email = _html(data["osint_email"]["target"])
             results = data["osint_email"]["results"]
             found_count = sum(1 for r in results if r["found"])
+            unknown_count = sum(1 for r in results if r.get("status") == "unknown")
             
             html_content += f"""
                 <h2>E-posta OSINT ({email})</h2>
-                <p>Toplam <strong>{found_count}</strong> platformda kayıt bulundu.</p>
+                <p>Toplam <strong>{found_count}</strong> doğrulanmış kayıt bulundu; <strong>{unknown_count}</strong> sonuç doğrulanamadı.</p>
                 <table>
                     <tr><th>Platform</th><th>Durum</th><th>Detay</th></tr>
             """
             for res in results:
                 detail_value = res.get("detail", "")
-                status_class = "found" if res["found"] else ("not-found" if detail_value == "" else "error")
-                status_text = "Bulundu" if res["found"] else ("Bulunamadı" if detail_value == "" else "Hata")
+                result_status = res.get(
+                    "status", "found" if res.get("found") else "not_found"
+                )
+                status_class = {
+                    "found": "found",
+                    "unknown": "unknown",
+                    "not_found": "not-found",
+                }.get(result_status, "unknown")
+                status_text = {
+                    "found": "Bulundu",
+                    "unknown": "Doğrulanamadı",
+                    "not_found": "Bulunamadı",
+                }.get(result_status, "Doğrulanamadı")
                 service = _html(res.get("service", "Bilinmiyor"))
                 detail = _html(detail_value)
                 html_content += f"""

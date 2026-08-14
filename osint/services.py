@@ -34,17 +34,48 @@ def _safe_json(response: httpx.Response) -> dict | list | None:
         return None
 
 
+def _unknown(service: str, detail: str = "Sonuç doğrulanamadı") -> dict:
+    """Hesap durumunu kanıtlayamayan yanıtlar için standart sonuç."""
+    return {
+        "service": service,
+        "found": False,
+        "status": "unknown",
+        "detail": detail,
+    }
+
+
 def _err(service: str, detail: str = "Bağlantı hatası") -> dict:
-    """Hata durumunda standart döndürme dict'i."""
-    return {"service": service, "found": False, "detail": detail}
+    """Bağlantı hatasında hesap yok sonucu çıkarma."""
+    return _unknown(service, detail)
 
 
-def _found(service: str, detail: str = "Hesap kayıtlı") -> dict:
-    return {"service": service, "found": True, "detail": detail}
+def _found(
+    service: str,
+    detail: str = "Hesap kayıtlı",
+    *,
+    verified: bool = False,
+) -> dict:
+    """Yalnızca açık, servis-özel kanıtla pozitif sonuç döndürür."""
+    if not verified:
+        return _unknown(
+            service,
+            "Platform yanıtı hesap var izlenimi veriyor, ancak doğrulanmış değil",
+        )
+    return {
+        "service": service,
+        "found": True,
+        "status": "found",
+        "detail": detail,
+    }
 
 
 def _not_found(service: str, detail: str = "") -> dict:
-    return {"service": service, "found": False, "detail": detail}
+    return {
+        "service": service,
+        "found": False,
+        "status": "not_found",
+        "detail": detail,
+    }
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -57,7 +88,7 @@ async def check_gravatar(email: str, client: httpx.AsyncClient) -> dict:
         h = _md5(email)
         resp = await client.get(f"https://www.gravatar.com/avatar/{h}?d=404&s=1")
         if resp.status_code == 200:
-            return _found(s, f"https://gravatar.com/{h}")
+            return _found(s, f"https://gravatar.com/{h}", verified=True)
         return _not_found(s)
     except Exception:
         return _err(s)
@@ -320,7 +351,7 @@ async def check_haveibeenpwned(email: str, client: httpx.AsyncClient) -> dict:
                 if c > 0:
                     names = ", ".join(b.get("Name", "") for b in breaches[:3])
                     sfx = f" +{c - 3} daha" if c > 3 else ""
-                    return _found(s, f"{c} ihlal: {names}{sfx}")
+                    return _found(s, f"{c} ihlal: {names}{sfx}", verified=True)
         elif resp.status_code == 401:
             return _not_found(s, "API anahtarı gerekli")
         return _not_found(s)

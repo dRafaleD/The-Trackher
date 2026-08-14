@@ -46,6 +46,7 @@ async def _run_check(
         result = {
             "service": name,
             "found": False,
+            "status": "unknown",
             "detail": "Beklenmeyen hata",
         }
 
@@ -114,6 +115,7 @@ async def check_email(email: str) -> list[dict]:
                     results.append({
                         "service": "Bilinmeyen",
                         "found": False,
+                        "status": "unknown",
                         "detail": f"Hata: {item}",
                     })
 
