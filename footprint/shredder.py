@@ -13,8 +13,14 @@ import subprocess
 from pathlib import Path
 
 from utils.display import print_success, print_warning, print_error, print_info
-from utils.helpers import expand_path, get_file_size, get_dir_size
-from utils.platform_utils import is_windows, is_macos, is_linux
+from utils.helpers import (
+    collect_files,
+    expand_path,
+    get_file_size,
+    safe_remove,
+    should_exclude,
+)
+from utils.platform_utils import is_windows, is_macos
 
 
 def _python_shred(file_path: Path, passes: int = 3) -> bool:
@@ -32,16 +38,26 @@ def _python_shred(file_path: Path, passes: int = 3) -> bool:
             file_path.unlink()
             return True
 
+        chunk_size = 1024 * 1024
         for _ in range(passes):
-            with open(file_path, "wb") as f:
-                f.write(os.urandom(file_size))
-                f.flush()
-                os.fsync(f.fileno())
+            with open(file_path, "r+b", buffering=0) as file_obj:
+                remaining = file_size
+                while remaining:
+                    write_size = min(chunk_size, remaining)
+                    file_obj.write(os.urandom(write_size))
+                    remaining -= write_size
+                file_obj.flush()
+                os.fsync(file_obj.fileno())
 
-        with open(file_path, "wb") as f:
-            f.write(b"\x00" * file_size)
-            f.flush()
-            os.fsync(f.fileno())
+        zero_chunk = b"\x00" * min(chunk_size, file_size)
+        with open(file_path, "r+b", buffering=0) as file_obj:
+            remaining = file_size
+            while remaining:
+                write_size = min(len(zero_chunk), remaining)
+                file_obj.write(zero_chunk[:write_size])
+                remaining -= write_size
+            file_obj.flush()
+            os.fsync(file_obj.fileno())
 
         file_path.unlink()
         return True
@@ -64,7 +80,7 @@ def _windows_shred(file_path: Path, passes: int) -> bool:
         )
         if result.returncode == 0:
             return True
-    except FileNotFoundError:
+    except (OSError, subprocess.TimeoutExpired):
         pass
 
     try:
@@ -74,7 +90,7 @@ def _windows_shred(file_path: Path, passes: int) -> bool:
         )
         if result.returncode == 0:
             return True
-    except FileNotFoundError:
+    except (OSError, subprocess.TimeoutExpired):
         pass
 
     # Fallback: Python
@@ -93,7 +109,7 @@ def _macos_shred(file_path: Path, passes: int) -> bool:
         )
         if result.returncode == 0:
             return True
-    except FileNotFoundError:
+    except (OSError, subprocess.TimeoutExpired):
         pass
 
     return _python_shred(file_path, passes)
@@ -114,7 +130,7 @@ def _linux_shred(file_path: Path, passes: int) -> bool:
             except OSError:
                 pass
             return True
-    except FileNotFoundError:
+    except (OSError, subprocess.TimeoutExpired):
         pass
 
     return _python_shred(file_path, passes)
@@ -143,8 +159,16 @@ def shred_file(
     """
     target = expand_path(file_path)
 
-    if not target.is_file():
+    if target.is_symlink() or not target.is_file():
         print_error(f"Dosya bulunamadı veya normal bir dosya değil: {target}")
+        return False
+
+    if should_exclude(target):
+        print_warning(f"Dosya dışlama listesi tarafından korunuyor: {target}")
+        return False
+
+    if passes < 1:
+        print_error("Üzerine yazma geçiş sayısı en az 1 olmalıdır.")
         return False
 
     size = get_file_size(target)
@@ -202,19 +226,21 @@ def shred_directory(
         print_error(f"Dizin bulunamadı: {target}")
         return []
 
-    results: list[dict] = []
-    files: list[Path] = []
+    if should_exclude(target):
+        print_warning(f"Dizin dışlama listesi tarafından korunuyor: {target}")
+        return []
 
-    try:
-        for entry in target.rglob("*"):
-            if entry.is_file() and not entry.is_symlink():
-                files.append(entry)
-    except (PermissionError, OSError):
-        pass
+    if passes < 1:
+        print_error("Üzerine yazma geçiş sayısı en az 1 olmalıdır.")
+        return []
+
+    results: list[dict] = []
+    files = collect_files(target)
 
     if not files:
         print_info(f"Dizinde dosya bulunamadı: {target}")
-        return results
+        if dry_run:
+            return results
 
     print_info(f"Dizinde [bold]{len(files)}[/bold] dosya bulundu: {target}")
 
@@ -230,11 +256,9 @@ def shred_directory(
             results.append(item)
 
     if not dry_run:
-        try:
-            import shutil
-            shutil.rmtree(target, ignore_errors=True)
+        if safe_remove(target):
             print_success(f"Dizin kaldırıldı: {target}")
-        except OSError:
-            pass
+        elif target.exists():
+            print_warning(f"Dizin tamamen kaldırılamadı; korunan veya kilitli öğeler var: {target}")
 
     return results

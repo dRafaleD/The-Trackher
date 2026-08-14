@@ -1,7 +1,11 @@
 import json
-import os
 from datetime import datetime
+from html import escape
 from utils.display import print_success, print_error
+
+
+def _html(value: object) -> str:
+    return escape(str(value), quote=True)
 
 def export_to_json(data: dict, filepath: str) -> None:
     """Sonuçları JSON dosyası olarak kaydeder."""
@@ -42,7 +46,7 @@ def export_to_html(data: dict, filepath: str) -> None:
         """
 
         if "osint_email" in data:
-            email = data["osint_email"]["target"]
+            email = _html(data["osint_email"]["target"])
             results = data["osint_email"]["results"]
             found_count = sum(1 for r in results if r["found"])
             
@@ -53,19 +57,22 @@ def export_to_html(data: dict, filepath: str) -> None:
                     <tr><th>Platform</th><th>Durum</th><th>Detay</th></tr>
             """
             for res in results:
-                status_class = "found" if res["found"] else ("not-found" if res["detail"] == "" else "error")
-                status_text = "Bulundu" if res["found"] else ("Bulunamadı" if res["detail"] == "" else "Hata")
+                detail_value = res.get("detail", "")
+                status_class = "found" if res["found"] else ("not-found" if detail_value == "" else "error")
+                status_text = "Bulundu" if res["found"] else ("Bulunamadı" if detail_value == "" else "Hata")
+                service = _html(res.get("service", "Bilinmiyor"))
+                detail = _html(detail_value)
                 html_content += f"""
                     <tr>
-                        <td>{res['service']}</td>
+                        <td>{service}</td>
                         <td class="{status_class}">{status_text}</td>
-                        <td>{res['detail']}</td>
+                        <td>{detail}</td>
                     </tr>
                 """
             html_content += "</table>"
             
         if "osint_username" in data:
-            username = data["osint_username"]["target"]
+            username = _html(data["osint_username"]["target"])
             results = data["osint_username"]["results"]
             found_count = sum(1 for r in results if r["found"])
             
@@ -78,17 +85,19 @@ def export_to_html(data: dict, filepath: str) -> None:
             for res in results:
                 status_class = "found" if res["found"] else "not-found"
                 status_text = "Bulundu" if res["found"] else "Bulunamadı"
+                platform_name = _html(res.get("platform", "Bilinmiyor"))
+                url = _html(res.get("url", ""))
                 html_content += f"""
                     <tr>
-                        <td>{res['platform']}</td>
-                        <td><a href="{res['url']}" target="_blank" style="color: #4da6ff;">{res['url']}</a></td>
+                        <td>{platform_name}</td>
+                        <td><a href="{url}" target="_blank" rel="noopener noreferrer" style="color: #4da6ff;">{url}</a></td>
                         <td class="{status_class}">{status_text}</td>
                     </tr>
                 """
             html_content += "</table>"
 
         if "osint_dork" in data:
-            target = data["osint_dork"]["target"]
+            target = _html(data["osint_dork"]["target"])
             dorks = data["osint_dork"]["dorks"]
             
             html_content += f"""
@@ -98,11 +107,14 @@ def export_to_html(data: dict, filepath: str) -> None:
                     <tr><th>Arama Motoru</th><th>Dork Tipi</th><th>Bağlantı</th></tr>
             """
             for d in dorks:
+                engine = _html(d.get("engine", "Bilinmiyor"))
+                dork_type = _html(d.get("type", "Bilinmiyor"))
+                url = _html(d.get("url", ""))
                 html_content += f"""
                     <tr>
-                        <td>{d['engine']}</td>
-                        <td>{d['type']}</td>
-                        <td><a href="{d['url']}" target="_blank" style="color: #4da6ff;">Tıkla ve Ara</a></td>
+                        <td>{engine}</td>
+                        <td>{dork_type}</td>
+                        <td><a href="{url}" target="_blank" rel="noopener noreferrer" style="color: #4da6ff;">Tıkla ve Ara</a></td>
                     </tr>
                 """
             html_content += "</table>"
@@ -121,11 +133,14 @@ def export_to_html(data: dict, filepath: str) -> None:
                     <tr><th>Tip</th><th>Yol</th><th>Boyut (Bayt)</th></tr>
             """
             for item in items:
+                item_type = _html(item.get("type", "Bilinmiyor"))
+                item_path = _html(item.get("path", ""))
+                item_size = _html(item.get("size", 0))
                 html_content += f"""
                     <tr>
-                        <td>{item.get('type', 'Bilinmiyor')}</td>
-                        <td>{item.get('path', '')}</td>
-                        <td>{item.get('size', 0)}</td>
+                        <td>{item_type}</td>
+                        <td>{item_path}</td>
+                        <td>{item_size}</td>
                     </tr>
                 """
             html_content += "</table>"

@@ -1,5 +1,7 @@
 import platform
+import shlex
 import subprocess
+import sys
 from pathlib import Path
 from utils.display import print_success, print_error
 
@@ -8,10 +10,11 @@ def schedule_task(interval: str = "daily") -> None:
     script_path = current_dir / "main.py"
     
     if platform.system() == "Windows":
-        import sys
         python_exe = sys.executable
         task_name = "DigitalAyakIziTemizleyici"
-        command = f"{python_exe} {script_path} --clean-all"
+        command = subprocess.list2cmdline(
+            [python_exe, str(script_path), "--clean-all", "--no-banner"]
+        )
         
         sc = "DAILY" if interval.lower() == "daily" else "WEEKLY"
         
@@ -23,35 +26,47 @@ def schedule_task(interval: str = "daily") -> None:
             subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             print_success(f"Windows Görev Zamanlayıcıya '{task_name}' görevi ({sc}) başarıyla eklendi.")
             print_success(f"Bu görev bilgisayarınızda arka planda düzenli olarak çalışacaktır.")
-        except subprocess.CalledProcessError:
+        except (OSError, subprocess.CalledProcessError):
             print_error("Zamanlanmış görev eklenemedi. Lütfen komut satırını Yönetici olarak çalıştırın.")
             
     elif platform.system() == "Linux":
-        import sys
         python_exe = sys.executable
-        cron_command = f"{python_exe} {script_path} --clean-all"
+        cron_command = " ".join(
+            [
+                shlex.quote(python_exe),
+                shlex.quote(str(script_path)),
+                "--clean-all",
+                "--no-banner",
+            ]
+        )
         
         # Her gün 14:00 veya her Pazar 14:00
         cron_time = "0 14 * * *" if interval.lower() == "daily" else "0 14 * * 0" 
         
-        cron_line = f"{cron_time} {cron_command}\n"
+        marker = "# digitalayakizi-cleaner"
+        cron_line = f"{cron_time} {cron_command} {marker}\n"
         
         try:
             current_cron_proc = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
             current_cron = current_cron_proc.stdout if current_cron_proc.returncode == 0 else ""
             
-            if "digitalayakizi/main.py" in current_cron:
+            if marker in current_cron:
                 print_error("Cron görevi zaten mevcut. Eklenmedi.")
                 return
                 
             new_cron = current_cron + cron_line
             
-            p = subprocess.Popen(["crontab", "-"], stdin=subprocess.PIPE, text=True)
-            p.communicate(input=new_cron)
+            subprocess.run(
+                ["crontab", "-"],
+                input=new_cron,
+                text=True,
+                capture_output=True,
+                check=True,
+            )
             
             print_success(f"Linux cron job ({interval}) başarıyla eklendi.")
-        except Exception as e:
-            print_error(f"Cron eklenirken hata oluştu: {e}")
+        except (OSError, subprocess.CalledProcessError) as exc:
+            print_error(f"Cron eklenirken hata oluştu: {exc}")
             
     else:
         print_error("Bu işletim sistemi için zamanlama henüz desteklenmiyor.")

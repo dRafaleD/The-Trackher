@@ -3,7 +3,7 @@ Dijital Ayak İzi Temizleyici — Sistem İzleri Temizleme
 Cross-Platform: Windows, macOS, Linux
 
 Windows : %TEMP%, %LOCALAPPDATA%/Temp, Son Kullanılan Dosyalar,
-          Windows Prefetch, Thumbnail DB, Recycle Bin (kullanıcı)
+          Thumbnail DB ve uygulama önbellekleri
 macOS   : ~/Library/Caches, ~/.Trash, /private/tmp (kullanıcı dosyaları),
           QuickLook Thumbnail önbelleği
 Linux   : ~/.cache, /tmp (kullanıcı dosyaları), Çöp Kutusu,
@@ -13,16 +13,14 @@ Linux   : ~/.cache, /tmp (kullanıcı dosyaları), Çöp Kutusu,
 from __future__ import annotations
 
 import os
-import ctypes
-import sys
 from pathlib import Path
 
 from utils.display import print_success, print_warning, print_info
 from utils.helpers import get_dir_size, get_file_size, safe_remove
 from utils.platform_utils import (
-    home, cache_dir, trash_dir, temp_dir,
+    home, temp_dir,
     localappdata_dir, appdata_dir,
-    is_windows, is_macos, is_linux,
+    is_windows, is_macos,
 )
 
 
@@ -53,18 +51,9 @@ def _system_targets() -> list[tuple[str, Path, str]]:
             # Son kullanılan dosyalar (Recent)
             ("Son Kullanılan Dosyalar (Recent)",
              appdata / "Microsoft" / "Windows" / "Recent",       "dir"),
-            # Windows Prefetch (yönetici gerekmez, ama genelde gerekmez)
-            ("Prefetch Önbelleği",
-             Path("C:/Windows/Prefetch"),                        "dir"),
-            # Windows Update önbelleği (kullanıcı erişimi varsa)
-            ("Windows Update Önbelleği",
-             Path("C:/Windows/SoftwareDistribution/Download"),   "dir"),
             # İnternet Explorer / Edge (Legacy) Önbelleği
             ("IE/Edge (Legacy) Önbelleği",
              local / "Microsoft" / "Windows" / "INetCache",      "dir"),
-            # Font önbelleği
-            ("Windows Font Önbelleği",
-             local / "Microsoft" / "Windows" / "Fonts",          "dir"),
             # Crash dumps
             ("Kullanıcı Crash Dump'ları",
              local / "CrashDumps",                               "dir"),
@@ -270,15 +259,18 @@ def clean_system_traces(dry_run: bool = False) -> list[dict]:
             try:
                 import subprocess
                 if not dry_run:
-                    subprocess.run(
+                    completed = subprocess.run(
                         ["qlmanage", "-r", "cache"],
                         capture_output=True, timeout=15,
                     )
-                    print_success("QuickLook Thumbnail Önbelleği temizlendi")
+                    if completed.returncode == 0:
+                        print_success("QuickLook Thumbnail Önbelleği temizlendi")
+                    else:
+                        print_warning("QuickLook Thumbnail Önbelleği temizlenemedi")
                 else:
                     print_info("[dim]QuickLook Cache:[/dim] temizlenecek (qlmanage -r cache)")
-            except Exception:
-                pass
+            except (OSError, subprocess.SubprocessError):
+                print_warning("QuickLook Thumbnail Önbelleği temizlenemedi")
             continue
 
         # Normal dir / file işleme

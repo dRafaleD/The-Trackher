@@ -6,34 +6,54 @@ Dosya boyutu formatlama, yol genişletme, izin kontrolleri ve e-posta doğrulama
 
 from __future__ import annotations
 
+import json
 import os
 import re
-import json
 from pathlib import Path
 
 # Global exclusion list
-_EXCLUSIONS = []
+_EXCLUSIONS: list[Path] = []
 
-def load_exclusions(config_path: str) -> None:
-    """Belirtilen JSON dosyasından hariç tutulacak (whitelist) yolları yükler."""
+
+def load_exclusions(config_path: str) -> int:
+    """JSON yapılandırmasındaki korunan yolları yükler ve sayısını döndürür."""
     global _EXCLUSIONS
-    try:
-        path = expand_path(config_path)
-        if path.is_file():
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                _EXCLUSIONS = [expand_path(p) for p in data.get("exclude", [])]
-    except Exception:
-        pass
+
+    path = expand_path(config_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"Dışlama dosyası bulunamadı: {path}")
+
+    with open(path, "r", encoding="utf-8") as config_file:
+        data = json.load(config_file)
+
+    if not isinstance(data, dict):
+        raise ValueError("Dışlama dosyasının kökü bir JSON nesnesi olmalıdır.")
+
+    entries = data.get("exclude", [])
+    if not isinstance(entries, list) or not all(
+        isinstance(item, str) and item.strip() for item in entries
+    ):
+        raise ValueError("'exclude' alanı yalnızca yol metinlerinden oluşan bir liste olmalıdır.")
+
+    exclusions = [expand_path(item) for item in entries]
+    _EXCLUSIONS = list(dict.fromkeys(exclusions))
+    return len(_EXCLUSIONS)
+
 
 def should_exclude(path: Path) -> bool:
     """Belirtilen yolun exclusion (whitelist) listesinde olup olmadığını kontrol eder."""
-    path = path.resolve()
+    path = Path(path).resolve()
     for exc in _EXCLUSIONS:
         # Check if the path is exactly the excluded path or a child of it
         if path == exc or exc in path.parents:
             return True
     return False
+
+
+def _contains_exclusion(path: Path) -> bool:
+    """Yolun kendisinin veya altındaki bir yolun korunduğunu kontrol eder."""
+    resolved = Path(path).resolve()
+    return any(resolved == exc or resolved in exc.parents for exc in _EXCLUSIONS)
 
 
 def format_size(size_bytes: int) -> str:
@@ -71,14 +91,24 @@ def get_dir_size(path: Path) -> int:
     Bir dizinin toplam boyutunu (bayt) hesaplar.
     Erişim hatalarını sessizce atlar.
     """
+    if should_exclude(path):
+        return 0
+
     total = 0
     try:
-        for entry in path.rglob("*"):
-            try:
-                if entry.is_file() and not entry.is_symlink():
-                    total += entry.stat().st_size
-            except (PermissionError, OSError):
-                continue
+        for root, dir_names, file_names in os.walk(path, topdown=True, followlinks=False):
+            root_path = Path(root)
+            dir_names[:] = [
+                name for name in dir_names
+                if not should_exclude(root_path / name)
+            ]
+            for name in file_names:
+                entry = root_path / name
+                try:
+                    if not should_exclude(entry) and not entry.is_symlink():
+                        total += entry.stat().st_size
+                except (PermissionError, OSError):
+                    continue
     except (PermissionError, OSError):
         pass
     return total
@@ -87,7 +117,7 @@ def get_dir_size(path: Path) -> int:
 def get_file_size(path: Path) -> int:
     """Tek bir dosyanın boyutunu döndürür; hata durumunda 0."""
     try:
-        if path.is_file():
+        if not should_exclude(path) and path.is_file():
             return path.stat().st_size
     except (PermissionError, OSError):
         pass
@@ -105,24 +135,59 @@ def safe_remove(path: Path, dry_run: bool = False) -> bool:
     Dosya veya dizini güvenli biçimde siler.
     dry_run=True ise silmez, sadece True döndürür.
     """
-    if dry_run:
-        return True
-
+    path = Path(path)
     if should_exclude(path):
         return False
+
+    if dry_run:
+        return True
 
     try:
         if path.is_file() or path.is_symlink():
             path.unlink()
             return True
         elif path.is_dir():
-            import shutil
-            shutil.rmtree(path, ignore_errors=True)
-            return True
+            return _remove_directory(path)
     except (PermissionError, OSError):
         return False
 
     return False
+
+
+def _remove_directory(directory: Path) -> bool:
+    """Korunan alt yolları atlayarak bir dizindeki silinebilir içeriği kaldırır."""
+    removed_any = False
+    successful = True
+
+    try:
+        entries = list(directory.iterdir())
+    except (PermissionError, OSError):
+        return False
+
+    for entry in entries:
+        if should_exclude(entry):
+            continue
+
+        try:
+            if entry.is_dir() and not entry.is_symlink():
+                child_removed = _remove_directory(entry)
+                removed_any = removed_any or child_removed
+                if entry.exists() and not _contains_exclusion(entry):
+                    successful = False
+            else:
+                entry.unlink()
+                removed_any = True
+        except (PermissionError, OSError):
+            successful = False
+
+    if not _contains_exclusion(directory):
+        try:
+            directory.rmdir()
+            removed_any = True
+        except (PermissionError, OSError):
+            successful = False
+
+    return successful and removed_any
 
 
 def collect_files(directory: Path, pattern: str = "*") -> list[Path]:
@@ -132,13 +197,24 @@ def collect_files(directory: Path, pattern: str = "*") -> list[Path]:
     """
     results: list[Path] = []
     try:
-        if directory.is_dir():
-            for entry in directory.rglob(pattern):
-                try:
-                    if entry.is_file():
-                        results.append(entry)
-                except (PermissionError, OSError):
-                    continue
+        if directory.is_dir() and not should_exclude(directory):
+            for root, dir_names, file_names in os.walk(directory, topdown=True, followlinks=False):
+                root_path = Path(root)
+                dir_names[:] = [
+                    name for name in dir_names
+                    if not should_exclude(root_path / name)
+                ]
+                for name in file_names:
+                    entry = root_path / name
+                    try:
+                        if (
+                            not should_exclude(entry)
+                            and not entry.is_symlink()
+                            and entry.match(pattern)
+                        ):
+                            results.append(entry)
+                    except (PermissionError, OSError):
+                        continue
     except (PermissionError, OSError):
         pass
     return results

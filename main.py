@@ -35,6 +35,14 @@ from utils.display import (
 from utils.helpers import is_valid_email
 
 
+def positive_int(value: str) -> int:
+    """Argparse için sıfırdan büyük tam sayı doğrulayıcısı."""
+    parsed = int(value)
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("değer en az 1 olmalıdır")
+    return parsed
+
+
 def build_parser() -> argparse.ArgumentParser:
     """CLI argüman ayrıştırıcısını oluşturur."""
     parser = argparse.ArgumentParser(
@@ -116,7 +124,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     shred_group.add_argument(
         "--shred-passes",
-        type=int,
+        type=positive_int,
         default=3,
         metavar="N",
         help="Üzerine yazma geçiş sayısı (varsayılan: 3)",
@@ -259,7 +267,6 @@ def handle_shred(args: argparse.Namespace) -> None:
     """Güvenli silme işlemini çalıştırır."""
     print_section("Güvenli Silme (Shred)")
 
-    from pathlib import Path
     from utils.helpers import expand_path
 
     target = expand_path(args.shred)
@@ -321,8 +328,16 @@ def main() -> None:
         
     if args.exclude:
         from utils.helpers import load_exclusions
-        load_exclusions(args.exclude)
-        print_info(f"İstisna listesi yüklendi: {args.exclude}\n")
+        try:
+            exclusion_count = load_exclusions(args.exclude)
+        except (OSError, ValueError) as exc:
+            print_error(f"Dışlama listesi yüklenemedi: {exc}")
+            sys.exit(2)
+
+        print_info(
+            f"Dışlama listesi yüklendi: {args.exclude} "
+            f"({exclusion_count} korunan yol)\n"
+        )
 
     report_data = {}
 

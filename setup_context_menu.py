@@ -1,4 +1,3 @@
-import os
 import sys
 import platform
 from pathlib import Path
@@ -29,11 +28,11 @@ def setup_windows_context_menu():
             with winreg.CreateKey(key, "command") as cmd_key:
                 winreg.SetValue(cmd_key, "", winreg.REG_SZ, command)
                 
-        print("✅ Windows sağ tık menüsüne başarıyla eklendi!")
+        print("[OK] Windows sağ tık menüsüne başarıyla eklendi!")
     except PermissionError:
-        print("❌ İzin Hatası: Lütfen bu komut dosyasını Yönetici (Administrator) olarak çalıştırın.")
+        print("[HATA] İzin Hatası: Lütfen bu komut dosyasını Yönetici (Administrator) olarak çalıştırın.")
     except Exception as e:
-        print(f"❌ Hata oluştu: {e}")
+        print(f"[HATA] Hata oluştu: {e}")
 
 def setup_linux_context_menu():
     desktop_file = """[Desktop Entry]
@@ -49,8 +48,16 @@ Name=Default profile
     current_dir = Path(__file__).parent.resolve()
     script_path = current_dir / "main.py"
     python_exe = sys.executable
+
+    def quote_exec_arg(value: str) -> str:
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        escaped = escaped.replace("`", "\\`").replace("$", "\\$")
+        return f'"{escaped}"'
     
-    content = desktop_file.format(script_path=script_path, python_exe=python_exe)
+    content = desktop_file.format(
+        script_path=quote_exec_arg(str(script_path)),
+        python_exe=quote_exec_arg(python_exe),
+    )
     
     target_dir = Path.home() / ".local" / "share" / "file-manager" / "actions"
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -59,7 +66,7 @@ Name=Default profile
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
         
-    print(f"✅ Linux sağ tık menüsü aksiyonu oluşturuldu: {file_path}")
+    print(f"[OK] Linux sağ tık menüsü aksiyonu oluşturuldu: {file_path}")
     print("Not: Dosya yöneticisini (Nautilus, Nemo vb.) yeniden başlatmanız gerekebilir.")
 
 if __name__ == "__main__":
@@ -68,4 +75,4 @@ if __name__ == "__main__":
     elif platform.system() == "Linux":
         setup_linux_context_menu()
     else:
-        print("⚠ Bu işletim sistemi için sağ tık menüsü henüz desteklenmiyor.")
+        print("[UYARI] Bu işletim sistemi için sağ tık menüsü henüz desteklenmiyor.")

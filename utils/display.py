@@ -4,11 +4,20 @@ Dijital Ayak İzi Temizleyici — Terminal Görüntüleme Araçları
 Rich kütüphanesi ile renkli, tablolu ve ikonlu terminal çıktıları üretir.
 """
 
+import sys
+
 from rich.console import Console
 from rich.table import Table
-from rich.panel import Panel
-from rich.text import Text
 from rich import box
+
+
+for stream in (sys.stdout, sys.stderr):
+    reconfigure = getattr(stream, "reconfigure", None)
+    if reconfigure is not None:
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (OSError, ValueError):
+            pass
 
 console = Console()
 

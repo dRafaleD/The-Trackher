@@ -1,5 +1,4 @@
 import urllib.parse
-from utils.display import console
 
 DORK_TEMPLATES = [
     {"engine": "Google", "type": "Genel Arama", "url": "https://www.google.com/search?q={}"},

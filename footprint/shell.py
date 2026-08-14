@@ -9,14 +9,13 @@ Linux   : Bash, Zsh, Fish + araç geçmişleri
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from utils.display import print_success, print_warning, print_info
-from utils.helpers import expand_path, get_file_size
+from utils.helpers import get_file_size, should_exclude
 from utils.platform_utils import (
-    OS, current_os, home, appdata_dir, localappdata_dir,
-    is_windows, is_macos, is_linux,
+    home, appdata_dir, localappdata_dir,
+    is_windows, is_macos,
 )
 
 
@@ -26,7 +25,6 @@ def _history_targets() -> list[tuple[str, Path]]:
     dosyalarının (açıklama, tam_yol) listesini döndürür.
     """
     h = home()
-    os_type = current_os()
     targets: list[tuple[str, Path]] = []
 
     # ── Ortak (tüm platformlarda aranır) ─────────────────────────
@@ -128,6 +126,9 @@ def clean_shell_history(dry_run: bool = False) -> list[dict]:
     targets = _history_targets()
 
     for description, file_path in targets:
+        if should_exclude(file_path):
+            continue
+
         # Dizin ise (Zsh oturumlar gibi) dizini sıfırla
         if file_path.is_dir():
             from utils.helpers import get_dir_size, safe_remove
