@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+.venv/
+venv/
+.env
+.env.*
+
+footprint_report_*.html
+footprint_report_*.json
+footprint_report_*.csv
+
