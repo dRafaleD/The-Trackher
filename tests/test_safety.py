@@ -22,6 +22,7 @@ from utils.helpers import (
     get_dir_size,
     is_critical_path,
     is_valid_username_query,
+    iter_files,
     load_exclusions,
     safe_remove,
 )
@@ -81,6 +82,7 @@ class ExclusionSafetyTests(unittest.TestCase):
         found.write_text("found", encoding="utf-8")
         self.load_exclusion(kept)
 
+        self.assertEqual(list(iter_files(root, "*.txt")), [found])
         self.assertEqual(collect_files(root, "*.txt"), [found])
 
     def test_invalid_exclusion_config_is_rejected(self):
@@ -105,7 +107,7 @@ class ExclusionSafetyTests(unittest.TestCase):
         self.assertFalse(safe_remove(target, dry_run=True))
 
     def test_shredder_rejects_home_before_collecting_files(self):
-        with patch("footprint.shredder.collect_files") as collect:
+        with patch("footprint.shredder.iter_files") as collect:
             result = shred_directory(str(Path.home()), dry_run=True)
 
         self.assertEqual(result, [])
@@ -123,6 +125,49 @@ class ExclusionSafetyTests(unittest.TestCase):
         self.assertFalse(result)
         expand.assert_called_once_with("link-to-file", resolve_symlinks=False)
         python_shred.assert_not_called()
+
+    def test_shredder_processes_directory_entries_as_a_stream(self):
+        events = []
+
+        def file_stream():
+            events.append("yield-first")
+            yield self.base / "first.txt"
+            events.append("yield-second")
+            yield self.base / "second.txt"
+
+        def fake_shred(path, **_kwargs):
+            events.append(f"shred-{Path(path).name}")
+            return True
+
+        with (
+            patch("footprint.shredder.iter_files", return_value=file_stream()),
+            patch("footprint.shredder.shred_file", side_effect=fake_shred),
+        ):
+            results = shred_directory(str(self.base), dry_run=True)
+
+        self.assertEqual(
+            events,
+            ["yield-first", "shred-first.txt", "yield-second", "shred-second.txt"],
+        )
+        self.assertEqual(len(results), 2)
+
+    def test_shredder_can_report_without_collecting_results(self):
+        reported = []
+        file_entry = self.base / "item.txt"
+
+        with (
+            patch("footprint.shredder.iter_files", return_value=iter([file_entry])),
+            patch("footprint.shredder.shred_file", return_value=True),
+        ):
+            results = shred_directory(
+                str(self.base),
+                dry_run=True,
+                collect_results=False,
+                result_callback=reported.append,
+            )
+
+        self.assertEqual(results, [])
+        self.assertEqual([item["path"] for item in reported], [str(file_entry)])
 
 
 class SqliteCleaningTests(unittest.TestCase):

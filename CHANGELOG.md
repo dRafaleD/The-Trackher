@@ -1,18 +1,18 @@
-# Değişiklik Kaydı
+# Changelog
 
-## 1.2.0 - 2026-08-14
+## 1.2.0 - 2026-08-15
 
-- E-posta kontrollerindeki yanlış pozitifler kaldırıldı; yan etkili parola
-  sıfırlama, OTP, sahte kayıt ve sahte oturum açma istekleri koddan çıkarıldı.
-- 110 servislik katalog için `ATLANDI` durumu ve isteğe bağlı resmî HIBP API v3
-  desteği eklendi.
-- Windows, macOS ve Linux geçici dizinleri, XDG yolları ve tarayıcı cache yolları
-  düzeltildi; macOS `launchd` zamanlayıcısı eklendi.
-- Kritik dizin, sembolik bağlantı ve etkileşimsiz kalıcı silme korumaları eklendi.
-- README, MIT lisansı, etik/güvenlik politikaları ve üç işletim sistemli CI eklendi.
+- tightened GUI terminal queue handling and long-session memory behavior
+- improved directory shredding to stream files instead of collecting everything first
+- added reporting hooks for directory shredding without retaining large result lists
+- clarified email and username scan summaries for unknown and skipped results
+- refreshed the HTML report layout and safer invalid-link rendering
+- polished repository documentation for open-source release readiness
 
-## 1.1.0
+## 1.1.0 - 2026-08-14
 
-- Kullanıcı adı doğrulaması kanıta dayalı hale getirildi.
-- Anime, film, dizi ve forum platformları ile eğitim/abonelik dork alan adları
-  genişletildi.
+- removed risky and false-positive-prone email checks
+- added explicit skipped status for side-effectful catalog entries
+- improved cross-platform temp, cache, and browser cleanup paths
+- added protections for critical directories, symbolic links, and non-interactive destructive actions
+- introduced CI coverage for Windows, macOS, and Linux

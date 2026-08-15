@@ -13,14 +13,15 @@ from __future__ import annotations
 
 import os
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 from utils.display import print_success, print_warning, print_error, print_info
 from utils.helpers import (
-    collect_files,
     expand_path,
     get_file_size,
     is_critical_path,
+    iter_files,
     safe_remove,
     should_exclude,
 )
@@ -214,6 +215,8 @@ def shred_directory(
     dir_path: str,
     passes: int = 3,
     dry_run: bool = False,
+    collect_results: bool = True,
+    result_callback: Callable[[dict], None] | None = None,
 ) -> list[dict]:
     """
     Bir dizindeki tüm dosyaları özyinelemeli olarak güvenli biçimde imha eder.
@@ -222,9 +225,11 @@ def shred_directory(
         dir_path: Silinecek dizinin yolu.
         passes  : Üzerine yazma geçiş sayısı.
         dry_run : True ise silmez, sadece bilgi verir.
+        collect_results: False ise işlenen dosya ayrıntılarını bellekte tutmaz.
+        result_callback: Başarılı her dosya için çağrılacak isteğe bağlı fonksiyon.
 
     Returns:
-        İşlenen dosyaların bilgilerini içeren liste.
+        İşlenen dosyaların bilgilerini içeren liste; collect_results=False ise boş liste.
     """
     target = expand_path(dir_path, resolve_symlinks=False)
 
@@ -245,16 +250,11 @@ def shred_directory(
         return []
 
     results: list[dict] = []
-    files = collect_files(target)
+    file_count = 0
+    print_info(f"Dizin taranıyor: {target}")
 
-    if not files:
-        print_info(f"Dizinde dosya bulunamadı: {target}")
-        if dry_run:
-            return results
-
-    print_info(f"Dizinde [bold]{len(files)}[/bold] dosya bulundu: {target}")
-
-    for file_entry in files:
+    for file_entry in iter_files(target):
+        file_count += 1
         size = get_file_size(file_entry)
         item = {
             "path": str(file_entry),
@@ -263,7 +263,17 @@ def shred_directory(
         }
         success = shred_file(str(file_entry), passes=passes, dry_run=dry_run)
         if success:
-            results.append(item)
+            if result_callback is not None:
+                result_callback(item)
+            if collect_results:
+                results.append(item)
+
+    if file_count == 0:
+        print_info(f"Dizinde dosya bulunamadı: {target}")
+        if dry_run:
+            return results
+    else:
+        print_info(f"Dizinde [bold]{file_count}[/bold] dosya işlendi: {target}")
 
     if not dry_run:
         if safe_remove(target):

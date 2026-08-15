@@ -1,17 +1,31 @@
-# Etik Kullanım Politikası
+# Ethics Policy
 
-Trackher kişisel güvenlik, hesap envanteri ve cihaz temizliği amacıyla
-geliştirilmiştir. Aracı yalnızca kendi bilgilerinizde, kendi cihazlarınızda veya
-açık ve doğrulanabilir izin aldığınız kapsamda kullanın.
+Trackher is intended for personal security, account inventory, and device
+cleanup on systems and identifiers that belong to you or for which you have
+explicit, verifiable permission.
 
-İzin verilmeyen kullanımlar şunlardır:
+## Allowed Use
 
-- Bir kişiyi izlemek, taciz etmek, tehdit etmek veya kimliğini çıkarmak
-- İzin olmadan hesap, e-posta ya da kullanıcı adı envanteri oluşturmak
-- Platform hız sınırlarını, bot korumalarını veya erişim kontrollerini aşmak
-- Parola sıfırlama, OTP, bildirim veya istenmeyen e-posta tetiklemek
-- Silme özelliklerini başkasının cihazında veya verisinde kullanmak
+- reviewing your own digital footprint
+- auditing your own email address or usernames
+- cleaning local traces on your own machine
+- performing authorized checks within an approved scope
 
-Kullanıcı; yürürlükteki mevzuata, hedef platformların kullanım koşullarına ve
-inceleme kapsamına uymaktan sorumludur. Bir sonuç kişinin kimliğini veya hesap
-sahipliğini tek başına kanıtlamaz; bulgular ikinci bir kaynaktan doğrulanmalıdır.
+## Prohibited Use
+
+- stalking, harassment, intimidation, or doxxing
+- creating account inventories without permission
+- bypassing bot protections, rate limits, or access controls
+- triggering password reset, OTP, sign-in, or notification flows on third-party accounts
+- using deletion features on someone else's data or device without authorization
+
+## Responsibility
+
+You are responsible for complying with:
+
+- local law
+- the target platform's terms
+- the permission scope you were given
+
+Trackher output should not be treated as the sole proof of identity or account ownership.
+Findings should be independently verified.

@@ -173,12 +173,11 @@ def _clean_temp_files(dry_run: bool = False) -> list[dict]:
             # Tüm alt dosyaları teker teker sil (dizinin kendisini değil)
             deleted = 0
             try:
-                entries = list(tmp_path.iterdir())
+                for entry in tmp_path.iterdir():
+                    if safe_remove(entry):
+                        deleted += 1
             except (PermissionError, OSError):
                 return results
-            for entry in entries:
-                if safe_remove(entry):
-                    deleted += 1
             if deleted:
                 print_success(f"{label} temizlendi — {deleted} öğe kaldırıldı")
                 results.append(item)

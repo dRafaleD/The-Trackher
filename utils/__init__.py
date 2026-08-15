@@ -1,3 +1,3 @@
-# Dijital Ayak İzi Temizleyici — Yardımcı Araçlar (utils)
+"""Shared package metadata and small helpers."""
 
 __version__ = "1.2.0"

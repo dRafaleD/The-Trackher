@@ -1,26 +1,38 @@
-# Güvenlik Politikası
+# Security Policy
 
-## Desteklenen Sürüm
+## Supported Versions
 
-Güvenlik düzeltmeleri ana dalın güncel sürümüne uygulanır.
+Security fixes are applied to the latest code on the main branch.
 
-## Açık Bildirme
+## Reporting a Vulnerability
 
-Bir güvenlik açığı bulursanız depo için GitHub Private Vulnerability Reporting
-özelliğini kullanın. Özellik etkin değilse, istismar ayrıntılarını herkese açık
-bir issue içinde paylaşmayın; depo sahibiyle özel bir iletişim kanalı açılmasını
-isteyen ayrıntısız bir issue oluşturun.
+If the repository has GitHub Private Vulnerability Reporting enabled, please use it.
+If it is not enabled, do not publish exploit details in a public issue.
+Instead, open a minimal issue asking for a private contact path.
 
-Bildirimde etkilenen işletim sistemini, Python sürümünü, yeniden üretme adımlarını
-ve mümkünse zararsız bir kanıtı belirtin. Gerçek kişilere ait e-posta, kullanıcı
-adı, token, çerez veya rapor dosyalarını eklemeyin.
+When reporting a vulnerability, include:
 
-## Kapsam
+- affected operating system
+- Python version
+- reproduction steps
+- expected behavior
+- actual behavior
+- a harmless proof of concept if possible
 
-Özellikle şu konular güvenlik açığı olarak değerlendirilir:
+Do not include:
 
-- Dışlama listesini veya kritik dizin korumasını aşan silme davranışı
-- Komut ya da yol enjeksiyonu
-- Raporlarda HTML/JavaScript enjeksiyonu
-- İstenmeyen parola sıfırlama, OTP veya güvenlik bildirimi üreten ağ isteği
-- Hassas verinin log, rapor veya depoya sızması
+- real email addresses
+- usernames tied to real people
+- API keys or tokens
+- cookies or session data
+- generated reports containing sensitive data
+
+## In Scope
+
+The following are considered security issues:
+
+- deletion behavior that bypasses exclusion rules or critical-path protections
+- command injection or path injection
+- HTML or JavaScript injection in reports
+- network checks that unexpectedly trigger password reset, OTP, or sign-in notifications
+- accidental leakage of sensitive data into logs, reports, or repository files

@@ -10,6 +10,7 @@ import json
 import os
 import re
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
 
 # Global exclusion list
@@ -215,25 +216,23 @@ def _remove_directory(directory: Path) -> bool:
     successful = True
 
     try:
-        entries = list(directory.iterdir())
+        for entry in directory.iterdir():
+            if should_exclude(entry):
+                continue
+
+            try:
+                if entry.is_dir() and not entry.is_symlink():
+                    child_removed = _remove_directory(entry)
+                    removed_any = removed_any or child_removed
+                    if entry.exists() and not _contains_exclusion(entry):
+                        successful = False
+                else:
+                    entry.unlink()
+                    removed_any = True
+            except (PermissionError, OSError):
+                successful = False
     except (PermissionError, OSError):
-        return False
-
-    for entry in entries:
-        if should_exclude(entry):
-            continue
-
-        try:
-            if entry.is_dir() and not entry.is_symlink():
-                child_removed = _remove_directory(entry)
-                removed_any = removed_any or child_removed
-                if entry.exists() and not _contains_exclusion(entry):
-                    successful = False
-            else:
-                entry.unlink()
-                removed_any = True
-        except (PermissionError, OSError):
-            successful = False
+        successful = False
 
     if not _contains_exclusion(directory):
         try:
@@ -245,12 +244,11 @@ def _remove_directory(directory: Path) -> bool:
     return successful and removed_any
 
 
-def collect_files(directory: Path, pattern: str = "*") -> list[Path]:
+def iter_files(directory: Path, pattern: str = "*") -> Iterator[Path]:
     """
-    Belirtilen dizinde verilen glob kalıbına uyan dosyaları toplar.
+    Belirtilen dizinde verilen glob kalıbına uyan dosyaları akış halinde döndürür.
     Erişim hatalarını sessizce atlar.
     """
-    results: list[Path] = []
     try:
         if directory.is_dir() and not should_exclude(directory):
             for root, dir_names, file_names in os.walk(directory, topdown=True, followlinks=False):
@@ -267,9 +265,13 @@ def collect_files(directory: Path, pattern: str = "*") -> list[Path]:
                             and not entry.is_symlink()
                             and entry.match(pattern)
                         ):
-                            results.append(entry)
+                            yield entry
                     except (PermissionError, OSError):
                         continue
     except (PermissionError, OSError):
-        pass
-    return results
+        return
+
+
+def collect_files(directory: Path, pattern: str = "*") -> list[Path]:
+    """iter_files sonucunu geriye dönük uyumluluk için liste olarak döndürür."""
+    return list(iter_files(directory, pattern))
