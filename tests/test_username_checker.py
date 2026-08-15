@@ -1,4 +1,5 @@
 import asyncio
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,7 +13,7 @@ from osint.username_checker import (
     check_single_username,
 )
 from utils.display import print_username_results
-from utils.reporter import export_to_html
+from utils.reporter import UNRELIABLE_WARNING, export_to_html, export_to_json
 
 
 class UsernameDetectionTests(unittest.TestCase):
@@ -227,6 +228,57 @@ class UsernameReportTests(unittest.TestCase):
 
         self.assertIn("Doğrulanamadı", report)
         self.assertIn('class="unknown"', report)
+
+    def test_unreliable_platform_warning_is_rendered_in_html_report(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "report.html"
+            export_to_html(
+                {
+                    "osint_username": {
+                        "target": "test-user",
+                        "results": [
+                            {
+                                "platform": "Heuristic Site",
+                                "url": "https://example.test/test-user",
+                                "found": True,
+                                "status": "found",
+                                "reliability": "unreliable",
+                            }
+                        ],
+                    }
+                },
+                str(output),
+            )
+            report = output.read_text(encoding="utf-8")
+
+        self.assertIn(UNRELIABLE_WARNING, report)
+
+    def test_unreliable_platform_warning_is_exported_in_json_report(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "report.json"
+            export_to_json(
+                {
+                    "osint_username": {
+                        "target": "test-user",
+                        "results": [
+                            {
+                                "platform": "Heuristic Site",
+                                "url": "https://example.test/test-user",
+                                "found": True,
+                                "status": "found",
+                                "reliability": "unreliable",
+                            }
+                        ],
+                    }
+                },
+                str(output),
+            )
+            report = json.loads(output.read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            report["osint_username"]["results"][0]["warning"],
+            UNRELIABLE_WARNING,
+        )
 
 
 if __name__ == "__main__":
