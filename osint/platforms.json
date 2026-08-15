@@ -1,0 +1,1561 @@
+[
+  {
+    "name": "GitHub",
+    "url_pattern": "https://github.com/{username}",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://api.github.com/users/{username}",
+    "check": "json",
+    "json_path": "login"
+  },
+  {
+    "name": "Twitter/X",
+    "url_pattern": "https://twitter.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker",
+    "check": "content"
+  },
+  {
+    "name": "Instagram",
+    "url_pattern": "https://www.instagram.com/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker",
+    "check": "content"
+  },
+  {
+    "name": "TikTok",
+    "url_pattern": "https://www.tiktok.com/@{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker",
+    "check": "content"
+  },
+  {
+    "name": "Pinterest",
+    "url_pattern": "https://www.pinterest.com/{username}/",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404
+    ],
+    "check": "404"
+  },
+  {
+    "name": "Reddit",
+    "url_pattern": "https://www.reddit.com/user/{username}/",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://www.reddit.com/user/{username}/about.json",
+    "check": "json",
+    "json_path": "data.name"
+  },
+  {
+    "name": "Facebook",
+    "url_pattern": "https://www.facebook.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker",
+    "check": "content"
+  },
+  {
+    "name": "Snapchat",
+    "url_pattern": "https://www.snapchat.com/add/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker",
+    "check": "content"
+  },
+  {
+    "name": "Telegram",
+    "url_pattern": "https://t.me/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "VK",
+    "url_pattern": "https://vk.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "OK.ru",
+    "url_pattern": "https://ok.ru/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Myspace",
+    "url_pattern": "https://myspace.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Ekşi Sözlük",
+    "url_pattern": "https://eksisozluk.com/biri/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "DonanımHaber",
+    "url_pattern": "https://forum.donanimhaber.com/profil/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "KızlarSoruyor",
+    "url_pattern": "https://www.kizlarsoruyor.com/uye/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "İnci Sözlük",
+    "url_pattern": "https://www.incisozluk.com.tr/w/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "R10.net",
+    "url_pattern": "https://www.r10.net/members/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Technopat",
+    "url_pattern": "https://www.technopat.net/sosyal/uye/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "ShiftDelete",
+    "url_pattern": "https://forum.shiftdelete.net/uyeler/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "YouTube",
+    "url_pattern": "https://www.youtube.com/@{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Twitch",
+    "url_pattern": "https://www.twitch.tv/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "SoundCloud",
+    "url_pattern": "https://soundcloud.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Spotify",
+    "url_pattern": "https://open.spotify.com/user/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Vimeo",
+    "url_pattern": "https://vimeo.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Dailymotion",
+    "url_pattern": "https://www.dailymotion.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Bandcamp",
+    "url_pattern": "https://bandcamp.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Last.fm",
+    "url_pattern": "https://www.last.fm/user/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Mixcloud",
+    "url_pattern": "https://www.mixcloud.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Smule",
+    "url_pattern": "https://www.smule.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "GitLab",
+    "url_pattern": "https://gitlab.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Bitbucket",
+    "url_pattern": "https://bitbucket.org/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Gitea",
+    "url_pattern": "https://gitea.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "HackerNews",
+    "url_pattern": "https://news.ycombinator.com/user?id={username}",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://hacker-news.firebaseio.com/v0/user/{username}.json",
+    "check": "json",
+    "json_path": "id"
+  },
+  {
+    "name": "Kaggle",
+    "url_pattern": "https://www.kaggle.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "LeetCode",
+    "url_pattern": "https://leetcode.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "HackerRank",
+    "url_pattern": "https://www.hackerrank.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "TryHackMe",
+    "url_pattern": "https://tryhackme.com/p/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Codecademy",
+    "url_pattern": "https://www.codecademy.com/profiles/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Pastebin",
+    "url_pattern": "https://pastebin.com/u/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "DockerHub",
+    "url_pattern": "https://hub.docker.com/u/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "NPM",
+    "url_pattern": "https://www.npmjs.com/~{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "PyPi",
+    "url_pattern": "https://pypi.org/user/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Codepen",
+    "url_pattern": "https://codepen.io/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Replit",
+    "url_pattern": "https://replit.com/@{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Steam",
+    "url_pattern": "https://steamcommunity.com/id/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "PSNProfiles",
+    "url_pattern": "https://psnprofiles.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "NameMC (Minecraft)",
+    "url_pattern": "https://namemc.com/profile/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Chess.com",
+    "url_pattern": "https://www.chess.com/member/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Lichess",
+    "url_pattern": "https://lichess.org/@/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Medium",
+    "url_pattern": "https://medium.com/@{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Dev.to",
+    "url_pattern": "https://dev.to/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Tumblr",
+    "url_pattern": "https://{username}.tumblr.com/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Blogger",
+    "url_pattern": "https://{username}.blogspot.com/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "WordPress",
+    "url_pattern": "https://{username}.wordpress.com/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Substack",
+    "url_pattern": "https://{username}.substack.com/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Wattpad",
+    "url_pattern": "https://www.wattpad.com/user/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Fandom",
+    "url_pattern": "https://www.fandom.com/u/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Flickr",
+    "url_pattern": "https://www.flickr.com/people/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Dribbble",
+    "url_pattern": "https://dribbble.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Behance",
+    "url_pattern": "https://www.behance.net/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "DeviantArt",
+    "url_pattern": "https://www.deviantart.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "ArtStation",
+    "url_pattern": "https://www.artstation.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Sketchfab",
+    "url_pattern": "https://sketchfab.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "MyAnimeList",
+    "url_pattern": "https://myanimelist.net/profile/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "AniList",
+    "url_pattern": "https://anilist.co/user/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Etsy",
+    "url_pattern": "https://www.etsy.com/shop/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Linktree",
+    "url_pattern": "https://linktr.ee/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "About.me",
+    "url_pattern": "https://about.me/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Patreon",
+    "url_pattern": "https://www.patreon.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "BuyMeACoffee",
+    "url_pattern": "https://www.buymeacoffee.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Ko-fi",
+    "url_pattern": "https://ko-fi.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Fiverr",
+    "url_pattern": "https://www.fiverr.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Freelancer",
+    "url_pattern": "https://www.freelancer.com/u/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "TripAdvisor",
+    "url_pattern": "https://www.tripadvisor.com/Profile/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Wikipedia",
+    "url_pattern": "https://en.wikipedia.org/wiki/User:{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Gravatar",
+    "url_pattern": "https://en.gravatar.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Tinder",
+    "url_pattern": "https://tinder.com/@{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "9GAG",
+    "url_pattern": "https://9gag.com/u/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Imgur",
+    "url_pattern": "https://imgur.com/user/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Giphy",
+    "url_pattern": "https://giphy.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "ForumTR",
+    "url_pattern": "https://www.frmtr.com/members/{username}.html",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Turkmmo",
+    "url_pattern": "https://forum.turkmmo.com/uye/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "DonanımArşivi",
+    "url_pattern": "https://forum.donanimarsivi.com/uyeler/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Memurlar.net",
+    "url_pattern": "https://forum.memurlar.net/profil/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "KadınlarKulübü",
+    "url_pattern": "https://www.kadinlarkulubu.com/uyeler/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Paticik",
+    "url_pattern": "https://forum.paticik.com/profile/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "LinuxQuestions",
+    "url_pattern": "https://www.linuxquestions.org/questions/user/{username}-1/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Raspberry Pi",
+    "url_pattern": "https://forums.raspberrypi.com/memberlist.php?mode=viewprofile&un={username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Arduino Forum",
+    "url_pattern": "https://forum.arduino.cc/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://forum.arduino.cc/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Codeforces",
+    "url_pattern": "https://codeforces.com/profile/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "TopCoder",
+    "url_pattern": "https://www.topcoder.com/members/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "CodeChef",
+    "url_pattern": "https://www.codechef.com/users/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Hashnode",
+    "url_pattern": "https://hashnode.com/@{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "SourceHut",
+    "url_pattern": "https://sr.ht/~{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "TradingView",
+    "url_pattern": "https://www.tradingview.com/u/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "StockTwits",
+    "url_pattern": "https://stocktwits.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "CoinMarketCap",
+    "url_pattern": "https://coinmarketcap.com/community/profile/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Investing.com",
+    "url_pattern": "https://www.investing.com/members/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "eToro",
+    "url_pattern": "https://www.etoro.com/people/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "500px",
+    "url_pattern": "https://500px.com/p/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "VSCO",
+    "url_pattern": "https://vsco.co/{username}/gallery",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "EyeEm",
+    "url_pattern": "https://www.eyeem.com/u/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Houzz",
+    "url_pattern": "https://www.houzz.com/user/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Coroflot",
+    "url_pattern": "https://www.coroflot.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Carbonmade",
+    "url_pattern": "https://{username}.carbonmade.com/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Threadless",
+    "url_pattern": "https://www.threadless.com/@{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Redbubble",
+    "url_pattern": "https://www.redbubble.com/people/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Society6",
+    "url_pattern": "https://society6.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Faceit",
+    "url_pattern": "https://www.faceit.com/en/players/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Tracker.gg",
+    "url_pattern": "https://tracker.gg/valorant/profile/riot/{username}/overview",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "IGN",
+    "url_pattern": "https://www.ign.com/user/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "GameSpot",
+    "url_pattern": "https://www.gamespot.com/profile/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Speedrun.com",
+    "url_pattern": "https://www.speedrun.com/users/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "ModDB",
+    "url_pattern": "https://www.moddb.com/members/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Itch.io",
+    "url_pattern": "https://{username}.itch.io/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Kongregate",
+    "url_pattern": "https://www.kongregate.com/accounts/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Newgrounds",
+    "url_pattern": "https://{username}.newgrounds.com/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "OP.GG (LoL)",
+    "url_pattern": "https://www.op.gg/summoners/tr/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Valorant (OP.GG)",
+    "url_pattern": "https://valorant.op.gg/profile/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "PUBG (OP.GG)",
+    "url_pattern": "https://pubg.op.gg/user/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "LeagueOfGraphs",
+    "url_pattern": "https://www.leagueofgraphs.com/summoner/tr/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "U.GG",
+    "url_pattern": "https://u.gg/lol/profile/tr1/{username}/overview",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Fortnite Tracker",
+    "url_pattern": "https://fortnitetracker.com/profile/all/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "R6 Tracker",
+    "url_pattern": "https://r6.tracker.network/profile/pc/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Apex Tracker",
+    "url_pattern": "https://apex.tracker.gg/apex/profile/origin/{username}/overview",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Overbuff (Overwatch)",
+    "url_pattern": "https://www.overbuff.com/players/pc/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Osu!",
+    "url_pattern": "https://osu.ppy.sh/users/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "TrueAchievements (Xbox)",
+    "url_pattern": "https://www.trueachievements.com/gamer/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "TrueTrophies (PSN)",
+    "url_pattern": "https://www.truetrophies.com/gamer/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Exophase",
+    "url_pattern": "https://www.exophase.com/user/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "GameFAQs",
+    "url_pattern": "https://gamefaqs.gamespot.com/community/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "GiantBomb",
+    "url_pattern": "https://www.giantbomb.com/profile/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Destructoid",
+    "url_pattern": "https://www.destructoid.com/users/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "NintendoLife",
+    "url_pattern": "https://www.nintendolife.com/users/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "PushSquare",
+    "url_pattern": "https://www.pushsquare.com/users/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "PureXbox",
+    "url_pattern": "https://www.purexbox.com/users/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "MMORPG.com",
+    "url_pattern": "https://forums.mmorpg.com/profile/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "GOG Forum",
+    "url_pattern": "https://www.gog.com/forum/user/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Rumble",
+    "url_pattern": "https://rumble.com/c/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Odysee",
+    "url_pattern": "https://odysee.com/@{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Bitchute",
+    "url_pattern": "https://www.bitchute.com/channel/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Trovo",
+    "url_pattern": "https://trovo.live/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Audiomack",
+    "url_pattern": "https://audiomack.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "ReverbNation",
+    "url_pattern": "https://www.reverbnation.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Hearthis.at",
+    "url_pattern": "https://hearthis.at/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Quora",
+    "url_pattern": "https://www.quora.com/profile/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Zhihu",
+    "url_pattern": "https://www.zhihu.com/people/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "LiveJournal",
+    "url_pattern": "https://{username}.livejournal.com/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "ArchiveOfOurOwn",
+    "url_pattern": "https://archiveofourown.org/users/{username}/profile",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Letterboxd",
+    "url_pattern": "https://letterboxd.com/{username}/",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Trakt",
+    "url_pattern": "https://trakt.tv/users/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "BoardGameGeek",
+    "url_pattern": "https://boardgamegeek.com/user/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Discogs",
+    "url_pattern": "https://www.discogs.com/user/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "RateYourMusic",
+    "url_pattern": "https://rateyourmusic.com/~{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "MyFigureCollection",
+    "url_pattern": "https://myfigurecollection.net/profile/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Untappd",
+    "url_pattern": "https://untappd.com/user/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Vivino",
+    "url_pattern": "https://www.vivino.com/users/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Runkeeper",
+    "url_pattern": "https://runkeeper.com/user/{username}/profile",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Bodybuilding.com",
+    "url_pattern": "https://bodyspace.bodybuilding.com/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "AllTrails",
+    "url_pattern": "https://www.alltrails.com/members/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Komoot",
+    "url_pattern": "https://www.komoot.com/user/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Digg",
+    "url_pattern": "https://digg.com/@{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Slashdot",
+    "url_pattern": "https://slashdot.org/~{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "MetaFilter",
+    "url_pattern": "https://www.metafilter.com/user/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Lobsters",
+    "url_pattern": "https://lobste.rs/u/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Flipboard",
+    "url_pattern": "https://flipboard.com/@{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "ProductHunt",
+    "url_pattern": "https://www.producthunt.com/@{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Anime-Planet",
+    "url_pattern": "https://www.anime-planet.com/users/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Kitsu",
+    "url_pattern": "https://kitsu.app/users/{username}",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://kitsu.io/api/edge/users?filter[name]={username}",
+    "check": "json_list",
+    "json_path": "attributes.name",
+    "json_list_path": "data",
+    "accept": "application/vnd.api+json",
+    "profile_id_path": "id",
+    "profile_url_pattern": "https://kitsu.app/users/{username}"
+  },
+  {
+    "name": "Bangumi",
+    "url_pattern": "https://bgm.tv/user/{username}",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://api.bgm.tv/v0/users/{username}",
+    "check": "json",
+    "json_path": "username"
+  },
+  {
+    "name": "Shikimori",
+    "url_pattern": "https://shikimori.one/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "MyDramaList",
+    "url_pattern": "https://mydramalist.com/profile/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "TMDB",
+    "url_pattern": "https://www.themoviedb.org/u/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "TasteDive",
+    "url_pattern": "https://tastedive.com/users/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "TV Tropes",
+    "url_pattern": "https://tvtropes.org/pmwiki/pmwiki.php/Tropers/{username}",
+    "error_type": "message",
+    "reliability": "unreliable",
+    "error_msg": "negative_marker"
+  },
+  {
+    "name": "Trakt Forums",
+    "url_pattern": "https://forums.trakt.tv/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://forums.trakt.tv/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Kayıp Rıhtım Forum",
+    "url_pattern": "https://forum.kayiprihtim.com/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://forum.kayiprihtim.com/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Discourse Meta",
+    "url_pattern": "https://meta.discourse.org/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://meta.discourse.org/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Python Discuss",
+    "url_pattern": "https://discuss.python.org/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://discuss.python.org/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "OpenAI Developer Community",
+    "url_pattern": "https://community.openai.com/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://community.openai.com/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Mozilla Discourse",
+    "url_pattern": "https://discourse.mozilla.org/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://discourse.mozilla.org/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Unreal Engine Forums",
+    "url_pattern": "https://forums.unrealengine.com/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://forums.unrealengine.com/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Brave Community",
+    "url_pattern": "https://community.brave.com/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://community.brave.com/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Elastic Discuss",
+    "url_pattern": "https://discuss.elastic.co/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://discuss.elastic.co/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Ubuntu Community Hub",
+    "url_pattern": "https://discourse.ubuntu.com/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://discourse.ubuntu.com/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Signal Community",
+    "url_pattern": "https://community.signalusers.org/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://community.signalusers.org/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Obsidian Forum",
+    "url_pattern": "https://forum.obsidian.md/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://forum.obsidian.md/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Home Assistant Community",
+    "url_pattern": "https://community.home-assistant.io/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://community.home-assistant.io/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Hugging Face Forums",
+    "url_pattern": "https://discuss.huggingface.co/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://discuss.huggingface.co/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "PyTorch Forums",
+    "url_pattern": "https://discuss.pytorch.org/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://discuss.pytorch.org/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Rust Users Forum",
+    "url_pattern": "https://users.rust-lang.org/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://users.rust-lang.org/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Jupyter Community",
+    "url_pattern": "https://discourse.jupyter.org/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://discourse.jupyter.org/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Django Forum",
+    "url_pattern": "https://forum.djangoproject.com/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://forum.djangoproject.com/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "KDE Discuss",
+    "url_pattern": "https://discuss.kde.org/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://discuss.kde.org/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Godot Forum",
+    "url_pattern": "https://forum.godotengine.org/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://forum.godotengine.org/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "YazBel Forum",
+    "url_pattern": "https://forum.yazbel.com/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://forum.yazbel.com/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  },
+  {
+    "name": "Pardus Forumları",
+    "url_pattern": "https://forum.pardus.org.tr/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://forum.pardus.org.tr/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username"
+  }
+]
