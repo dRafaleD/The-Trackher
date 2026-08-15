@@ -56,6 +56,34 @@ If you add or modify a service check:
 - prove that the check is side-effect-free
 - include tests that cover false positives and blocked or unknown states
 
+## Adding a New Username Platform
+
+Username platform definitions live in `osint/platforms.json`.
+
+1. Add a new JSON entry with at least these fields:
+   `name`, `url_pattern`, `error_type`, `reliability`, and either
+   `expected_status` or `error_msg`.
+2. Use `{username}` as the placeholder inside `url_pattern`.
+   If the probe endpoint differs from the profile page, also add
+   `probe_url_pattern`.
+3. Set `reliability` to `verified` only when the platform has a clear,
+   service-specific proof such as an exact JSON field or a stable status-code
+   contract. Use `unreliable` for heuristic HTML/message checks.
+4. If the platform needs structured parsing, include the matching metadata such
+   as `check`, `json_path`, `json_list_path`, `profile_id_path`, `accept`, or
+   `profile_url_pattern`.
+5. Run the username verification suite before opening the pull request:
+
+```bash
+python -m unittest tests.test_platform_catalog tests.test_username_checker -v
+```
+
+6. If your change affects reporting or catalog loading, also run:
+
+```bash
+python -m compileall -q osint utils tests
+```
+
 ## Security and Responsible Use
 
 Please review:
