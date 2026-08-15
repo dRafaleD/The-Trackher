@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.jpg" alt="Trackher logo" width="140">
+</p>
+
 # Trackher
 
 Trackher is an open-source Python application for reviewing parts of your own
