@@ -55,6 +55,33 @@ If you add or modify a service check:
 - document the source of truth used for verification
 - prove that the check is side-effect-free
 - include tests that cover false positives and blocked or unknown states
+- if you add remediation links, keep them official, user-facing, and limited to `http` / `https` URLs only
+
+## Updating Catalogs
+
+Trackher keeps its platform catalogs in JSON:
+
+- username platforms: `osint/platforms.json`
+- email platforms and breach providers: `osint/email_platforms.json`
+
+When updating a platform entry, keep the current runtime shape in mind:
+
+- username entries use `url_pattern`, `error_type`, `reliability`, and the
+  detector-specific metadata fields already used by the runtime
+- email entries use `section`, `category`, `check`, `probe_url` or
+  `profile_url_template`, and the metadata fields already consumed by the
+  detector runtime
+- `verified` means the result is backed by clear, side-effect-free evidence
+- `unreliable` / `heuristic` means the detector is still passive but weaker
+- `manual` means no safe automatic check is available
+
+If you change catalog logic, add tests that cover:
+
+- `FOUND`, `NOT_FOUND`, `POSSIBLE`, `UNKNOWN`, `MANUAL`, and error handling
+- reliability normalization, especially that heuristic results never become
+  verified `FOUND`
+- remediation metadata serialization when official links are added
+- reporting output if the change affects CLI, GUI, HTML, or JSON exports
 
 ## Adding a New Username Platform
 
@@ -78,7 +105,13 @@ Username platform definitions live in `osint/platforms.json`.
 python -m unittest tests.test_platform_catalog tests.test_username_checker -v
 ```
 
-6. If your change affects reporting or catalog loading, also run:
+6. If your change affects email catalogs, reporting, or catalog loading, also run:
+
+```bash
+python -m unittest tests.test_email_checker tests.test_platform_catalog tests.test_health -v
+```
+
+7. If your change touches runtime modules or catalog loading, also run:
 
 ```bash
 python -m compileall -q osint utils tests

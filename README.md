@@ -4,21 +4,27 @@
 
 # Trackher
 
-Trackher is an open-source Python application for reviewing parts of your own
-digital footprint and cleaning selected local traces on your own devices.
-It ships with both a GUI and a CLI, and it is designed around cautious,
-evidence-based checks instead of aggressive or side-effectful probing.
+Trackher is an open-source Python Digital Footprint & Privacy Toolkit for
+reviewing parts of your own digital footprint and cleaning selected local
+traces on your own devices. It ships with both a CLI and a GUI, and it is
+designed around cautious, evidence-based checks instead of aggressive or
+side-effectful probing.
 
-> Trackher should only be used on accounts, email addresses, usernames, and
-> devices that belong to you, or for which you have explicit permission. See
+> Trackher should only be used on accounts, usernames, and devices that belong
+> to you, or for which you have explicit permission. See
 > [ETHICS.md](ETHICS.md) for the usage policy.
 
 ## Why Trackher
 
-- Evidence-based email and username OSINT
+- CLI + GUI
+- Username OSINT across public profile patterns
+- Email account intelligence with verified, possible, unknown, and manual separation
+- Breach exposure checks through Have I Been Pwned
+- Search engine dorks for manual investigation
 - Local cleanup tools for shell history, browser traces, and system caches
 - Best-effort secure deletion for files and directories
 - HTML and JSON reporting
+- Risk scoring, scan history, remediation actions, identity correlation, and platform health
 - Dry-run support before any destructive action
 - Windows, macOS, and Linux support
 - Scheduled cleanup support for Windows Task Scheduler, macOS `launchd`, and Linux `cron`
@@ -34,18 +40,80 @@ Trackher is intentionally conservative.
 - Critical system paths, user root paths, and protected exclusions are blocked
   from bulk deletion.
 - HTML reports escape dynamic values and reject unsafe links.
+- Local scan history and platform health state stay on the local machine.
 
 ## Features
 
 ### OSINT
 
 - Username scan across 197 platforms
-- Email catalog with 110 services
-- Up to 2 side-effect-free automatic email checks (`Gravatar` avatar existence
-  via its documented `d=404` behavior, and `Have I Been Pwned` breach lookup
-  via the official API v3 when `HIBP_API_KEY` is set)
+- Email OSINT with a catalog of 110 services
+- Only a small side-effect-free subset is automatically checkable today
+- Automatic email checks currently include Gravatar, GitLab, and GitHub
 - Search engine dork generation for manual investigation
-- Optional Have I Been Pwned API v3 support through `HIBP_API_KEY`
+
+Email results are separated as:
+
+- `FOUND`: verified passive evidence
+- `NOT_FOUND`: reliably checked and absent
+- `POSSIBLE`: heuristic evidence only
+- `UNKNOWN`: inconclusive or error
+- `MANUAL`: no safe automatic check is available
+
+`Have I Been Pwned` is kept separate under `Breaches` and uses `HIBP_API_KEY`
+when configured.
+
+### Scan Profiles
+
+Use `--profile` to choose how broad a scan should be.
+
+- `quick`: verified and high-confidence checks only
+- `standard`: current default behavior
+- `deep`: currently matches `standard`; reserved for broader coverage
+- `username-only`: run username OSINT only
+- `email-only`: run email OSINT only
+
+### Scan History + Diff
+
+Trackher stores normalized local snapshots and compares each scan against the
+previous matching scan.
+
+- Use `--no-history` to disable storage and diffing for a run
+- Use `--clear-history` to remove local history data
+- If two scans use different profiles, Trackher warns that diff coverage differs
+
+### Identity Correlation
+
+Trackher can group public findings that may belong to the same digital identity.
+This is probabilistic, not certain, and it is based only on public signals such
+as the same username, display name, avatar hash, linked website/domain, or
+matching public profile metadata.
+
+### Risk Score
+
+Trackher includes an explainable Digital Footprint Risk Score from `0` to `100`.
+
+- Levels: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`
+- The score is based only on scan evidence
+- Verified findings contribute more than heuristic or unreliable findings
+- `MANUAL`, `UNKNOWN`, and `ERROR` do not increase the score
+- Breaches contribute to risk
+- Category caps prevent one finding type from dominating
+- The score is not a scientific measurement or a security guarantee
+
+### Platform / Detector Health
+
+Trackher can check platform and detector health separately from normal scans.
+
+- `--health-check` runs offline schema and catalog validation
+- `--health-check-live` adds optional safe live probes where supported
+- Health data is cached locally and does not affect normal scan behavior
+
+### Remediation / Privacy Actions
+
+When Trackher finds an exposure, it can show official user-facing links for
+privacy settings, account security, data export, deletion help, or profile
+pages. It never automates those actions.
 
 ### Cleanup
 
@@ -59,6 +127,8 @@ Trackher is intentionally conservative.
 - Best-effort overwrite and delete for files
 - Recursive directory shredding
 - Symlink and critical-path protections
+- Secure deletion is still best-effort on SSD, copy-on-write, journaled, or
+  network-backed file systems
 
 ## Requirements
 
@@ -78,7 +148,9 @@ Main runtime dependencies: `rich`, `httpx`, `customtkinter`, `Pillow`
 
 ## Installation
 
-### Windows PowerShell
+### Developer source run
+
+Windows PowerShell:
 
 ```powershell
 py -3 -m venv .venv
@@ -88,7 +160,7 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-### macOS / Linux
+macOS / Linux:
 
 ```bash
 python3 -m venv .venv
@@ -101,18 +173,83 @@ python main.py
 Running `python main.py` with no arguments launches the GUI if GUI
 dependencies are available. Passing arguments runs the CLI mode.
 
-## Quick Start
-
-### Email and username checks
+### Installed CLI
 
 ```bash
-python main.py --email user@example.com
+python -m pip install .
+trackher --version
+trackher --username example_user
+```
+
+### Windows packaged build
+
+The packaging workflow produces a standalone Windows bundle that launches the
+GUI on double-click and also supports CLI arguments:
+
+```powershell
+.\Trackher.exe
+.\Trackher.exe --username example_user
+```
+
+## Quick Start
+
+### Email checks
+
+```bash
+python main.py --email analyst@example.com
 ```
 
 ```text
-[INFO] Scanning: user@example.com
-[+] Found on 1/110 services: Gravatar
-[?] 1 result could not be verified: Have I Been Pwned
+Email Account Discovery
+
+Verified Accounts
+✓ Gravatar
+
+Possible Accounts
+~ GitHub - Public profile email matched exactly (exampleuser)
+
+Breaches
+! Have I Been Pwned: NOT CONFIGURED
+
+Manual Investigation
+Most remaining services require manual review.
+Use --show-manual to display them.
+```
+
+```bash
+python main.py --email analyst@example.com --show-manual --search-dork
+```
+
+```text
+Email Account Discovery
+
+Verified Accounts
+✓ Gravatar
+
+Possible Accounts
+~ GitHub - Public profile email matched exactly (exampleuser)
+
+Manual Investigation
+> Figma
+> Notion
+> Trello
+...
+
+Breaches
+! Have I Been Pwned: NOT CONFIGURED
+```
+
+### Username checks
+
+```bash
+python main.py --username example_user --search-dork
+```
+
+```text
+[INFO] Taraniyor: example_user
+[+] Found on 3/197 platforms: Reddit, GitLab, Medium
+[?] 4 platform checks could not be verified
+[INFO] Google, Bing, DuckDuckGo, and Yandex dorks generated
 ```
 
 ```bash
@@ -120,18 +257,9 @@ python main.py --username example_user
 ```
 
 ```text
-[INFO] Scanning: example_user
-[+] Found on 3/197 platforms: Reddit, GitLab, Medium
-[?] 4 platform checks could not be verified
-```
-
-```bash
-python main.py --email user@example.com --search-dork
-```
-
-```text
-[INFO] Generated search links for: user@example.com
-[+] Google, Bing, DuckDuckGo, and Yandex dorks ready
+[INFO] Taraniyor: example_user
+[+] Found on 2/197 platforms: Reddit, Medium
+[?] 3 platform checks could not be verified
 ```
 
 ### Cleanup preview and execution
@@ -167,39 +295,47 @@ python main.py --schedule weekly --yes
 Trackher can generate reports in HTML or JSON:
 
 ```bash
-python main.py --email user@example.com --report html
+python main.py --email analyst@example.com --report html
+python main.py --email analyst@example.com --report json
+python main.py --username example_user --report html
 python main.py --username example_user --report json
 ```
 
 Generated report filenames follow this pattern:
 
-- `footprint_report_html.html`
-- `footprint_report_json.json`
+- `trackher_report_html.html`
+- `trackher_report_json.json`
 
 These files are already ignored by `.gitignore`.
 
-## HIBP API Support
-
-Have I Been Pwned requests use the official API v3 and require an API key.
-
-### PowerShell
-
-```powershell
-$env:HIBP_API_KEY="your-api-key"
-```
-
-### Bash
-
-```bash
-export HIBP_API_KEY="your-api-key"
-```
-
-If `HIBP_API_KEY` is not set, Trackher will not send the HIBP request.
-Do not commit API keys, screenshots containing keys, or generated reports with
-sensitive data.
-
 Reported vulnerabilities are handled through the disclosure process described in
 [SECURITY.md](SECURITY.md).
+
+## HIBP API Key
+
+Have I Been Pwned support is optional. Without `HIBP_API_KEY`, Trackher keeps
+running and reports `NOT CONFIGURED` for that provider.
+
+PowerShell:
+
+```powershell
+$env:HIBP_API_KEY = "<key>"
+```
+
+macOS / Linux:
+
+```bash
+export HIBP_API_KEY="<key>"
+```
+
+## Common Flags
+
+- `--show-manual`: reveal manual email services in the console output
+- `--no-history`: skip local scan history storage and diffing
+- `--clear-history`: remove local scan history
+- `--health-check`: run offline catalog and schema health checks
+- `--health-check-live`: add safe live health probes where supported
+- `--profile quick|standard|deep|username-only|email-only`: choose scan breadth
 
 ## Platform Support
 
@@ -226,7 +362,8 @@ The project includes automated tests for:
 - Safe deletion and exclusion handling
 - HTML report escaping
 - Non-interactive destructive action protection
-- Username and email detection rules
+- Username detection rules
+- Email status grouping and HIBP configuration handling
 - GUI queue and terminal memory behavior
 
 ## Repository Guide
@@ -243,7 +380,9 @@ The project includes automated tests for:
   copy-on-write, journaled, compressed, or network-backed file systems.
 - OSINT results can change as services update their behavior, anti-bot rules,
   or public endpoints.
-- A positive result should not be treated as sole proof of identity or account ownership.
+- Identity correlation is probabilistic and should not be treated as proof of
+  identity or account ownership.
+- Risk scores are explainable heuristics, not scientific or security guarantees.
 
 ## License
 
