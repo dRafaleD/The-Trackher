@@ -8,25 +8,25 @@ import subprocess
 import sys
 from pathlib import Path
 
+from utils.app_paths import launcher_arguments
 from utils.display import print_error, print_info, print_success
 
 
 TASK_LABEL = "com.trackher.cleanup"
+CRON_MARKER = "# trackher-cleaner"
+LEGACY_CRON_MARKER = "# digitalayakizi-cleaner"
 
 
 def _task_arguments() -> list[str]:
-    script_path = Path(__file__).parent.parent.resolve() / "main.py"
-    return [
-        sys.executable,
-        str(script_path),
+    return launcher_arguments(
         "--clean-all",
         "--yes",
         "--no-banner",
-    ]
+    )
 
 
 def _schedule_windows(interval: str) -> None:
-    task_name = "DigitalAyakIziTemizleyici"
+    task_name = "TrackherCleanup"
     task_command = subprocess.list2cmdline(_task_arguments())
     schedule = "DAILY" if interval == "daily" else "WEEKLY"
     command = [
@@ -50,8 +50,7 @@ def _schedule_windows(interval: str) -> None:
 def _schedule_linux(interval: str) -> None:
     cron_command = " ".join(shlex.quote(part) for part in _task_arguments())
     cron_time = "0 14 * * *" if interval == "daily" else "0 14 * * 0"
-    marker = "# digitalayakizi-cleaner"
-    cron_line = f"{cron_time} {cron_command} {marker}\n"
+    cron_line = f"{cron_time} {cron_command} {CRON_MARKER}\n"
 
     current_process = subprocess.run(
         ["crontab", "-l"], capture_output=True, text=True
@@ -59,7 +58,7 @@ def _schedule_linux(interval: str) -> None:
     current_cron = current_process.stdout if current_process.returncode == 0 else ""
     retained_lines = [
         line for line in current_cron.splitlines()
-        if marker not in line
+        if CRON_MARKER not in line and LEGACY_CRON_MARKER not in line
     ]
     retained_cron = "\n".join(retained_lines)
     if retained_cron:

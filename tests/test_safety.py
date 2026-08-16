@@ -266,10 +266,15 @@ class OutputAndCommandTests(unittest.TestCase):
             payload = "<script>alert('x')</script>"
             export_to_html(
                 {
-                    "osint_email": {
+                    "osint_username": {
                         "target": payload,
                         "results": [
-                            {"service": payload, "found": False, "detail": payload}
+                            {
+                                "platform": payload,
+                                "url": payload,
+                                "found": False,
+                                "status": "unknown",
+                            }
                         ],
                     }
                 },
@@ -332,7 +337,7 @@ class OutputAndCommandTests(unittest.TestCase):
 
         cron_input = run.call_args_list[1].kwargs["input"]
         self.assertIn("'/opt/Python Runtime/python'", cron_input)
-        self.assertIn("# digitalayakizi-cleaner", cron_input)
+        self.assertIn("# trackher-cleaner", cron_input)
         self.assertIn("--yes", cron_input)
 
     def test_linux_schedule_replaces_previous_trackher_entry(self):
@@ -351,7 +356,8 @@ class OutputAndCommandTests(unittest.TestCase):
             schedule_task("weekly")
 
         cron_input = run.call_args_list[1].kwargs["input"]
-        self.assertEqual(cron_input.count("# digitalayakizi-cleaner"), 1)
+        self.assertEqual(cron_input.count("# trackher-cleaner"), 1)
+        self.assertNotIn("# digitalayakizi-cleaner", cron_input)
         self.assertNotIn("/old/command", cron_input)
 
     def test_macos_launch_agent_contains_safe_noninteractive_arguments(self):
@@ -395,6 +401,18 @@ class OutputAndCommandTests(unittest.TestCase):
 
         simulated = build_parser().parse_args(["--clean-all", "--dry-run"])
         self.assertTrue(confirm_destructive_action(simulated))
+
+    def test_parser_accepts_show_manual_for_email_scans(self):
+        args = build_parser().parse_args(["--email", "owner@example.test", "--show-manual"])
+
+        self.assertEqual(args.email, "owner@example.test")
+        self.assertTrue(args.show_manual)
+
+    def test_parser_accepts_platform_health_flags(self):
+        args = build_parser().parse_args(["--health-check", "--health-check-live"])
+
+        self.assertTrue(args.health_check)
+        self.assertTrue(args.health_check_live)
 
     def test_option_without_action_does_not_launch_gui(self):
         with (

@@ -27,18 +27,27 @@ jobs:
 
     steps:
       - name: Depoyu al
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Python kur
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
           cache: pip
+
+      - name: Deterministik test ortamı
+        shell: bash
+        run: |
+          echo "PYTHONHASHSEED=0" >> "$GITHUB_ENV"
+          echo "PYTHONDONTWRITEBYTECODE=1" >> "$GITHUB_ENV"
 
       - name: Bağımlılıkları kur
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
+
+      - name: Depoda secret paterni tara
+        run: python -m utils.release_checks --check-secrets --root .
 
       - name: Bağımlılıkları doğrula
         run: python -m pip check
@@ -51,3 +60,38 @@ jobs:
 
       - name: Testleri çalıştır
         run: python -m unittest discover -s tests -v
+
+  security-audit:
+    name: Security audit / SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - name: Depoyu al
+        uses: actions/checkout@v4
+
+      - name: Python kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Audit araçlarını kur
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pip-audit
+
+      - name: Bağımlılık güvenlik taraması
+        run: pip-audit -r requirements.txt
+
+      - name: CycloneDX SBOM üret
+        run: pip-audit -r requirements.txt --format cyclonedx-json -o trackher-sbom.cdx.json || true
+
+      - name: SBOM artefact yükle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trackher-sbom
+          path: trackher-sbom.cdx.json
+          if-no-files-found: ignore
