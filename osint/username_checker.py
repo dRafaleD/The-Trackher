@@ -17,9 +17,15 @@ from rich.progress import (
     TextColumn,
 )
 
+from osint.detector_runtime import (
+    DetectorRegistry,
+    normalize_username_result,
+    safe_execute,
+)
 from utils import __version__
 from utils.display import console
 from utils.helpers import is_valid_username_query
+from utils.profiles import select_username_platforms
 
 
 PLATFORMS_PATH = Path(__file__).with_name("platforms.json")
@@ -61,6 +67,8 @@ def _load_platform_definitions() -> list[dict]:
             "profile_id_path",
             "error_msg",
             "expected_status",
+            "actions",
+            "metadata_fields",
         ):
             if key in item:
                 runtime_entry[key] = item[key]
@@ -176,6 +184,21 @@ def _json_value(data: object, path: str) -> object | None:
     return current
 
 
+def _extract_metadata(data: object, fields: dict[str, object] | None) -> dict[str, str]:
+    if not isinstance(fields, dict):
+        return {}
+
+    metadata: dict[str, str] = {}
+    for key, path in fields.items():
+        value = _json_value(data, str(path))
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            metadata[str(key)] = text
+    return metadata
+
+
 def _set_result(result: dict, status: str, detail: str = "") -> dict:
     result["status"] = status
     result["found"] = status == "found"
@@ -223,12 +246,20 @@ def _check_json_response(
             profile_id = _json_value(item, platform.get("profile_id_path", "id"))
             if profile_id is not None and platform.get("profile_url"):
                 result["url"] = platform["profile_url"].format(profile_id)
+            metadata = _extract_metadata(item, platform.get("metadata_fields"))
+            metadata.setdefault("username", username.strip())
+            if metadata:
+                result["public_metadata"] = metadata
             return _set_result(result, "found", "JSON kullanıcı adı eşleşti")
 
         return _set_result(result, "not_found", "JSON eşleşmesi yok")
 
     value = _json_value(data, platform["json_path"])
     if _normalize_text(value) == _normalize_text(username):
+        metadata = _extract_metadata(data, platform.get("metadata_fields"))
+        metadata.setdefault("username", username.strip())
+        if metadata:
+            result["public_metadata"] = metadata
         return _set_result(result, "found", "JSON kullanıcı adı eşleşti")
     return _set_result(result, "not_found", "JSON eşleşmesi yok")
 
@@ -261,43 +292,69 @@ def _check_html_response(
     return _set_result(result, "unknown", "Profil kanıtı bulunamadı")
 
 
+async def _run_json_detector(
+    username: str,
+    platform: dict,
+    client: httpx.AsyncClient,
+    result: dict,
+) -> dict:
+    request_headers = {"Accept": platform.get("accept", "application/json")}
+    response = await client.get(
+        platform["probe_url"].format(quote(username.strip(), safe="._-~")),
+        follow_redirects=True,
+        headers=request_headers,
+    )
+    return _check_json_response(username, platform, response, result)
+
+
+async def _run_html_detector(
+    username: str,
+    platform: dict,
+    client: httpx.AsyncClient,
+    result: dict,
+) -> dict:
+    response = await client.get(
+        platform.get("probe_url", platform["url"]).format(quote(username.strip(), safe="._-~")),
+        follow_redirects=True,
+    )
+    return _check_html_response(username, platform, response, result)
+
+
+USERNAME_DETECTORS = DetectorRegistry()
+USERNAME_DETECTORS.register("html", _run_html_detector)
+USERNAME_DETECTORS.register("content", _run_html_detector)
+USERNAME_DETECTORS.register("404", _run_html_detector)
+USERNAME_DETECTORS.register("json", _run_json_detector)
+USERNAME_DETECTORS.register("json_list", _run_json_detector)
+
+
 async def check_single_username(username: str, platform: dict, client: httpx.AsyncClient) -> dict:
     """Bir platformda kullanıcı adını kanıta dayalı olarak doğrular."""
-    result = {
-        "platform": str(platform.get("name", "Bilinmeyen")),
-        "url": "",
-        "found": False,
-        "status": "unknown",
-        "detail": "",
-        "reliability": str(platform.get("reliability", "unreliable")),
-    }
+    result = normalize_username_result(platform)
 
     try:
         encoded_username = quote(username.strip(), safe="._-~")
         url_template = platform["url"]
         result["url"] = url_template.format(encoded_username)
-        probe_url = platform.get("probe_url", url_template).format(encoded_username)
-        method = platform.get("check", "html")
-        request_headers = (
-            {"Accept": platform.get("accept", "application/json")}
-            if method in {"json", "json_list"}
-            else None
+        method = str(platform.get("check", "html"))
+        detector = USERNAME_DETECTORS.get(method)
+        if detector is None:
+            return _set_result(result, "unknown", f"Desteklenmeyen detector tipi: {method}")
+        return await safe_execute(
+            lambda: detector(username, platform, client, result),
+            on_error=lambda exc: _set_result(result, "unknown", type(exc).__name__),
         )
-        response = await client.get(
-            probe_url,
-            follow_redirects=True,
-            headers=request_headers,
-        )
-        if method in {"json", "json_list"}:
-            return _check_json_response(username, platform, response, result)
-        return _check_html_response(username, platform, response, result)
     except httpx.HTTPError as exc:
         return _set_result(result, "unknown", type(exc).__name__)
     except (KeyError, IndexError, TypeError, ValueError) as exc:
         return _set_result(result, "unknown", f"Platform yapılandırma hatası: {type(exc).__name__}")
 
 
-async def check_username_async(username: str) -> list[dict]:
+async def check_username_async(
+    username: str,
+    *,
+    profile: str = "standard",
+) -> list[dict]:
     """Kullanıcı adını platformlara özel, kanıta dayalı yöntemlerle tarar."""
     username = username.strip()
     if not is_valid_username_query(username):
@@ -311,6 +368,7 @@ async def check_username_async(username: str) -> list[dict]:
     }
     limits = httpx.Limits(max_connections=10, max_keepalive_connections=5)
 
+    platforms = select_username_platforms(profile, USERNAME_PLATFORMS)
     results = []
 
     with Progress(
@@ -323,7 +381,7 @@ async def check_username_async(username: str) -> list[dict]:
     ) as progress:
         task_id = progress.add_task(
             f"[cyan]Scanning: {username}...",
-            total=len(USERNAME_PLATFORMS),
+            total=len(platforms),
         )
 
         async with httpx.AsyncClient(
@@ -332,7 +390,7 @@ async def check_username_async(username: str) -> list[dict]:
             timeout=httpx.Timeout(12.0, connect=8.0),
             follow_redirects=True,
         ) as client:
-            tasks = [check_single_username(username, plat, client) for plat in USERNAME_PLATFORMS]
+            tasks = [check_single_username(username, plat, client) for plat in platforms]
 
             for coro in asyncio.as_completed(tasks):
                 res = await coro
@@ -348,5 +406,5 @@ async def check_username_async(username: str) -> list[dict]:
     return results
 
 
-def run_username_check(username: str) -> list[dict]:
-    return asyncio.run(check_username_async(username))
+def run_username_check(username: str, *, profile: str = "standard") -> list[dict]:
+    return asyncio.run(check_username_async(username, profile=profile))

@@ -1,9 +1,4 @@
-"""
-Async email OSINT runner.
-
-Passive checks are executed concurrently. Catalog entries that could trigger
-password resets, OTP flows, or login notifications are skipped locally.
-"""
+"""Async email OSINT runner."""
 
 from __future__ import annotations
 
@@ -20,50 +15,73 @@ from rich.progress import (
     TimeElapsedColumn,
 )
 
-from osint.services import ALL_SERVICES, PASSIVE_SERVICE_FUNCTIONS
+from osint.services import (
+    ACCOUNT_PLATFORMS,
+    BREACH_PLATFORMS,
+    ERROR,
+    check_account_platform,
+    check_breach_platform,
+)
 from utils import __version__
 from utils.display import console
+from utils.profiles import select_email_platforms
 
 
 USER_AGENT = f"Trackher/{__version__}"
 
 
-async def _run_check(
-    name: str,
-    check_fn: Any,
+async def _run_account_check(
+    platform: dict[str, Any],
     email: str,
     client: httpx.AsyncClient,
     progress: Progress,
     task_id: Any,
-) -> dict:
-    """Run a single service check and update progress."""
+) -> dict[str, Any]:
     try:
-        result = await check_fn(email, client)
-    except Exception:
+        result = await check_account_platform(email, client, platform)
+    except Exception as exc:
         result = {
-            "service": name,
+            "service": platform.get("name", "Bilinmeyen"),
+            "category": platform.get("category", "manual"),
+            "status": ERROR,
             "found": False,
-            "status": "unknown",
-            "detail": "Beklenmeyen hata",
+            "detail": type(exc).__name__,
+            "url": platform.get("url", ""),
         }
 
-    progress.update(task_id, advance=1, description=f"[dim]{name}[/dim]")
+    progress.update(task_id, advance=1, description=f"[dim]{platform.get('name')}[/dim]")
     return result
 
 
-async def _skip_side_effectful_check(name: str, progress: Progress, task_id: Any) -> dict:
-    """Skip a potentially side-effectful check without sending a network request."""
-    progress.update(task_id, advance=1, description=f"[dim]{name} (atlandı)[/dim]")
-    return {
-        "service": name,
-        "found": False,
-        "status": "skipped",
-        "detail": "Yan etkili parola sıfırlama veya OTP isteği güvenlik için gönderilmedi",
-    }
+async def _run_breach_check(
+    platform: dict[str, Any],
+    email: str,
+    client: httpx.AsyncClient,
+    progress: Progress,
+    task_id: Any,
+) -> dict[str, Any]:
+    try:
+        result = await check_breach_platform(email, client, platform)
+    except Exception as exc:
+        result = {
+            "service": platform.get("name", "Bilinmeyen"),
+            "section": "breach",
+            "status": ERROR,
+            "found": False,
+            "detail": type(exc).__name__,
+            "breaches": [],
+        }
+
+    progress.update(task_id, advance=1, description=f"[dim]{platform.get('name')}[/dim]")
+    return result
 
 
-async def check_email(email: str) -> list[dict]:
-    """Check an email address against passive services and safe catalog rules."""
+async def check_email(
+    email: str,
+    *,
+    profile: str = "standard",
+) -> dict[str, list[dict[str, Any]]]:
+    """Check an email address without triggering side-effectful account flows."""
     timeout = httpx.Timeout(15.0, connect=10.0)
     limits = httpx.Limits(max_connections=20, max_keepalive_connections=10)
     headers = {
@@ -72,8 +90,6 @@ async def check_email(email: str) -> list[dict]:
         "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
     }
 
-    results: list[dict] = []
-
     async with httpx.AsyncClient(
         timeout=timeout,
         limits=limits,
@@ -81,6 +97,11 @@ async def check_email(email: str) -> list[dict]:
         follow_redirects=True,
         http2=False,
     ) as client:
+        account_platforms, breach_platforms = select_email_platforms(
+            profile,
+            ACCOUNT_PLATFORMS,
+            BREACH_PLATFORMS,
+        )
         with Progress(
             SpinnerColumn("dots"),
             TextColumn("[bold cyan]Taraniyor:[/bold cyan]"),
@@ -93,34 +114,31 @@ async def check_email(email: str) -> list[dict]:
             console=console,
             transient=False,
         ) as progress:
-            task_id = progress.add_task("Baslatiliyor...", total=len(ALL_SERVICES))
-
-            tasks = [
-                _run_check(name, check_fn, email, client, progress, task_id)
-                if check_fn in PASSIVE_SERVICE_FUNCTIONS
-                else _skip_side_effectful_check(name, progress, task_id)
-                for name, check_fn in ALL_SERVICES
+            task_id = progress.add_task(
+                "Baslatiliyor...",
+                total=len(account_platforms) + len(breach_platforms),
+            )
+            account_tasks = [
+                _run_account_check(platform, email, client, progress, task_id)
+                for platform in account_platforms
             ]
-
-            completed = await asyncio.gather(*tasks, return_exceptions=True)
-
-            for item in completed:
-                if isinstance(item, dict):
-                    results.append(item)
-                elif isinstance(item, Exception):
-                    results.append(
-                        {
-                            "service": "Bilinmeyen",
-                            "found": False,
-                            "status": "unknown",
-                            "detail": f"Hata: {item}",
-                        }
-                    )
+            breach_tasks = [
+                _run_breach_check(platform, email, client, progress, task_id)
+                for platform in breach_platforms
+            ]
+            accounts, breaches = await asyncio.gather(
+                asyncio.gather(*account_tasks),
+                asyncio.gather(*breach_tasks),
+            )
 
     console.print()
-    return results
+    return {"accounts": list(accounts), "breaches": list(breaches)}
 
 
-def run_email_check(email: str) -> list[dict]:
+def run_email_check(
+    email: str,
+    *,
+    profile: str = "standard",
+) -> dict[str, list[dict[str, Any]]]:
     """Synchronous wrapper for check_email."""
-    return asyncio.run(check_email(email))
+    return asyncio.run(check_email(email, profile=profile))

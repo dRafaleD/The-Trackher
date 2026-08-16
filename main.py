@@ -2,29 +2,51 @@
 """
 Trackher command-line interface.
 
-The tool combines local cleanup helpers with evidence-based OSINT checks for
-email addresses and usernames.
+The tool combines local cleanup helpers with cautious username and email OSINT
+checks, breach lookups, and search-link generation.
 """
 
 from __future__ import annotations
 
 import argparse
+import logging
 import platform
 import sys
+from typing import Any
 
 from utils import __version__
+from utils.app_logging import configure_logging, get_logger, safe_log
 from utils.display import (
     console,
-    print_dry_run_table,
+    print_correlation_summary,
     print_email_results,
+    print_dry_run_table,
+    print_platform_health_summary,
     print_error,
     print_info,
+    print_risk_summary,
+    print_remediation_summary,
+    print_scan_diff,
     print_section,
     print_success,
     print_warning,
     show_banner,
 )
+from utils.correlation import build_identity_correlation
 from utils.helpers import is_valid_email, is_valid_username_query
+from utils.history import clear_scan_history, save_and_diff_scan
+from utils.risk import compute_risk
+from utils.remediation import build_remediation_report
+from utils.profiles import (
+    DEFAULT_SCAN_PROFILE,
+    PROFILE_ORDER,
+    normalize_scan_profile,
+    profile_allows_email,
+    profile_allows_username,
+    profile_description,
+)
+from utils.platform_health import run_platform_health_check
+from utils.runtime import validate_runtime
 
 
 def positive_int(value: str) -> int:
@@ -38,17 +60,19 @@ def positive_int(value: str) -> int:
 def build_parser() -> argparse.ArgumentParser:
     """Create the CLI argument parser."""
     parser = argparse.ArgumentParser(
-        prog="digitalayakizi",
+        prog="trackher",
         description=(
             "Trackher\n"
-            "    Windows, macOS ve Linux'ta dijital izleri temizler ve\n"
-            "    e-posta veya kullanici adi icin dikkatli OSINT taramalari yapar."
+            "    Windows, macOS ve Linux'ta dijital ayak izi ve mahremiyet\n"
+            "    incelemeleri yapar; temizlik, guvenli silme ve dikkatli\n"
+            "    username/email OSINT akislari sunar."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Ornekler:\n"
-            "  %(prog)s --email kullanici@gmail.com\n"
+            "  %(prog)s --email kullanici@example.com\n"
             "  %(prog)s --username kullanici_adi\n"
+            "  %(prog)s --username kullanici_adi --search-dork\n"
             "  %(prog)s --clean-all --dry-run\n"
             "  %(prog)s --clean-shell --clean-browser --yes\n"
             "  %(prog)s --shred ~/gizli_belge.pdf --yes\n"
@@ -57,13 +81,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     osint_group = parser.add_argument_group(
         "OSINT",
-        "Yan etkisiz kontroller ve acik web aramalariyla hedefleri inceler.",
+        "E-posta, kullanici adi ve acik web aramalariyla hedefleri inceler.",
     )
     osint_group.add_argument(
         "--email",
         "-e",
         type=str,
-        metavar="ADRES",
+        metavar="EPOSTA",
         help="Taranacak e-posta adresi",
     )
     osint_group.add_argument(
@@ -76,7 +100,34 @@ def build_parser() -> argparse.ArgumentParser:
     osint_group.add_argument(
         "--search-dork",
         action="store_true",
-        help="Email veya kullanici adi icin arama motoru baglantilari uretir",
+        help="E-posta veya kullanici adi icin arama motoru baglantilari uretir",
+    )
+    osint_group.add_argument(
+        "--show-manual",
+        action="store_true",
+        help="E-posta taramasinda manuel incelenecek servis listesini de gosterir",
+    )
+    osint_group.add_argument(
+        "--show-actions",
+        action="store_true",
+        help="Resmi remediation / privacy action linklerini detayli gosterir",
+    )
+    osint_group.add_argument(
+        "--profile",
+        type=str,
+        choices=list(PROFILE_ORDER),
+        default=DEFAULT_SCAN_PROFILE,
+        help="Tarama kapsamini secin: quick, standard, deep, username-only veya email-only",
+    )
+    osint_group.add_argument(
+        "--health-check",
+        action="store_true",
+        help="Platform ve detector sagligini schema veya opsiyonel live probe ile denetler",
+    )
+    osint_group.add_argument(
+        "--health-check-live",
+        action="store_true",
+        help="Platform health check icin guvenli live probe'lari da calistirir",
     )
 
     clean_group = parser.add_argument_group(
@@ -173,6 +224,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Acilis bannerini gostermez",
     )
+    general_group.add_argument(
+        "--no-history",
+        action="store_true",
+        help="Yerel scan history kaydetmeyi ve diff karsilastirmasini kapatir",
+    )
+    general_group.add_argument(
+        "--clear-history",
+        action="store_true",
+        help="Yerel scan history verisini guvenli sekilde temizler",
+    )
 
     return parser
 
@@ -180,7 +241,9 @@ def build_parser() -> argparse.ArgumentParser:
 def confirm_destructive_action(args: argparse.Namespace) -> bool:
     """Ask for confirmation before destructive operations."""
     cleaning = any((args.clean_shell, args.clean_browser, args.clean_system, args.clean_all))
-    destructive = not args.dry_run and bool(cleaning or args.shred or args.schedule)
+    destructive = not args.dry_run and bool(
+        cleaning or args.shred or args.schedule or args.clear_history
+    )
     if not destructive or args.yes:
         return True
 
@@ -203,7 +266,7 @@ def confirm_destructive_action(args: argparse.Namespace) -> bool:
     return False
 
 
-def handle_email(email: str) -> dict:
+def handle_email(email: str, *, show_manual: bool = False, profile: str = DEFAULT_SCAN_PROFILE) -> dict:
     """Run an email OSINT scan."""
     if not is_valid_email(email):
         print_error(f"Gecersiz e-posta formati: {email}")
@@ -214,21 +277,35 @@ def handle_email(email: str) -> dict:
     console.print()
 
     from osint.checker import run_email_check
-    from osint.services import ALL_SERVICES, PASSIVE_SERVICES
+    from osint.services import ACCOUNT_PLATFORMS, BREACH_PLATFORMS
+    from utils.profiles import select_email_platforms
 
+    account_platforms, breach_platforms = select_email_platforms(
+        profile,
+        ACCOUNT_PLATFORMS,
+        BREACH_PLATFORMS,
+    )
     print_info(
-        f"E-posta katalogu: [bold]{len(ALL_SERVICES)}[/bold] servis; "
-        f"[bold]{len(PASSIVE_SERVICES)}[/bold] yan etkisiz kontrol denenir, "
-        f"[bold]{len(ALL_SERVICES) - len(PASSIVE_SERVICES)}[/bold] riskli sorgu atlanir."
+        f"Profil: [bold]{profile}[/bold] - {profile_description(profile)}"
+    )
+    print_info(
+        f"E-posta katalogu: [bold]{len(account_platforms)}[/bold] hesap servisi; "
+        f"[bold]{sum(1 for item in account_platforms if item.get('check', 'manual') != 'manual')}[/bold] "
+        "yan etkisiz otomatik detector; "
+        f"[bold]{len(breach_platforms)}[/bold] breach kaynagi taranacak; "
+        f"[bold]{len(ACCOUNT_PLATFORMS) - len(account_platforms)}[/bold] hesap servisi bu profilde dislandi."
     )
 
-    results = run_email_check(email)
-    print_email_results(email, results)
+    results = run_email_check(email, profile=profile)
+    print_email_results(email, results, show_manual=show_manual)
     return {"target": email, "results": results}
 
 
-def handle_username(username: str) -> dict:
+def handle_username(username: str, *, profile: str = DEFAULT_SCAN_PROFILE) -> dict:
     """Run a username OSINT scan."""
+    if is_valid_email(username):
+        print_error("Bu girdi bir e-posta adresi gibi gorunuyor. Lutfen --email kullanin.")
+        sys.exit(1)
     if not is_valid_username_query(username):
         print_error("Kullanici adi 1-100 yazdirilabilir karakter olmali.")
         sys.exit(1)
@@ -239,12 +316,16 @@ def handle_username(username: str) -> dict:
 
     from osint.username_checker import USERNAME_PLATFORMS, run_username_check
     from utils.display import print_username_results
+    from utils.profiles import select_username_platforms
 
+    selected_platforms = select_username_platforms(profile, USERNAME_PLATFORMS)
+    print_info(f"Profil: [bold]{profile}[/bold] - {profile_description(profile)}")
     print_info(
-        f"Kullanici adi listesi: [bold]{len(USERNAME_PLATFORMS)}[/bold] platform taranacak."
+        f"Kullanici adi listesi: [bold]{len(selected_platforms)}[/bold] platform taranacak; "
+        f"[bold]{len(USERNAME_PLATFORMS) - len(selected_platforms)}[/bold] platform bu profilde dislandi."
     )
 
-    results = run_username_check(username)
+    results = run_username_check(username, profile=profile)
     print_username_results(username, results)
     return {"target": username, "results": results}
 
@@ -340,6 +421,8 @@ def handle_shred(args: argparse.Namespace) -> None:
 
 def main() -> None:
     """Main entry point."""
+    configure_logging()
+    logger = get_logger("cli")
     parser = build_parser()
     args = parser.parse_args()
 
@@ -353,6 +436,8 @@ def main() -> None:
             args.email,
             args.username,
             args.search_dork,
+            args.health_check,
+            args.health_check_live,
             args.clean_shell,
             args.clean_browser,
             args.clean_system,
@@ -360,6 +445,7 @@ def main() -> None:
             args.shred,
             args.schedule,
             args.setup_context,
+            args.clear_history,
         ]
     )
 
@@ -371,11 +457,13 @@ def main() -> None:
             app.mainloop()
             sys.exit(0)
         except ImportError:
+            safe_log(logger, logging.ERROR, "GUI import failed")
             show_banner()
             parser.print_help()
             print_error("\nGUI modulleri yuklenemedi. 'pip install -r requirements.txt' gerekebilir.")
             sys.exit(1)
         except Exception as exc:
+            safe_log(logger, logging.ERROR, "GUI startup failed: %s", exc)
             show_banner()
             parser.print_help()
             print_error(f"\nGUI baslatilamadi: {exc}. CLI seceneklerini kullanabilirsiniz.")
@@ -388,8 +476,19 @@ def main() -> None:
         print_error("Bir islem belirtin; ornegin --email, --username veya --clean-all.")
         sys.exit(2)
 
+    scan_profile = normalize_scan_profile(args.profile)
+    runtime_state = validate_runtime()
+    for warning in runtime_state.get("warnings", []):
+        print_warning(str(warning))
+    if runtime_state.get("warnings"):
+        safe_log(logger, logging.WARNING, "Runtime validation warnings: %s", runtime_state.get("warnings"))
+
     if not args.no_banner:
         show_banner()
+        print_info(
+            f"Scan profile selected: [bold]{scan_profile}[/bold] - "
+            f"{profile_description(scan_profile)}"
+        )
 
     if args.dry_run:
         print_warning("Kuru calistirma modu aktif. Hicbir dosya silinmeyecek.\n")
@@ -411,13 +510,64 @@ def main() -> None:
     if not confirm_destructive_action(args):
         sys.exit(2)
 
-    report_data: dict[str, dict] = {}
+    if args.clear_history:
+        cleared = clear_scan_history()
+        print_section("Scan History")
+        print_success(
+            f"Yerel scan history temizlendi: {cleared['removed_files']} oge kaldirildi."
+        )
+        if not any([args.email, args.username, args.search_dork, args.clean_shell, args.clean_browser, args.clean_system, args.clean_all, args.shred, args.schedule, args.setup_context]):
+            console.print()
+            print_info("Islem tamamlandi.\n")
+            sys.exit(0)
 
-    if args.email:
-        report_data["osint_email"] = handle_email(args.email)
+    report_data: dict[str, Any] = {}
+    report_data["scan_profile"] = scan_profile
 
-    if args.username:
-        report_data["osint_username"] = handle_username(args.username)
+    if args.health_check or args.health_check_live:
+        print_section("Platform Health")
+        report_data["platform_health"] = run_platform_health_check(live=args.health_check_live)
+        print_platform_health_summary(report_data["platform_health"])
+
+    run_email_scan = bool(args.email) and profile_allows_email(scan_profile)
+    run_username_scan = bool(args.username) and profile_allows_username(scan_profile)
+
+    if args.email and not run_email_scan:
+        print_warning("Selected profile does not include email scans; skipping --email input.")
+    if args.username and not run_username_scan:
+        print_warning("Selected profile does not include username scans; skipping --username input.")
+
+    if (
+        not run_email_scan
+        and not run_username_scan
+        and not any(
+            [
+                args.search_dork,
+                args.health_check,
+                args.health_check_live,
+                args.clean_shell,
+                args.clean_browser,
+                args.clean_system,
+                args.clean_all,
+                args.shred,
+                args.schedule,
+                args.setup_context,
+                args.clear_history,
+            ]
+        )
+    ):
+        print_warning("Selected profile did not enable any requested OSINT scans.")
+        sys.exit(2)
+
+    if run_email_scan:
+        report_data["osint_email"] = handle_email(
+            args.email,
+            show_manual=args.show_manual,
+            profile=scan_profile,
+        )
+
+    if run_username_scan:
+        report_data["osint_username"] = handle_username(args.username, profile=scan_profile)
 
     if args.search_dork:
         target = args.email or args.username
@@ -449,10 +599,29 @@ def main() -> None:
         else:
             print_error("Sag tik menusu entegrasyonu macOS'ta henuz desteklenmiyor.")
 
-    if args.report and report_data:
+    if any(key in report_data for key in ("osint_email", "osint_username")):
+        report_data["risk"] = compute_risk(report_data)
+        print_section("Risk Skoru")
+        print_risk_summary(report_data["risk"])
+        report_data["scan_history"] = save_and_diff_scan(report_data, enabled=not args.no_history)
+        print_section("Scan Diff")
+        print_scan_diff(report_data["scan_history"])
+        report_data["correlation"] = build_identity_correlation(report_data)
+        if report_data["correlation"].get("available"):
+            print_section("Identity Correlation")
+            print_correlation_summary(report_data["correlation"])
+        report_data["remediation"] = build_remediation_report(report_data)
+        if report_data["remediation"].get("available"):
+            print_section("Remediation / Privacy Actions")
+            print_remediation_summary(report_data["remediation"], show_details=args.show_actions)
+
+    if args.report and any(
+        key in report_data
+        for key in ("osint_email", "osint_username", "osint_dork", "cleaning", "platform_health")
+    ):
         from utils.reporter import generate_report
 
-        output_file = f"footprint_report_{args.report}"
+        output_file = f"trackher_report_{args.report}"
         generate_report(report_data, output_file, format_type=args.report)
 
     console.print()

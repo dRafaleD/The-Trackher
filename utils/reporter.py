@@ -7,6 +7,9 @@ from html import escape
 from urllib.parse import urlparse
 
 from utils.display import print_error, print_success
+from utils.correlation import build_identity_correlation
+from utils.risk import compute_risk
+from utils.remediation import build_remediation_report
 
 
 def _html(value: object) -> str:
@@ -48,7 +51,305 @@ def _prepare_report_data(data: dict) -> dict:
                 ):
                     result["warning"] = UNRELIABLE_WARNING
 
+    if any(key in prepared for key in ("osint_email", "osint_username")):
+        prepared.setdefault("scan_profile", "standard")
+
+    if "risk" not in prepared and any(
+        key in prepared for key in ("osint_email", "osint_username")
+    ):
+        prepared["risk"] = compute_risk(prepared)
+
+    if "remediation" not in prepared and any(
+        key in prepared for key in ("osint_email", "osint_username")
+    ):
+        prepared["remediation"] = build_remediation_report(prepared)
+
+    if "correlation" not in prepared and any(
+        key in prepared for key in ("osint_email", "osint_username")
+    ):
+        prepared["correlation"] = build_identity_correlation(prepared)
+
     return prepared
+
+
+def _render_risk_section(risk: dict) -> str:
+    score = int(risk.get("score", 0))
+    level = _html(risk.get("level", "LOW"))
+    disclaimer = _html(risk.get("disclaimer", ""))
+    reasons = risk.get("reasons", [])
+
+    level_class = {
+        "LOW": "found",
+        "MEDIUM": "unknown",
+        "HIGH": "not-found",
+        "CRITICAL": "not-found",
+    }.get(level, "unknown")
+
+    if reasons:
+        rows = []
+        for reason in reasons:
+            summary = _html(reason.get("summary", "Evidence"))
+            points = _html(reason.get("points", 0))
+            evidence = ", ".join(_html(item) for item in reason.get("evidence", []))
+            detail = _html(reason.get("detail", ""))
+            rows.append(
+                f"<tr><td>{summary}</td><td>+{points}</td><td>{evidence}</td><td>{detail}</td></tr>"
+            )
+        reasons_html = "".join(rows)
+    else:
+        reasons_html = (
+            '<tr><td colspan="4" style="color: var(--muted);">'
+            "No verified or heuristic exposure evidence increased the score."
+            "</td></tr>"
+        )
+
+    return f"""
+        <section class="section">
+            <h2>Digital Footprint Risk Score</h2>
+            <p><strong class="{level_class}">{score}/100 ({level})</strong></p>
+            <p>{disclaimer}</p>
+            <table>
+                <tr><th>Reason</th><th>Points</th><th>Evidence</th><th>Why it matters</th></tr>
+                {reasons_html}
+            </table>
+        </section>
+    """
+
+
+def _render_scan_diff_section(diff: dict) -> str:
+    if not diff.get("enabled", True):
+        return """
+        <section class="section">
+            <h2>Scan Diff</h2>
+            <p>Local scan history was disabled for this run.</p>
+        </section>
+        """
+
+    if not diff.get("available"):
+        message = _html(diff.get("message", "No previous matching scan in local history."))
+        return f"""
+        <section class="section">
+            <h2>Scan Diff</h2>
+            <p>{message}</p>
+        </section>
+        """
+
+    previous_risk = diff.get("previous", {}).get("risk", {})
+    current_risk = diff.get("current", {}).get("risk", {})
+    previous_profile = _html(diff.get("previous", {}).get("profile", "standard"))
+    current_profile = _html(diff.get("current", {}).get("profile", "standard"))
+    coverage_warning = ""
+    if diff.get("profile_mismatch"):
+        coverage_warning = f"<p><strong>Coverage Warning:</strong> {_html(diff.get('coverage_warning', ''))}</p>"
+    risk_change = int(diff.get("risk_change", {}).get("value", 0))
+    if risk_change > 0:
+        change_label = f"↑ {risk_change}"
+    elif risk_change < 0:
+        change_label = f"↓ {abs(risk_change)}"
+    else:
+        change_label = "0"
+
+    def labels(items: list[dict], empty: str) -> str:
+        if not items:
+            return f'<tr><td colspan="2" style="color: var(--muted);">{empty}</td></tr>'
+        return "".join(
+            f"<tr><td>{_html(item.get('label', 'Unknown'))}</td><td>{_html(item.get('status', 'FOUND'))}</td></tr>"
+            for item in items
+        )
+
+    return f"""
+        <section class="section">
+            <h2>Scan Diff</h2>
+            <p><strong>Previous Risk:</strong> {previous_risk.get('score', 0)} {_html(previous_risk.get('level', 'LOW'))}</p>
+            <p><strong>Current Risk:</strong> {current_risk.get('score', 0)} {_html(current_risk.get('level', 'LOW'))}</p>
+            <p><strong>Previous Profile:</strong> {previous_profile}</p>
+            <p><strong>Current Profile:</strong> {current_profile}</p>
+            <p><strong>Change:</strong> {change_label}</p>
+            <p><strong>New:</strong> {len(diff.get('new_findings', []))}</p>
+            <p><strong>Resolved:</strong> {len(diff.get('resolved_findings', []))}</p>
+            <p><strong>Unchanged:</strong> {len(diff.get('unchanged_findings', []))}</p>
+            <p><strong>New Breaches:</strong> {len(diff.get('new_breaches', []))}</p>
+            <p><strong>Removed Breaches:</strong> {len(diff.get('removed_breaches', []))}</p>
+            {coverage_warning}
+            <h3>New Findings</h3>
+            <table><tr><th>Label</th><th>Status</th></tr>{labels(diff.get('new_findings', []), "No new findings.")}</table>
+            <h3>Resolved Findings</h3>
+            <table><tr><th>Label</th><th>Status</th></tr>{labels(diff.get('resolved_findings', []), "No resolved findings.")}</table>
+            <h3>New Breaches</h3>
+            <table><tr><th>Label</th><th>Status</th></tr>{labels(diff.get('new_breaches', []), "No new breaches.")}</table>
+            <h3>Removed Breaches</h3>
+            <table><tr><th>Label</th><th>Status</th></tr>{labels(diff.get('removed_breaches', []), "No removed breaches.")}</table>
+        </section>
+    """
+
+
+def _render_remediation_section(remediation: dict) -> str:
+    if not remediation.get("available"):
+        return """
+        <section class="section">
+            <h2>Remediation / Privacy Actions</h2>
+            <p>No official remediation links were matched for the current scan.</p>
+        </section>
+        """
+
+    rows = []
+    for item in remediation.get("items", []):
+        platform = _html(item.get("platform", "Unknown"))
+        status = _html(item.get("status", "FOUND"))
+        action_cells = []
+        for action in item.get("actions", []):
+            label = str(action.get("label", "Action"))
+            url = _safe_url(action.get("url", ""))
+            action_cells.append(_link_cell(url, label))
+        actions_html = "<br>".join(action_cells) if action_cells else '<span style="color: var(--muted);">No official links.</span>'
+        rows.append(f"<tr><td>{platform}</td><td>{status}</td><td>{actions_html}</td></tr>")
+
+    return f"""
+        <section class="section">
+            <h2>Remediation / Privacy Actions</h2>
+            <p>{_html(remediation.get("item_count", 0))} findings include {_html(remediation.get("action_count", 0))} official links.</p>
+            <table>
+                <tr><th>Platform</th><th>Status</th><th>Actions</th></tr>
+                {''.join(rows)}
+            </table>
+        </section>
+    """
+
+
+def _render_correlation_section(correlation: dict) -> str:
+    if not correlation.get("available"):
+        return """
+        <section class="section">
+            <h2>Identity Correlation</h2>
+            <p>No conservative multi-signal identity correlations were established from the current scan.</p>
+        </section>
+        """
+
+    rows = []
+    for item in correlation.get("items", []):
+        summary = _html(item.get("summary", "Unknown pair"))
+        confidence = _html(item.get("confidence", "LOW"))
+        score = _html(item.get("confidence_score", 0))
+        evidence = []
+        for entry in item.get("evidence", []):
+            prefix = "✓" if entry.get("strength") in {"strong", "medium"} else "~"
+            label = _html(entry.get("label", "signal"))
+            value = _html(entry.get("value", ""))
+            evidence.append(f"{prefix} {label}{': ' + value if value else ''}")
+        penalties = []
+        for entry in item.get("penalties", []):
+            penalties.append(f"! {_html(entry.get('label', 'penalty'))}")
+        detail = "<br>".join(evidence + penalties) if (evidence or penalties) else '<span style="color: var(--muted);">No evidence.</span>'
+        rows.append(f"<tr><td>{summary}</td><td>{confidence} ({score}/100)</td><td>{detail}</td></tr>")
+
+    return f"""
+        <section class="section">
+            <h2>Identity Correlation</h2>
+            <p>{_html(correlation.get("disclaimer", ""))}</p>
+            <table>
+                <tr><th>Pair</th><th>Confidence</th><th>Evidence</th></tr>
+                {''.join(rows)}
+            </table>
+        </section>
+    """
+
+
+def _render_platform_health_section(health: dict) -> str:
+    if not health.get("available"):
+        return ""
+
+    counts = dict(health.get("counts", {}))
+    rows = []
+    for item in health.get("items", [])[:40]:
+        rows.append(
+            "<tr>"
+            f"<td>{_html(item.get('scope', 'platform'))}</td>"
+            f"<td>{_html(item.get('platform', 'Unknown'))}</td>"
+            f"<td>{_html(item.get('detector', 'unknown'))}</td>"
+            f"<td>{_html(item.get('state', 'UNKNOWN'))}</td>"
+            f"<td>{_html(item.get('detail', ''))}</td>"
+            "</tr>"
+        )
+
+    mode_text = "Offline schema + safe live probes" if health.get("live_enabled") else "Offline schema only"
+    return f"""
+        <section class="section">
+            <h2>Platform / Detector Health</h2>
+            <p><strong>Mode:</strong> {mode_text}</p>
+            <p><strong>Summary:</strong> Healthy: {counts.get('HEALTHY', 0)} | Degraded: {counts.get('DEGRADED', 0)} | Broken: {counts.get('BROKEN', 0)} | Unknown: {counts.get('UNKNOWN', 0)}</p>
+            <p><strong>Cache Hits:</strong> {_html(health.get('cache_hits', 0))}</p>
+            <table>
+                <tr><th>Scope</th><th>Platform</th><th>Detector</th><th>State</th><th>Detail</th></tr>
+                {''.join(rows)}
+            </table>
+        </section>
+    """
+
+
+def _render_email_section(email_data: dict) -> str:
+    email = _html(email_data["target"])
+    results = email_data["results"]
+    accounts = results.get("accounts", []) if isinstance(results, dict) else results
+    breaches = results.get("breaches", []) if isinstance(results, dict) else []
+    verified = [item for item in accounts if item.get("status") == "FOUND"]
+    possible = [item for item in accounts if item.get("status") == "POSSIBLE"]
+    not_found = [item for item in accounts if item.get("status") == "NOT_FOUND"]
+    manual = [item for item in accounts if item.get("status") == "MANUAL"]
+    unknown = [item for item in accounts if item.get("status") in {"UNKNOWN", "ERROR"}]
+
+    def rows(items: list[dict], empty: str) -> str:
+        if not items:
+            return f'<tr><td colspan="3" style="color: var(--muted);">{empty}</td></tr>'
+        html_rows = []
+        for item in items:
+            service = _html(item.get("service", "Bilinmiyor"))
+            status = _html(item.get("status", "UNKNOWN"))
+            detail = _html(item.get("detail", ""))
+            html_rows.append(f"<tr><td>{service}</td><td>{status}</td><td>{detail}</td></tr>")
+        return "\n".join(html_rows)
+
+    breach_rows = []
+    for item in breaches:
+        service = _html(item.get("service", "Bilinmiyor"))
+        status = _html(item.get("status", "UNKNOWN"))
+        detail = _html(item.get("detail", ""))
+        if item.get("status") == "FOUND":
+            detail = _html(f"{len(item.get('breaches', []))} breaches")
+        elif item.get("status") == "NOT_CONFIGURED":
+            detail = "NOT CONFIGURED"
+        breach_rows.append(f"<tr><td>{service}</td><td>{status}</td><td>{detail}</td></tr>")
+    if not breach_rows:
+        breach_rows.append('<tr><td colspan="3" style="color: var(--muted);">No breach providers.</td></tr>')
+
+    zero_message = ""
+    if not verified:
+        zero_message = """
+            <p>
+                <strong>0 verified accounts discovered automatically.</strong>
+                This does not mean the email has no accounts on other services.
+            </p>
+        """
+
+    return f"""
+        <section class="section">
+            <h2>E-posta OSINT</h2>
+            <p><strong>Hedef:</strong> <code>{email}</code></p>
+            {zero_message}
+            <h3>Verified Accounts</h3>
+            <table><tr><th>Service</th><th>Status</th><th>Detail</th></tr>{rows(verified, "No verified accounts.")}</table>
+            <h3>Possible Accounts</h3>
+            <table><tr><th>Service</th><th>Status</th><th>Detail</th></tr>{rows(possible, "No possible heuristic matches.")}</table>
+            <h3>Checked and Not Found</h3>
+            <table><tr><th>Service</th><th>Status</th><th>Detail</th></tr>{rows(not_found, "No reliably absent services.")}</table>
+            <h3>Unknown / Errors</h3>
+            <table><tr><th>Service</th><th>Status</th><th>Detail</th></tr>{rows(unknown, "No unknown account checks.")}</table>
+            <h3>Manual Investigation</h3>
+            <p>Manual entries are investigation leads, not failed checks.</p>
+            <table><tr><th>Service</th><th>Status</th><th>Detail</th></tr>{rows(manual, "No manual services.")}</table>
+            <h3>Breaches</h3>
+            <table><tr><th>Provider</th><th>Status</th><th>Detail</th></tr>{''.join(breach_rows)}</table>
+        </section>
+    """
 
 
 def export_to_json(data: dict, filepath: str) -> None:
@@ -158,7 +459,26 @@ def export_to_html(data: dict, filepath: str) -> None:
             <div class="container">
                 <h1>Trackher Raporu</h1>
                 <p class="meta"><strong>Oluşturulma:</strong> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
+                <p class="meta"><strong>Scan Profile:</strong> {_html(prepared.get('scan_profile', 'standard'))}</p>
         """
+
+        if "risk" in prepared:
+            html_content += _render_risk_section(prepared["risk"])
+
+        if "scan_history" in prepared:
+            html_content += _render_scan_diff_section(prepared["scan_history"])
+
+        if "platform_health" in prepared:
+            html_content += _render_platform_health_section(prepared["platform_health"])
+
+        if "correlation" in prepared:
+            html_content += _render_correlation_section(prepared["correlation"])
+
+        if "remediation" in prepared:
+            html_content += _render_remediation_section(prepared["remediation"])
+
+        if "osint_email" in prepared:
+            html_content += _render_email_section(prepared["osint_email"])
 
         if "osint_username" in prepared:
             username = _html(prepared["osint_username"]["target"])

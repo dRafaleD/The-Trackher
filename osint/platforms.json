@@ -10,7 +10,36 @@
     ],
     "probe_url_pattern": "https://api.github.com/users/{username}",
     "check": "json",
-    "json_path": "login"
+    "json_path": "login",
+    "metadata_fields": {
+      "username": "login",
+      "display_name": "name",
+      "website": "blog",
+      "avatar_url": "avatar_url",
+      "profile_url": "html_url"
+    },
+    "actions": [
+      {
+        "type": "Profile Page",
+        "label": "Profile Page",
+        "url_field": "url"
+      },
+      {
+        "type": "Account Security / 2FA",
+        "label": "Account Security / 2FA",
+        "url": "https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/about-two-factor-authentication"
+      },
+      {
+        "type": "Data Export",
+        "label": "Data Export",
+        "url": "https://docs.github.com/en/get-started/archiving-your-github-personal-account-and-public-repositories/requesting-an-archive-of-your-personal-accounts-data"
+      },
+      {
+        "type": "Delete Account / Help",
+        "label": "Delete Account / Help",
+        "url": "https://docs.github.com/en/account-and-profile/how-tos/account-management/deleting-your-personal-account"
+      }
+    ]
   },
   {
     "name": "Twitter/X",
@@ -57,7 +86,34 @@
     ],
     "probe_url_pattern": "https://www.reddit.com/user/{username}/about.json",
     "check": "json",
-    "json_path": "data.name"
+    "json_path": "data.name",
+    "metadata_fields": {
+      "username": "data.name",
+      "display_name": "data.subreddit.title",
+      "avatar_url": "data.icon_img"
+    },
+    "actions": [
+      {
+        "type": "Profile Page",
+        "label": "Profile Page",
+        "url_field": "url"
+      },
+      {
+        "type": "Privacy Settings",
+        "label": "Privacy Settings",
+        "url": "https://support.reddithelp.com/hc/en-us/categories/360003246511-Privacy-Security"
+      },
+      {
+        "type": "Data Export",
+        "label": "Data Export",
+        "url": "https://support.reddithelp.com/hc/en-us/articles/360043048352-How-do-I-request-a-copy-of-my-Reddit-data-and-information"
+      },
+      {
+        "type": "Delete Account / Help",
+        "label": "Delete Account / Help",
+        "url": "https://support.reddithelp.com/hc/en-us/articles/204579509-How-do-I-delete-my-account"
+      }
+    ]
   },
   {
     "name": "Facebook",
@@ -178,7 +234,29 @@
     "url_pattern": "https://open.spotify.com/user/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "actions": [
+      {
+        "type": "Profile Page",
+        "label": "Profile Page",
+        "url_field": "url"
+      },
+      {
+        "type": "Privacy Settings",
+        "label": "Privacy Settings",
+        "url": "https://support.spotify.com/us/article/data-rights-and-privacy-settings/"
+      },
+      {
+        "type": "Account Security / 2FA",
+        "label": "Account Security / 2FA",
+        "url": "https://support.spotify.com/us/article/protect-your-account/"
+      },
+      {
+        "type": "Delete Account / Help",
+        "label": "Delete Account / Help",
+        "url": "https://support.spotify.com/us/article/how-can-i-close-my-spotify-account/"
+      }
+    ]
   },
   {
     "name": "Vimeo",
@@ -227,7 +305,29 @@
     "url_pattern": "https://gitlab.com/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "actions": [
+      {
+        "type": "Profile Page",
+        "label": "Profile Page",
+        "url_field": "url"
+      },
+      {
+        "type": "Account Security / 2FA",
+        "label": "Account Security / 2FA",
+        "url": "https://docs.gitlab.com/user/profile/account/two_factor_authentication/"
+      },
+      {
+        "type": "Privacy Settings",
+        "label": "Privacy Settings",
+        "url": "https://docs.gitlab.com/user/profile/"
+      },
+      {
+        "type": "Delete Account / Help",
+        "label": "Delete Account / Help",
+        "url": "https://docs.gitlab.com/user/profile/account/delete_account/"
+      }
+    ]
   },
   {
     "name": "Bitbucket",
@@ -555,7 +655,29 @@
     "url_pattern": "https://en.gravatar.com/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "actions": [
+      {
+        "type": "Profile Page",
+        "label": "Profile Page",
+        "url_field": "url"
+      },
+      {
+        "type": "Privacy Settings",
+        "label": "Privacy Settings",
+        "url": "https://support.gravatar.com/privacy-and-security/profile-access/"
+      },
+      {
+        "type": "Data Export",
+        "label": "Data Export",
+        "url": "https://support.gravatar.com/managing-account-settings/export-of-personal-data/"
+      },
+      {
+        "type": "Delete Account / Help",
+        "label": "Delete Account / Help",
+        "url": "https://support.gravatar.com/managing-account-settings/close-account/"
+      }
+    ]
   },
   {
     "name": "Tinder",

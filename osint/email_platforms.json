@@ -1,0 +1,212 @@
+[
+  {
+    "name": "GitHub",
+    "category": "heuristic",
+    "section": "account",
+    "check": "public_profile_email",
+    "url": "https://github.com/",
+    "probe_url": "https://api.github.com/search/users?q=%22{email}%22%20in:email",
+    "items_path": "items",
+    "profile_url_field": "url",
+    "profile_email_field": "email",
+    "label_field": "login",
+    "profile_check_limit": 5,
+    "profile_metadata_fields": {
+      "username": "login",
+      "display_name": "name",
+      "website": "blog",
+      "avatar_url": "avatar_url",
+      "profile_url": "html_url"
+    },
+    "headers": {
+      "User-Agent": "Trackher"
+    },
+    "actions": [
+      {
+        "type": "Account Security / 2FA",
+        "label": "Account Security / 2FA",
+        "url": "https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/about-two-factor-authentication"
+      },
+      {
+        "type": "Data Export",
+        "label": "Data Export",
+        "url": "https://docs.github.com/en/get-started/archiving-your-github-personal-account-and-public-repositories/requesting-an-archive-of-your-personal-accounts-data"
+      },
+      {
+        "type": "Delete Account / Help",
+        "label": "Delete Account / Help",
+        "url": "https://docs.github.com/en/account-and-profile/how-tos/account-management/deleting-your-personal-account"
+      }
+    ]
+  },
+  {
+    "name": "GitLab",
+    "category": "verified",
+    "section": "account",
+    "check": "public_profile_email",
+    "url": "https://gitlab.com/",
+    "probe_url": "https://gitlab.com/api/v4/users?search={email}",
+    "items_path": "",
+    "profile_url_template": "https://gitlab.com/api/v4/users/{id}",
+    "profile_email_field": "public_email",
+    "label_field": "username",
+    "profile_check_limit": 5,
+    "profile_metadata_fields": {
+      "username": "username",
+      "display_name": "name",
+      "website": "website_url",
+      "avatar_url": "avatar_url",
+      "profile_url": "web_url"
+    },
+    "headers": {
+      "User-Agent": "Trackher"
+    },
+    "actions": [
+      {
+        "type": "Account Security / 2FA",
+        "label": "Account Security / 2FA",
+        "url": "https://docs.gitlab.com/user/profile/account/two_factor_authentication/"
+      },
+      {
+        "type": "Privacy Settings",
+        "label": "Privacy Settings",
+        "url": "https://docs.gitlab.com/user/profile/"
+      },
+      {
+        "type": "Delete Account / Help",
+        "label": "Delete Account / Help",
+        "url": "https://docs.gitlab.com/user/profile/account/delete_account/"
+      }
+    ]
+  },
+  {"name": "Atlassian / Bitbucket", "category": "manual", "section": "account", "check": "manual", "url": "https://bitbucket.org/"},
+  {"name": "Figma", "category": "manual", "section": "account", "check": "manual", "url": "https://www.figma.com/"},
+  {"name": "Notion", "category": "manual", "section": "account", "check": "manual", "url": "https://www.notion.so/"},
+  {"name": "Trello", "category": "manual", "section": "account", "check": "manual", "url": "https://trello.com/"},
+  {"name": "HubSpot", "category": "manual", "section": "account", "check": "manual", "url": "https://www.hubspot.com/"},
+  {"name": "Twitter / X", "category": "manual", "section": "account", "check": "manual", "url": "https://x.com/"},
+  {"name": "Instagram", "category": "manual", "section": "account", "check": "manual", "url": "https://www.instagram.com/"},
+  {"name": "TikTok", "category": "manual", "section": "account", "check": "manual", "url": "https://www.tiktok.com/"},
+  {"name": "Snapchat", "category": "manual", "section": "account", "check": "manual", "url": "https://www.snapchat.com/"},
+  {"name": "Pinterest", "category": "manual", "section": "account", "check": "manual", "url": "https://www.pinterest.com/"},
+  {"name": "LinkedIn", "category": "manual", "section": "account", "check": "manual", "url": "https://www.linkedin.com/"},
+  {"name": "Reddit", "category": "manual", "section": "account", "check": "manual", "url": "https://www.reddit.com/"},
+  {"name": "Tumblr", "category": "manual", "section": "account", "check": "manual", "url": "https://www.tumblr.com/"},
+  {"name": "Quora", "category": "manual", "section": "account", "check": "manual", "url": "https://www.quora.com/"},
+  {"name": "Spotify", "category": "manual", "section": "account", "check": "manual", "url": "https://www.spotify.com/"},
+  {"name": "Netflix", "category": "manual", "section": "account", "check": "manual", "url": "https://www.netflix.com/"},
+  {"name": "Twitch", "category": "manual", "section": "account", "check": "manual", "url": "https://www.twitch.tv/"},
+  {"name": "SoundCloud", "category": "manual", "section": "account", "check": "manual", "url": "https://soundcloud.com/"},
+  {"name": "Deezer", "category": "manual", "section": "account", "check": "manual", "url": "https://www.deezer.com/"},
+  {"name": "Vimeo", "category": "manual", "section": "account", "check": "manual", "url": "https://vimeo.com/"},
+  {"name": "Dailymotion", "category": "manual", "section": "account", "check": "manual", "url": "https://www.dailymotion.com/"},
+  {"name": "Last.fm", "category": "manual", "section": "account", "check": "manual", "url": "https://www.last.fm/"},
+  {"name": "Flickr", "category": "manual", "section": "account", "check": "manual", "url": "https://www.flickr.com/"},
+  {"name": "Wattpad", "category": "manual", "section": "account", "check": "manual", "url": "https://www.wattpad.com/"},
+  {"name": "Imgur", "category": "manual", "section": "account", "check": "manual", "url": "https://imgur.com/"},
+  {"name": "Discord", "category": "manual", "section": "account", "check": "manual", "url": "https://discord.com/"},
+  {"name": "Steam", "category": "manual", "section": "account", "check": "manual", "url": "https://store.steampowered.com/"},
+  {"name": "Epic Games", "category": "manual", "section": "account", "check": "manual", "url": "https://www.epicgames.com/"},
+  {"name": "Roblox", "category": "manual", "section": "account", "check": "manual", "url": "https://www.roblox.com/"},
+  {"name": "Chess.com", "category": "manual", "section": "account", "check": "manual", "url": "https://www.chess.com/"},
+  {"name": "Microsoft", "category": "manual", "section": "account", "check": "manual", "url": "https://account.microsoft.com/"},
+  {"name": "Adobe", "category": "manual", "section": "account", "check": "manual", "url": "https://account.adobe.com/"},
+  {"name": "ProtonMail", "category": "manual", "section": "account", "check": "manual", "url": "https://proton.me/mail"},
+  {"name": "Mozilla / Firefox", "category": "manual", "section": "account", "check": "manual", "url": "https://accounts.firefox.com/"},
+  {"name": "Yahoo", "category": "manual", "section": "account", "check": "manual", "url": "https://login.yahoo.com/"},
+  {"name": "Zoom", "category": "manual", "section": "account", "check": "manual", "url": "https://zoom.us/"},
+  {"name": "Canva", "category": "manual", "section": "account", "check": "manual", "url": "https://www.canva.com/"},
+  {"name": "Amazon", "category": "manual", "section": "account", "check": "manual", "url": "https://www.amazon.com/"},
+  {"name": "eBay", "category": "manual", "section": "account", "check": "manual", "url": "https://www.ebay.com/"},
+  {"name": "Booking.com", "category": "manual", "section": "account", "check": "manual", "url": "https://www.booking.com/"},
+  {"name": "Dropbox", "category": "manual", "section": "account", "check": "manual", "url": "https://www.dropbox.com/"},
+  {"name": "WordPress", "category": "manual", "section": "account", "check": "manual", "url": "https://wordpress.com/"},
+  {"name": "Evernote", "category": "manual", "section": "account", "check": "manual", "url": "https://evernote.com/"},
+  {"name": "Gravatar", "category": "verified", "section": "account", "check": "gravatar", "url": "https://gravatar.com/", "actions": [
+    {
+      "type": "Privacy Settings",
+      "label": "Privacy Settings",
+      "url": "https://support.gravatar.com/privacy-and-security/profile-access/"
+    },
+    {
+      "type": "Data Export",
+      "label": "Data Export",
+      "url": "https://support.gravatar.com/managing-account-settings/export-of-personal-data/"
+    },
+    {
+      "type": "Delete Account / Help",
+      "label": "Delete Account / Help",
+      "url": "https://support.gravatar.com/managing-account-settings/close-account/"
+    }
+  ]},
+  {"name": "Patreon", "category": "manual", "section": "account", "check": "manual", "url": "https://www.patreon.com/"},
+  {"name": "Strava", "category": "manual", "section": "account", "check": "manual", "url": "https://www.strava.com/"},
+  {"name": "Duolingo", "category": "manual", "section": "account", "check": "manual", "url": "https://www.duolingo.com/"},
+  {"name": "Have I Been Pwned", "category": "verified", "section": "breach", "check": "hibp", "url": "https://haveibeenpwned.com/", "actions": [
+    {
+      "type": "Help / FAQ",
+      "label": "Help / FAQ",
+      "url": "https://haveibeenpwned.com/FAQs"
+    }
+  ]},
+  {"name": "VK", "category": "manual", "section": "account", "check": "manual", "url": "https://vk.com/"},
+  {"name": "Badoo", "category": "manual", "section": "account", "check": "manual", "url": "https://badoo.com/"},
+  {"name": "Tinder", "category": "manual", "section": "account", "check": "manual", "url": "https://tinder.com/"},
+  {"name": "Medium", "category": "manual", "section": "account", "check": "manual", "url": "https://medium.com/"},
+  {"name": "Dev.to", "category": "manual", "section": "account", "check": "manual", "url": "https://dev.to/"},
+  {"name": "Stack Overflow", "category": "manual", "section": "account", "check": "manual", "url": "https://stackoverflow.com/"},
+  {"name": "Dribbble", "category": "manual", "section": "account", "check": "manual", "url": "https://dribbble.com/"},
+  {"name": "Etsy", "category": "manual", "section": "account", "check": "manual", "url": "https://www.etsy.com/"},
+  {"name": "Airbnb", "category": "manual", "section": "account", "check": "manual", "url": "https://www.airbnb.com/"},
+  {"name": "Uber", "category": "manual", "section": "account", "check": "manual", "url": "https://www.uber.com/"},
+  {"name": "PayPal", "category": "manual", "section": "account", "check": "manual", "url": "https://www.paypal.com/"},
+  {"name": "Binance", "category": "manual", "section": "account", "check": "manual", "url": "https://www.binance.com/"},
+  {"name": "Coinbase", "category": "manual", "section": "account", "check": "manual", "url": "https://www.coinbase.com/"},
+  {"name": "Coursera", "category": "manual", "section": "account", "check": "manual", "url": "https://www.coursera.org/"},
+  {"name": "Udemy", "category": "manual", "section": "account", "check": "manual", "url": "https://www.udemy.com/"},
+  {"name": "Academia.edu", "category": "manual", "section": "account", "check": "manual", "url": "https://www.academia.edu/"},
+  {"name": "ResearchGate", "category": "manual", "section": "account", "check": "manual", "url": "https://www.researchgate.net/"},
+  {"name": "Scribd", "category": "manual", "section": "account", "check": "manual", "url": "https://www.scribd.com/"},
+  {"name": "Product Hunt", "category": "manual", "section": "account", "check": "manual", "url": "https://www.producthunt.com/"},
+  {"name": "Kickstarter", "category": "manual", "section": "account", "check": "manual", "url": "https://www.kickstarter.com/"},
+  {"name": "Fiverr", "category": "manual", "section": "account", "check": "manual", "url": "https://www.fiverr.com/"},
+  {"name": "Upwork", "category": "manual", "section": "account", "check": "manual", "url": "https://www.upwork.com/"},
+  {"name": "Freelancer", "category": "manual", "section": "account", "check": "manual", "url": "https://www.freelancer.com/"},
+  {"name": "DeviantArt", "category": "manual", "section": "account", "check": "manual", "url": "https://www.deviantart.com/"},
+  {"name": "ArtStation", "category": "manual", "section": "account", "check": "manual", "url": "https://www.artstation.com/"},
+  {"name": "500px", "category": "manual", "section": "account", "check": "manual", "url": "https://500px.com/"},
+  {"name": "Codecademy", "category": "manual", "section": "account", "check": "manual", "url": "https://www.codecademy.com/"},
+  {"name": "Crunchbase", "category": "manual", "section": "account", "check": "manual", "url": "https://www.crunchbase.com/"},
+  {"name": "Linktree", "category": "manual", "section": "account", "check": "manual", "url": "https://linktr.ee/"},
+  {"name": "Behance", "category": "manual", "section": "account", "check": "manual", "url": "https://www.behance.net/"},
+  {"name": "Trendyol", "category": "manual", "section": "account", "check": "manual", "url": "https://www.trendyol.com/"},
+  {"name": "Hepsiburada", "category": "manual", "section": "account", "check": "manual", "url": "https://www.hepsiburada.com/"},
+  {"name": "Sahibinden", "category": "manual", "section": "account", "check": "manual", "url": "https://www.sahibinden.com/"},
+  {"name": "Eksi Sozluk", "category": "manual", "section": "account", "check": "manual", "url": "https://eksisozluk.com/"},
+  {"name": "N11", "category": "manual", "section": "account", "check": "manual", "url": "https://www.n11.com/"},
+  {"name": "Sorbil", "category": "manual", "section": "account", "check": "manual", "url": "https://sorbil.org/"},
+  {"name": "Yemeksepeti", "category": "manual", "section": "account", "check": "manual", "url": "https://www.yemeksepeti.com/"},
+  {"name": "Ciceksepeti", "category": "manual", "section": "account", "check": "manual", "url": "https://www.ciceksepeti.com/"},
+  {"name": "Getir", "category": "manual", "section": "account", "check": "manual", "url": "https://getir.com/"},
+  {"name": "Dolap", "category": "manual", "section": "account", "check": "manual", "url": "https://dolap.com/"},
+  {"name": "Sikayetvar", "category": "manual", "section": "account", "check": "manual", "url": "https://www.sikayetvar.com/"},
+  {"name": "Onedio", "category": "manual", "section": "account", "check": "manual", "url": "https://onedio.com/"},
+  {"name": "Akakce", "category": "manual", "section": "account", "check": "manual", "url": "https://www.akakce.com/"},
+  {"name": "Izlesene", "category": "manual", "section": "account", "check": "manual", "url": "https://www.izlesene.com/"},
+  {"name": "BiTaksi", "category": "manual", "section": "account", "check": "manual", "url": "https://www.bitaksi.com/"},
+  {"name": "Papara", "category": "manual", "section": "account", "check": "manual", "url": "https://www.papara.com/"},
+  {"name": "iyzico", "category": "manual", "section": "account", "check": "manual", "url": "https://www.iyzico.com/"},
+  {"name": "Enuygun", "category": "manual", "section": "account", "check": "manual", "url": "https://www.enuygun.com/"},
+  {"name": "Obilet", "category": "manual", "section": "account", "check": "manual", "url": "https://www.obilet.com/"},
+  {"name": "Biletix", "category": "manual", "section": "account", "check": "manual", "url": "https://www.biletix.com/"},
+  {"name": "Kitapyurdu", "category": "manual", "section": "account", "check": "manual", "url": "https://www.kitapyurdu.com/"},
+  {"name": "D&R", "category": "manual", "section": "account", "check": "manual", "url": "https://www.dr.com.tr/"},
+  {"name": "Armut", "category": "manual", "section": "account", "check": "manual", "url": "https://armut.com/"},
+  {"name": "Modanisa", "category": "manual", "section": "account", "check": "manual", "url": "https://www.modanisa.com/"},
+  {"name": "DeFacto", "category": "manual", "section": "account", "check": "manual", "url": "https://www.defacto.com.tr/"},
+  {"name": "LC Waikiki", "category": "manual", "section": "account", "check": "manual", "url": "https://www.lcwaikiki.com/"},
+  {"name": "Boyner", "category": "manual", "section": "account", "check": "manual", "url": "https://www.boyner.com.tr/"},
+  {"name": "Migros Online", "category": "manual", "section": "account", "check": "manual", "url": "https://www.migros.com.tr/"},
+  {"name": "CarrefourSA", "category": "manual", "section": "account", "check": "manual", "url": "https://www.carrefoursa.com/"},
+  {"name": "PTT AVM", "category": "manual", "section": "account", "check": "manual", "url": "https://www.pttavm.com/"}
+]

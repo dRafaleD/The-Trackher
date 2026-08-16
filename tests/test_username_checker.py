@@ -86,6 +86,20 @@ class UsernameDetectionTests(unittest.TestCase):
         self.assertEqual(result["status"], "unknown")
         self.assertIn("yapılandırma", result["detail"])
 
+    def test_unsupported_detector_type_is_isolated(self):
+        result = self.run_check(
+            lambda request: httpx.Response(200),
+            platform={
+                "name": "Unsupported Platform",
+                "url": "https://example.test/users/{}",
+                "check": "xmlrpc",
+            },
+        )
+
+        self.assertFalse(result["found"])
+        self.assertEqual(result["status"], "unknown")
+        self.assertIn("Desteklenmeyen detector tipi", result["detail"])
+
     def test_successful_bot_challenge_page_is_unknown(self):
         result = self.run_check(
             lambda request: httpx.Response(
@@ -118,6 +132,34 @@ class UsernameDetectionTests(unittest.TestCase):
 
         self.assertEqual(found["status"], "found")
         self.assertEqual(missing["status"], "not_found")
+        self.assertEqual(found["public_metadata"]["username"], "missing_user_123")
+
+    def test_json_probe_can_extract_public_metadata(self):
+        platform = {
+            "name": "GitHub Example",
+            "url": "https://example.test/users/{}",
+            "probe_url": "https://api.example.test/users/{}",
+            "check": "json",
+            "json_path": "login",
+            "metadata_fields": {
+                "display_name": "name",
+                "website": "blog",
+            },
+        }
+        result = self.run_check(
+            lambda request: httpx.Response(
+                200,
+                json={
+                    "login": "missing_user_123",
+                    "name": "Missing User",
+                    "blog": "https://example.test",
+                },
+            ),
+            platform,
+        )
+
+        self.assertEqual(result["public_metadata"]["display_name"], "Missing User")
+        self.assertEqual(result["public_metadata"]["website"], "https://example.test")
 
     def test_json_list_resolves_verified_profile_id(self):
         platform = {

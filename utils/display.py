@@ -45,7 +45,7 @@ def show_banner() -> None:
 
     console.print(BANNER, style="bold cyan")
     console.print(
-        "  [dim]Linux / macOS / Windows - Digital Footprint Cleaner and Email OSINT[/dim]"
+        "  [dim]Linux / macOS / Windows - Digital Footprint & Privacy Toolkit[/dim]"
     )
     console.print(
         f"  [dim]Trackher | v{__version__} | OS: {os_name} {os_ver} | Python {py_ver}[/dim]\n"
@@ -79,14 +79,209 @@ def print_section(title: str) -> None:
     console.print()
 
 
+def print_risk_summary(risk: dict) -> None:
+    """Render the explainable risk score summary."""
+    score = int(risk.get("score", 0))
+    level = str(risk.get("level", "LOW"))
+    reasons = list(risk.get("reasons", []))
+    disclaimer = str(risk.get("disclaimer", ""))
+
+    level_styles = {
+        "LOW": "green",
+        "MEDIUM": "yellow",
+        "HIGH": "bright_red",
+        "CRITICAL": "bold red",
+    }
+    style = level_styles.get(level, "white")
+
+    console.print(f"[bold cyan]Digital Footprint Risk Score[/bold cyan]")
+    console.print(f"  [{style}]{score}/100 ({level})[/{style}]")
+    if reasons:
+        for reason in reasons:
+            evidence = ", ".join(str(item) for item in reason.get("evidence", [])[:6])
+            suffix = ""
+            if len(reason.get("evidence", [])) > 6:
+                suffix = ", ..."
+            console.print(
+                f"  [+{reason.get('points', 0)}] {reason.get('summary', 'Evidence')} "
+                f"- {evidence}{suffix}"
+            )
+    else:
+        console.print("  [dim]No verified or heuristic exposure evidence increased the score.[/dim]")
+    if disclaimer:
+        console.print(f"  [dim]{disclaimer}[/dim]\n")
+
+
+def print_scan_diff(diff: dict) -> None:
+    """Render a concise scan history diff summary."""
+    if not diff.get("enabled", True):
+        console.print("[dim]Local scan history is disabled for this run.[/dim]\n")
+        return
+
+    status = str(diff.get("status", "ok"))
+    if not diff.get("available"):
+        message = diff.get("message", "No previous matching scan in local history.")
+        style = "yellow" if status == "corrupted" else "dim"
+        console.print(f"[{style}]{message}[/{style}]\n")
+        return
+
+    previous_risk = diff.get("previous", {}).get("risk", {})
+    current_risk = diff.get("current", {}).get("risk", {})
+    previous_profile = str(diff.get("previous", {}).get("profile", "standard"))
+    current_profile = str(diff.get("current", {}).get("profile", "standard"))
+    risk_change = int(diff.get("risk_change", {}).get("value", 0))
+    if risk_change > 0:
+        change_label = f"↑ {risk_change}"
+    elif risk_change < 0:
+        change_label = f"↓ {abs(risk_change)}"
+    else:
+        change_label = "0"
+
+    console.print("[bold cyan]SCAN DIFF[/bold cyan]")
+    console.print(
+        f"  Previous Risk: {previous_risk.get('score', 0)} {previous_risk.get('level', 'LOW')}"
+    )
+    console.print(
+        f"  Current Risk:  {current_risk.get('score', 0)} {current_risk.get('level', 'LOW')}"
+    )
+    console.print(f"  Previous Profile: {previous_profile}")
+    console.print(f"  Current Profile:  {current_profile}")
+    console.print(f"  Change:        {change_label}")
+    console.print(f"  New:           {len(diff.get('new_findings', []))}")
+    console.print(f"  Resolved:      {len(diff.get('resolved_findings', []))}")
+    console.print(f"  Unchanged:     {len(diff.get('unchanged_findings', []))}")
+
+    if diff.get("profile_mismatch"):
+        console.print(f"  [yellow]{diff.get('coverage_warning', '')}[/yellow]")
+
+    new_breaches = diff.get("new_breaches", [])
+    removed_breaches = diff.get("removed_breaches", [])
+    if new_breaches or removed_breaches:
+        console.print(f"  New Breaches:  {len(new_breaches)}")
+        console.print(f"  Removed Breaches: {len(removed_breaches)}")
+
+    def _sample(items: list[dict], heading: str) -> None:
+        if not items:
+            return
+        labels = ", ".join(str(item.get("label", "")) for item in items[:5])
+        suffix = ", ..." if len(items) > 5 else ""
+        console.print(f"  {heading}: {labels}{suffix}")
+
+    _sample(diff.get("new_findings", []), "New Findings")
+    _sample(diff.get("resolved_findings", []), "Resolved Findings")
+    _sample(new_breaches, "New Breaches")
+    _sample(removed_breaches, "Removed Breaches")
+    console.print()
+
+
+def print_remediation_summary(remediation: dict, show_details: bool = False) -> None:
+    """Render official remediation links without cluttering the main scan output."""
+    if not remediation or not remediation.get("available"):
+        return
+
+    items = list(remediation.get("items", []))
+    action_count = int(remediation.get("action_count", 0))
+
+    console.print("[bold cyan]Remediation / Privacy Actions[/bold cyan]")
+    console.print(
+        f"  [bold white]{len(items)}[/bold white] findings include "
+        f"[bold white]{action_count}[/bold white] official action links."
+    )
+    if not show_details:
+        console.print("  [dim]Use --show-actions to display them.[/dim]\n")
+        return
+
+    for item in items:
+        platform = str(item.get("platform", "Unknown"))
+        status = str(item.get("status", "FOUND"))
+        console.print(f"  [bold]{platform}[/bold] — {status}")
+        for action in item.get("actions", []):
+            label = str(action.get("label", "Action"))
+            url = str(action.get("url", ""))
+            console.print(f"    • {label}: [blue]{url}[/blue]")
+        console.print()
+
+
+def print_correlation_summary(correlation: dict, show_details: bool = False) -> None:
+    """Render a compact summary of conservative identity correlations."""
+    if not correlation or not correlation.get("available"):
+        return
+
+    items = list(correlation.get("items", []))
+    style_map = {
+        "HIGH": "bright_red",
+        "MEDIUM": "yellow",
+        "LOW": "green",
+    }
+    console.print("[bold cyan]Identity Correlation[/bold cyan]")
+    console.print(
+        f"  [bold white]{len(items)}[/bold white] likely cross-platform identity links."
+    )
+
+    for item in items[: (len(items) if show_details else 3)]:
+        level = str(item.get("confidence", "LOW"))
+        style = style_map.get(level, "white")
+        console.print(
+            f"  [{style}]{level}[/{style}] {item.get('summary', 'Unknown pair')} "
+            f"({item.get('confidence_score', 0)}/100)"
+        )
+        evidence_labels = ", ".join(str(entry.get("label", "")) for entry in item.get("evidence", [])[:4])
+        if evidence_labels:
+            console.print(f"    {evidence_labels}")
+        if show_details and item.get("penalties"):
+            penalties = ", ".join(str(entry.get("label", "")) for entry in item.get("penalties", []))
+            console.print(f"    penalties: {penalties}")
+
+    disclaimer = str(correlation.get("disclaimer", ""))
+    if disclaimer:
+        console.print(f"  [dim]{disclaimer}[/dim]\n")
+    else:
+        console.print()
+
+
+def print_platform_health_summary(health: dict, show_details: bool = False) -> None:
+    """Render a concise platform/detector health summary."""
+    if not health or not health.get("available"):
+        return
+
+    counts = dict(health.get("counts", {}))
+    console.print("[bold cyan]Platform / Detector Health[/bold cyan]")
+    console.print(
+        f"  Healthy: {counts.get('HEALTHY', 0)} | "
+        f"Degraded: {counts.get('DEGRADED', 0)} | "
+        f"Broken: {counts.get('BROKEN', 0)} | "
+        f"Unknown: {counts.get('UNKNOWN', 0)}"
+    )
+
+    if health.get("live_enabled"):
+        console.print(
+            f"  [dim]Live health enabled. Cache hits: {health.get('cache_hits', 0)}[/dim]"
+        )
+    else:
+        console.print("  [dim]Offline schema health only.[/dim]")
+
+    if not show_details:
+        console.print()
+        return
+
+    for item in list(health.get("items", []))[:12]:
+        console.print(
+            f"  {item.get('state', 'UNKNOWN')}: "
+            f"{item.get('scope', 'platform')} / {item.get('platform', 'Unknown')} "
+            f"({item.get('detector', 'unknown')})"
+        )
+        console.print(f"    {item.get('detail', '')}")
+    console.print()
+
+
 def print_dry_run_table(items: list[dict]) -> None:
     """Render dry-run cleanup results as a table."""
     if not items:
-        print_info("Temizlenecek dosya bulunamadı.")
+        print_info("Temizlenecek dosya bulunamadi.")
         return
 
     table = Table(
-        title="Kuru Çalıştırma (Dry-Run) Raporu",
+        title="Kuru Calistirma (Dry-Run) Raporu",
         box=box.ROUNDED,
         title_style="bold magenta",
         show_lines=False,
@@ -112,66 +307,101 @@ def print_dry_run_table(items: list[dict]) -> None:
 
     console.print(table)
     console.print(
-        f"\n  [bold magenta]Toplam kazanılacak alan:[/bold magenta] "
+        f"\n  [bold magenta]Toplam kazanilacak alan:[/bold magenta] "
         f"[bold white]{format_size(total_bytes)}[/bold white]\n"
     )
 
 
-def print_email_results(email: str, results: list[dict]) -> None:
-    """Render email OSINT results as a table."""
-    table = Table(
-        title=f"E-posta İz Sürücü - {email}",
-        box=box.ROUNDED,
-        title_style="bold cyan",
-        show_lines=False,
-        padding=(0, 1),
-    )
-    table.add_column("Platform", style="white", ratio=2)
-    table.add_column("Durum", width=16, justify="center")
-    table.add_column("Detay", style="dim", ratio=3)
+def _email_accounts(results: dict | list) -> list[dict]:
+    if isinstance(results, dict):
+        return list(results.get("accounts", []))
+    return list(results)
 
-    found_count = 0
-    unknown_count = 0
-    skipped_count = 0
-    status_order = {"found": 0, "unknown": 1, "skipped": 2, "not_found": 3}
-    sorted_results = sorted(
-        results,
-        key=lambda item: status_order.get(
-            item.get("status", "found" if item.get("found") else "not_found"),
-            1,
-        ),
-    )
-    for result in sorted_results:
-        result_status = result.get(
-            "status", "found" if result.get("found") else "not_found"
-        )
-        if result_status == "found":
-            status = "[bold green]KAYITLI[/bold green]"
-            found_count += 1
-        elif result_status == "unknown":
-            status = "[yellow]DOĞRULANAMADI[/yellow]"
-            unknown_count += 1
-        elif result_status == "skipped":
-            status = "[cyan]ATLANDI[/cyan]"
-            skipped_count += 1
+
+def _email_breaches(results: dict | list) -> list[dict]:
+    if isinstance(results, dict):
+        return list(results.get("breaches", []))
+    return []
+
+
+def print_email_results(
+    email: str,
+    results: dict | list[dict],
+    show_manual: bool = False,
+) -> None:
+    """Render email OSINT results with clear passive/heuristic/manual grouping."""
+    accounts = _email_accounts(results)
+    breaches = _email_breaches(results)
+    verified = [item for item in accounts if item.get("status") == "FOUND"]
+    possible = [item for item in accounts if item.get("status") == "POSSIBLE"]
+    not_found = [item for item in accounts if item.get("status") == "NOT_FOUND"]
+    manual = [item for item in accounts if item.get("status") == "MANUAL"]
+    unknown = [item for item in accounts if item.get("status") in {"UNKNOWN", "ERROR"}]
+
+    console.print(f"[bold cyan]E-posta OSINT - {email}[/bold cyan]\n")
+
+    console.print("[bold green]Verified Accounts[/bold green]")
+    if verified:
+        for item in verified:
+            detail = f" - {item.get('detail', '')}" if item.get("detail") else ""
+            console.print(f"  [green]✓[/green] {item['service']}{detail}")
+    else:
+        console.print("  [dim]0 verified accounts discovered automatically.[/dim]")
+        console.print("  [dim]This does not mean the email has no accounts on other services.[/dim]")
+
+    console.print("\n[bold yellow]Possible Accounts[/bold yellow]")
+    if possible:
+        for item in possible:
+            detail = f" - {item.get('detail', '')}" if item.get("detail") else ""
+            console.print(f"  [yellow]~[/yellow] {item['service']}{detail}")
+    else:
+        console.print("  [dim]No possible heuristic matches.[/dim]")
+
+    if not_found:
+        console.print("\n[bold white]Checked and Not Found[/bold white]")
+        for item in not_found:
+            detail = f" - {item.get('detail', '')}" if item.get("detail") else ""
+            console.print(f"  [dim]-[/dim] {item['service']}{detail}")
+
+    if unknown:
+        console.print("\n[bold yellow]Unknown / Errors[/bold yellow]")
+        for item in unknown:
+            detail = f" - {item.get('detail', '')}" if item.get("detail") else ""
+            console.print(f"  [yellow]?[/yellow] {item['service']} ({item.get('status')}){detail}")
+
+    console.print("\n[bold cyan]Manual Investigation[/bold cyan]")
+    if manual:
+        console.print(f"  [cyan]{len(manual)} services require manual review.[/cyan]")
+        if show_manual:
+            for item in manual:
+                detail = f" - {item.get('detail', '')}" if item.get("detail") else ""
+                console.print(f"  [cyan]>[/cyan] {item['service']}{detail}")
         else:
-            status = "[dim]bulunamadı[/dim]"
-        table.add_row(result["service"], status, result.get("detail", ""))
+            console.print("  [dim]Use --show-manual to display them.[/dim]")
+    else:
+        console.print("  [dim]No manual services in catalog.[/dim]")
 
-    console.print(table)
-    console.print(
-        f"\n  [bold cyan]Toplam:[/bold cyan] "
-        f"[bold white]{found_count}[/bold white] doğrulanmış kayıt, "
-        f"[bold yellow]{unknown_count}[/bold yellow] sonuç doğrulanamadı, "
-        f"[bold cyan]{skipped_count}[/bold cyan] riskli sorgu atlandı "
-        f"([dim]{len(results)} katalog öğesi değerlendirildi[/dim]).\n"
-    )
+    console.print("\n[bold red]Breaches[/bold red]")
+    if breaches:
+        for item in breaches:
+            if item.get("status") == "FOUND":
+                console.print(f"  [red]![/red] {item['service']}: {len(item.get('breaches', []))} breaches")
+            elif item.get("status") == "NOT_CONFIGURED":
+                console.print(f"  [yellow]![/yellow] {item['service']}: NOT CONFIGURED")
+            elif item.get("status") == "NOT_FOUND":
+                console.print(f"  [dim]! {item['service']}: no known breaches[/dim]")
+            else:
+                console.print(f"  [yellow]![/yellow] {item['service']}: {item.get('status')}")
+    else:
+        console.print("  [dim]No breach providers configured in catalog.[/dim]")
+
+    console.print()
 
 
 def print_username_results(username: str, results: list[dict]) -> None:
     """Render username OSINT results as a table."""
     table = Table(
-        title=f"Kullanıcı Adı İz Sürücü - {username}",
+        title=f"Kullanici Adi Iz Surucu - {username}",
         box=box.ROUNDED,
         title_style="bold magenta",
         show_lines=False,
@@ -192,9 +422,7 @@ def print_username_results(username: str, results: list[dict]) -> None:
         ),
     )
     for result in sorted_results:
-        result_status = result.get(
-            "status", "found" if result.get("found") else "not_found"
-        )
+        result_status = result.get("status", "found" if result.get("found") else "not_found")
         if result_status == "found":
             status = "[bold green]KAYITLI[/bold green]"
             found_count += 1
@@ -216,7 +444,7 @@ def print_username_results(username: str, results: list[dict]) -> None:
 def print_dork_results(target: str, dorks: list[dict]) -> None:
     """Render search engine dorks as a table."""
     table = Table(
-        title=f"Arama Motoru Dork Sonuçları - {target}",
+        title=f"Arama Motoru Dork Sonuclari - {target}",
         box=box.ROUNDED,
         title_style="bold yellow",
         show_lines=False,
@@ -232,5 +460,5 @@ def print_dork_results(target: str, dorks: list[dict]) -> None:
     console.print(table)
     console.print(
         "\n  [bold yellow][INFO][/bold yellow] Baglantilari tiklayarak veya "
-        "tarayıcıya kopyalayarak derin arama yapabilirsiniz.\n"
+        "tarayiciya kopyalayarak derin arama yapabilirsiniz.\n"
     )
