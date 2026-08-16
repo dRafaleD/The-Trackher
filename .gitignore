@@ -16,7 +16,18 @@ venv/
 Thumbs.db
 Desktop.ini
 *.log
+build/
+dist/
+*.spec
 
 footprint_report_*.html
 footprint_report_*.json
 footprint_report_*.csv
+trackher_report_*.html
+trackher_report_*.json
+trackher_report_*.csv
+trackher-sbom.cdx.json
+latest_health_summary.json
+live_health_cache.json
+Trackher/
+trackher/
