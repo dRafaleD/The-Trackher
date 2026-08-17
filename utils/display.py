@@ -7,13 +7,19 @@ Rich for tables and section headers.
 
 from __future__ import annotations
 
+import json
 import platform
 import sys
 from collections import Counter
+from pathlib import Path
 
 from rich import box
-from rich.console import Console
+from rich.align import Align
+from rich.console import Console, Group
+from rich.panel import Panel
+from rich.rule import Rule
 from rich.table import Table
+from rich.text import Text
 
 from utils import __version__
 
@@ -29,13 +35,21 @@ for stream in (sys.stdout, sys.stderr):
 console = Console()
 
 BANNER = r"""
-     ____  _       _ __        __   ___              __   __     _
-    / __ \(_)___ _(_) /_____ _/ /  /   |  __  _____ _/ /__/ /_  (_)___(_)
-   / / / / / __ `/ / __/ __ `/ /  / /| | / / / / __ `/ //_/ / / / /_/ /
-  / /_/ / / /_/ / / /_/ /_/ / /  / ___ |/ /_/ / /_/ / ,< / / /_/ / / /
- /_____/_/\__, /_/\__/\__,_/_/  /_/  |_|\__, /\__,_/_/|_/_/\__,_/_/_/
-         /____/                        /____/
+ _______ ____      _     ____ _  ____ _   _ _____ ____
+|_   _|  _ \    / \   / ___| |/ /| | | | ____|  _ \
+  | | | |_) |  / _ \ | |   | ' / | |_| |  _| | |_) |
+  | | |  _ <  / ___ \| |___| . \ |  _  | |___|  _ <
+  |_| |_| \_\/_/   \_\\____|_|\_\|_| |_|_____|_| \_\
 """
+
+HOME_EXAMPLES = (
+    "trackher --username <username>",
+    "trackher --email <email>",
+    "trackher --profile deep --username <username>",
+    "trackher --health-check",
+    "trackher --gui",
+    "trackher --help",
+)
 
 USERNAME_UNKNOWN_CAUSE_LABELS = {
     "bot_blocked": "bot blocked",
@@ -67,12 +81,101 @@ def show_banner() -> None:
     py_ver = platform.python_version()
 
     console.print(BANNER, style="bold cyan")
+    console.print("  [bold white]TRACKHER[/bold white]")
     console.print(
-        "  [dim]Linux / macOS / Windows - Digital Footprint & Privacy Toolkit[/dim]"
+        "  [dim]Digital Footprint & Privacy Toolkit[/dim]"
     )
     console.print(
         f"  [dim]Trackher | v{__version__} | OS: {os_name} {os_ver} | Python {py_ver}[/dim]\n"
     )
+
+
+def _catalog_count(path: Path) -> int | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return None
+    return len(data) if isinstance(data, list) else None
+
+
+def _home_catalog_counts() -> tuple[str, str]:
+    project_root = Path(__file__).resolve().parent.parent
+    username_count = _catalog_count(project_root / "osint" / "platforms.json")
+    email_count = _catalog_count(project_root / "osint" / "email_platforms.json")
+    return str(username_count or "?"), str(email_count or "?")
+
+
+def _home_wordmark() -> Text:
+    text = Text()
+    text.append(BANNER.strip("\n"), style="bold cyan")
+    text.append("\n")
+    text.append("Digital Footprint & Privacy Toolkit\n", style="white")
+    text.append(f"Trackher v{__version__}\n", style="dim")
+    return text
+
+
+def _home_features(username_count: str, email_count: str) -> Text:
+    lines = [
+        f"[bold cyan][U][/bold cyan] Username Intelligence  [dim]-[/dim] {username_count} platforms",
+        f"[bold cyan][E][/bold cyan] Email Intelligence     [dim]-[/dim] {email_count} services",
+        "[bold cyan][R][/bold cyan] Risk Scoring",
+        "[bold cyan][H][/bold cyan] Scan History & Diff",
+        "[bold cyan][C][/bold cyan] Identity Correlation",
+        "[bold cyan][A][/bold cyan] Remediation Actions",
+        "[bold cyan][P][/bold cyan] Platform Health",
+        "[bold cyan][S][/bold cyan] Cleanup / Secure Shred",
+        "[bold cyan][G][/bold cyan] Optional GUI",
+    ]
+    return Text.from_markup("\n".join(lines))
+
+
+def _home_examples_text() -> Text:
+    example_lines = [f"[cyan]>[/cyan] {command}" for command in HOME_EXAMPLES]
+    return Text.from_markup("\n".join(example_lines))
+
+
+def _home_footer_text() -> Text:
+    os_name = platform.system()
+    return Text.from_markup(
+        "\n".join(
+            [
+                "[dim]Cross-platform CLI-first privacy and OSINT toolkit[/dim]",
+                "[dim]CLI home by default | GUI available with --gui[/dim]",
+                f"[dim]Runtime: {os_name} | Rich terminal output[/dim]",
+                "[bold green]trackher@osint ~ $[/bold green]",
+            ]
+        )
+    )
+
+
+def show_home_screen() -> None:
+    """Render the terminal-native Trackher landing screen."""
+    username_count, email_count = _home_catalog_counts()
+    hero_body = Group(
+        Align.left(_home_wordmark()),
+        Rule(style="cyan"),
+        Align.left(_home_features(username_count, email_count)),
+        Rule(style="cyan"),
+        Align.left(_home_footer_text()),
+    )
+    command_panel = Panel(
+        Align.left(_home_examples_text()),
+        border_style="cyan",
+        box=box.SQUARE,
+        title="[bold]Quick Commands[/bold]",
+        padding=(1, 2),
+    )
+
+    shell = Panel(
+        hero_body,
+        border_style="cyan",
+        box=box.SQUARE,
+        title="[bold]TRACKHER[/bold]",
+        padding=(1, 2),
+    )
+    console.print(Align.center(shell))
+    console.print(Align.center(command_panel))
+    console.print()
 
 
 def print_success(message: str) -> None:

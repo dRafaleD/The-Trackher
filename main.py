@@ -31,6 +31,7 @@ from utils.display import (
     print_success,
     print_warning,
     show_banner,
+    show_home_screen,
 )
 from utils.correlation import build_identity_correlation
 from utils.helpers import is_valid_email, is_valid_username_query
@@ -218,6 +219,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--setup-context",
         action="store_true",
         help="Windows/Linux sag tik menusune 'Guvenli Sil' secenegi ekler",
+    )
+    general_group.add_argument(
+        "--gui",
+        action="store_true",
+        help="Grafik arayuzu baslatir",
     )
     general_group.add_argument(
         "--no-banner",
@@ -419,6 +425,27 @@ def handle_shred(args: argparse.Namespace) -> None:
         print_error(f"Desteklenmeyen dosya turu: {target}")
 
 
+def launch_gui(logger: logging.Logger, parser: argparse.ArgumentParser) -> None:
+    """Launch the existing GUI as an explicit mode."""
+    try:
+        import gui
+
+        app = gui.TrackherApp()
+        app.mainloop()
+    except ImportError:
+        safe_log(logger, logging.ERROR, "GUI import failed")
+        show_banner()
+        parser.print_help()
+        print_error("\nGUI modulleri yuklenemedi. 'pip install -r requirements.txt' gerekebilir.")
+        sys.exit(1)
+    except Exception as exc:
+        safe_log(logger, logging.ERROR, "GUI startup failed: %s", exc)
+        show_banner()
+        parser.print_help()
+        print_error(f"\nGUI baslatilamadi: {exc}. CLI seceneklerini kullanabilirsiniz.")
+        sys.exit(1)
+
+
 def main() -> None:
     """Main entry point."""
     configure_logging()
@@ -430,6 +457,14 @@ def main() -> None:
         args.email = args.email.strip()
     if args.username:
         args.username = args.username.strip()
+
+    if len(sys.argv) == 1:
+        show_home_screen()
+        sys.exit(0)
+
+    if args.gui:
+        launch_gui(logger, parser)
+        sys.exit(0)
 
     has_action = any(
         [
@@ -448,26 +483,6 @@ def main() -> None:
             args.clear_history,
         ]
     )
-
-    if not has_action and len(sys.argv) == 1:
-        try:
-            import gui
-
-            app = gui.TrackherApp()
-            app.mainloop()
-            sys.exit(0)
-        except ImportError:
-            safe_log(logger, logging.ERROR, "GUI import failed")
-            show_banner()
-            parser.print_help()
-            print_error("\nGUI modulleri yuklenemedi. 'pip install -r requirements.txt' gerekebilir.")
-            sys.exit(1)
-        except Exception as exc:
-            safe_log(logger, logging.ERROR, "GUI startup failed: %s", exc)
-            show_banner()
-            parser.print_help()
-            print_error(f"\nGUI baslatilamadi: {exc}. CLI seceneklerini kullanabilirsiniz.")
-            sys.exit(1)
 
     if not has_action:
         if not args.no_banner:

@@ -260,6 +260,32 @@ class BrowserProfileTests(unittest.TestCase):
 
 
 class OutputAndCommandTests(unittest.TestCase):
+    def test_no_argument_launches_terminal_home_and_exits_cleanly(self):
+        with (
+            patch("main.sys.argv", ["main.py"]),
+            patch("main.show_home_screen") as home,
+            patch("main.launch_gui") as launch_gui,
+            self.assertRaises(SystemExit) as raised,
+        ):
+            main_module.main()
+
+        self.assertEqual(raised.exception.code, 0)
+        home.assert_called_once_with()
+        launch_gui.assert_not_called()
+
+    def test_gui_flag_launches_explicit_gui_mode(self):
+        with (
+            patch("main.sys.argv", ["main.py", "--gui"]),
+            patch("main.show_home_screen") as home,
+            patch("main.launch_gui") as launch_gui,
+            self.assertRaises(SystemExit) as raised,
+        ):
+            main_module.main()
+
+        self.assertEqual(raised.exception.code, 0)
+        home.assert_not_called()
+        launch_gui.assert_called_once()
+
     def test_html_report_escapes_dynamic_values(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             output = Path(temp_dir) / "report.html"
