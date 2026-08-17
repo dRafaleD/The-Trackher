@@ -35,7 +35,7 @@ def is_critical_path(path: Path, *, allow_temp_root: bool = False) -> bool:
                 protected_trees.add(Path(value).resolve())
     else:
         protected_trees.update(
-            Path(item)
+            Path(item).resolve()
             for item in (
                 "/bin", "/boot", "/dev", "/etc", "/lib", "/lib64", "/opt",
                 "/proc", "/root", "/run", "/sbin", "/srv", "/sys", "/usr",

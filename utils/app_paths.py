@@ -44,5 +44,5 @@ def resource_path(*parts: str) -> Path:
 def launcher_arguments(*args: str) -> list[str]:
     """Return a safe launcher command for scheduled or shell-integrated runs."""
     if is_frozen():
-        return [str(Path(sys.executable).resolve()), *args]
+        return [str(Path(sys.executable)), *args]
     return [sys.executable, str(project_root() / "main.py"), *args]
