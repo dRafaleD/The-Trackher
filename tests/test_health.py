@@ -289,6 +289,28 @@ class PlatformHealthTests(unittest.TestCase):
         follow_up = asyncio.run(execute())
         self.assertEqual(follow_up["status"], "NOT_FOUND")
 
+    def test_documented_email_lookup_schema_and_missing_key_are_supported(self):
+        result, _client = self.run_health(
+            account_platforms=[
+                {
+                    "name": "Flickr",
+                    "category": "verified",
+                    "section": "account",
+                    "check": "documented_email_lookup",
+                    "url": "https://www.flickr.com/",
+                    "probe_url": "https://api.flickr.com/services/rest",
+                    "api_key_env": "FLICKR_API_KEY",
+                    "success_path": "user.@nsid",
+                }
+            ],
+            live=True,
+        )
+
+        self.assertEqual(result["items"][0]["offline_state"], HEALTHY)
+        self.assertEqual(result["items"][0]["state"], HEALTHY)
+        self.assertIn("not configured", result["items"][0]["detail"])
+        self.assertIsNotNone(ACCOUNT_DETECTORS.get("documented_email_lookup"))
+
     def test_no_side_effect_detector_paths_are_used(self):
         account = {
             "name": "GitHub",

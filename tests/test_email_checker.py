@@ -167,7 +167,8 @@ class EmailDetectionTests(unittest.TestCase):
             httpx.Response(200),
         )
 
-        self.assertRegex(found["public_metadata"]["avatar_hash"], r"^[a-f0-9]{32}$")
+        self.assertRegex(found["public_metadata"]["avatar_hash"], r"^[a-f0-9]{64}$")
+        self.assertEqual(found["public_metadata"]["hash_algorithm"], "sha256")
 
     def test_gitlab_public_email_miss_stays_unknown(self):
         platform = {
@@ -286,6 +287,182 @@ class EmailDetectionTests(unittest.TestCase):
 
         self.assertEqual(result["status"], ERROR)
 
+    def test_documented_email_lookup_without_api_key_is_not_configured(self):
+        platform = {
+            "name": "Flickr",
+            "category": "verified",
+            "check": "documented_email_lookup",
+            "probe_url": "https://api.flickr.com/services/rest",
+            "probe_params": {
+                "method": "flickr.people.findByEmail",
+                "find_email": "{email}",
+            },
+            "response_format": "xml",
+            "api_key_env": "FLICKR_API_KEY",
+            "success_path": "user.@nsid",
+        }
+
+        with patch.dict("os.environ", {}, clear=False):
+            result = self.run_account_check(platform, httpx.Response(200, text="unused"))
+
+        self.assertEqual(result["status"], NOT_CONFIGURED)
+        self.assertFalse(result["found"])
+
+    def test_documented_email_lookup_verified_match_is_found(self):
+        platform = {
+            "name": "Flickr",
+            "category": "verified",
+            "check": "documented_email_lookup",
+            "probe_url": "https://api.flickr.com/services/rest",
+            "probe_params": {
+                "method": "flickr.people.findByEmail",
+                "find_email": "{email}",
+                "format": "rest",
+            },
+            "response_format": "xml",
+            "api_key_env": "FLICKR_API_KEY",
+            "success_path": "user.@nsid",
+            "label_path": "user.username",
+            "not_found_error_codes": ["1"],
+            "invalid_key_error_codes": ["100"],
+            "profile_metadata_fields": {
+                "username": "user.username",
+                "flickr_nsid": "user.@nsid",
+            },
+        }
+        response = httpx.Response(
+            200,
+            text='<rsp stat="ok"><user nsid="12037949632@N01"><username>Stewart</username></user></rsp>',
+        )
+
+        with patch.dict("os.environ", {"FLICKR_API_KEY": "demo-key"}, clear=False):
+            result = self.run_account_check(platform, response)
+
+        self.assertEqual(result["status"], FOUND)
+        self.assertTrue(result["found"])
+        self.assertIn("Stewart", result["detail"])
+        self.assertEqual(result["public_metadata"]["username"], "Stewart")
+
+    def test_documented_email_lookup_not_found_is_preserved(self):
+        platform = {
+            "name": "Flickr",
+            "category": "verified",
+            "check": "documented_email_lookup",
+            "probe_url": "https://api.flickr.com/services/rest",
+            "probe_params": {
+                "method": "flickr.people.findByEmail",
+                "find_email": "{email}",
+            },
+            "response_format": "xml",
+            "api_key_env": "FLICKR_API_KEY",
+            "success_path": "user.@nsid",
+            "not_found_error_codes": ["1"],
+        }
+        response = httpx.Response(
+            200,
+            text='<rsp stat="fail"><err code="1" msg="User not found" /></rsp>',
+        )
+
+        with patch.dict("os.environ", {"FLICKR_API_KEY": "demo-key"}, clear=False):
+            result = self.run_account_check(platform, response, email="missing@example.test")
+
+        self.assertEqual(result["status"], NOT_FOUND)
+        self.assertFalse(result["found"])
+
+    def test_documented_email_lookup_malformed_response_is_unknown(self):
+        platform = {
+            "name": "Flickr",
+            "category": "verified",
+            "check": "documented_email_lookup",
+            "probe_url": "https://api.flickr.com/services/rest",
+            "probe_params": {
+                "method": "flickr.people.findByEmail",
+                "find_email": "{email}",
+            },
+            "response_format": "xml",
+            "api_key_env": "FLICKR_API_KEY",
+            "success_path": "user.@nsid",
+        }
+
+        with patch.dict("os.environ", {"FLICKR_API_KEY": "demo-key"}, clear=False):
+            result = self.run_account_check(platform, httpx.Response(200, text="<rsp"))
+
+        self.assertEqual(result["status"], UNKNOWN)
+
+    def test_documented_email_lookup_unexpected_shape_is_unknown(self):
+        platform = {
+            "name": "Flickr",
+            "category": "verified",
+            "check": "documented_email_lookup",
+            "probe_url": "https://api.flickr.com/services/rest",
+            "probe_params": {
+                "method": "flickr.people.findByEmail",
+                "find_email": "{email}",
+            },
+            "response_format": "xml",
+            "api_key_env": "FLICKR_API_KEY",
+            "success_path": "user.@nsid",
+        }
+        response = httpx.Response(200, text='<rsp stat="ok"><user><username>Stewart</username></user></rsp>')
+
+        with patch.dict("os.environ", {"FLICKR_API_KEY": "demo-key"}, clear=False):
+            result = self.run_account_check(platform, response)
+
+        self.assertEqual(result["status"], UNKNOWN)
+
+    def test_documented_email_lookup_timeout_is_error(self):
+        platform = {
+            "name": "Flickr",
+            "category": "verified",
+            "check": "documented_email_lookup",
+            "probe_url": "https://api.flickr.com/services/rest",
+            "probe_params": {
+                "method": "flickr.people.findByEmail",
+                "find_email": "{email}",
+            },
+            "response_format": "xml",
+            "api_key_env": "FLICKR_API_KEY",
+            "success_path": "user.@nsid",
+        }
+
+        async def execute() -> dict:
+            def handler(_request: httpx.Request) -> httpx.Response:
+                raise httpx.ReadTimeout("slow")
+
+            transport = httpx.MockTransport(handler)
+            async with httpx.AsyncClient(transport=transport) as client:
+                return await check_account_platform("owner@example.test", client, platform)
+
+        with patch.dict("os.environ", {"FLICKR_API_KEY": "demo-key"}, clear=False):
+            result = asyncio.run(execute())
+
+        self.assertEqual(result["status"], ERROR)
+
+    def test_documented_email_lookup_heuristic_result_is_possible(self):
+        platform = {
+            "name": "Flickr",
+            "category": "heuristic",
+            "check": "documented_email_lookup",
+            "probe_url": "https://api.flickr.com/services/rest",
+            "probe_params": {
+                "method": "flickr.people.findByEmail",
+                "find_email": "{email}",
+            },
+            "response_format": "xml",
+            "api_key_env": "FLICKR_API_KEY",
+            "success_path": "user.@nsid",
+        }
+        response = httpx.Response(
+            200,
+            text='<rsp stat="ok"><user nsid="12037949632@N01"><username>Stewart</username></user></rsp>',
+        )
+
+        with patch.dict("os.environ", {"FLICKR_API_KEY": "demo-key"}, clear=False):
+            result = self.run_account_check(platform, response)
+
+        self.assertEqual(result["status"], POSSIBLE)
+        self.assertFalse(result["found"])
+
     def test_timeout_or_http_error_is_error(self):
         platform = {
             "name": "Example",
@@ -394,6 +571,22 @@ class EmailCatalogAndReportTests(unittest.TestCase):
         self.assertIn("Have I Been Pwned", names)
         self.assertTrue(any(item["category"] == "manual" for item in EMAIL_PLATFORMS))
         self.assertTrue(any(name == "GitHub" for name, _platform in AUTOMATIC_ACCOUNT_PLATFORMS))
+        self.assertTrue(any(name == "Flickr" for name, _platform in AUTOMATIC_ACCOUNT_PLATFORMS))
+
+    def test_email_console_shows_not_configured_account_detectors_as_unknown(self):
+        results = {
+            "accounts": [
+                {"service": "Flickr", "status": NOT_CONFIGURED, "found": False, "detail": "FLICKR_API_KEY not configured"},
+            ],
+            "breaches": [],
+        }
+
+        with patch("utils.display.console.print") as console_print:
+            print_email_results("test@example.test", results)
+
+        rendered = "\n".join(str(call.args[0]) for call in console_print.call_args_list if call.args)
+        self.assertIn("Unknown / Errors", rendered)
+        self.assertIn("Flickr (NOT_CONFIGURED)", rendered)
 
     def test_report_serializes_email_sections_to_json_and_html(self):
         payload = {

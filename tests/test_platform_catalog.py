@@ -24,7 +24,7 @@ class PlatformCatalogTests(unittest.TestCase):
 
     def _found_response(self, platform: dict, username: str) -> httpx.Response:
         check = platform.get("check", "html")
-        if check == "json":
+        if check in {"json", "graphql"}:
             payload: dict = {}
             self._set_json_value(payload, platform["json_path"], username)
             return httpx.Response(200, json=payload)
@@ -33,6 +33,8 @@ class PlatformCatalogTests(unittest.TestCase):
             self._set_json_value(item, platform["json_path"], username)
             if platform.get("profile_id_path"):
                 self._set_json_value(item, platform["profile_id_path"], "42")
+            if platform["json_list_path"] == "":
+                return httpx.Response(200, json=[item])
             payload: dict = {}
             self._set_json_value(payload, platform["json_list_path"], [item])
             return httpx.Response(200, json=payload)
@@ -96,6 +98,11 @@ class PlatformCatalogTests(unittest.TestCase):
                     self._found_response(platform, username),
                     username,
                 )
+                if platform.get("disable_html_found"):
+                    self.assertEqual(result["status"], "unknown")
+                    self.assertFalse(result["found"])
+                    self.assertEqual(result["unknown_cause"], "parser_mismatch")
+                    continue
                 self.assertEqual(result["status"], "found")
                 self.assertTrue(result["found"])
                 self.assertEqual(result["reliability"], platform["reliability"])

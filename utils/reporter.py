@@ -6,7 +6,12 @@ from datetime import datetime
 from html import escape
 from urllib.parse import urlparse
 
-from utils.display import print_error, print_success
+from utils.display import (
+    format_username_unknown_breakdown,
+    print_error,
+    print_success,
+    username_unknown_cause_label,
+)
 from utils.correlation import build_identity_correlation
 from utils.risk import compute_risk
 from utils.remediation import build_remediation_report
@@ -295,7 +300,7 @@ def _render_email_section(email_data: dict) -> str:
     possible = [item for item in accounts if item.get("status") == "POSSIBLE"]
     not_found = [item for item in accounts if item.get("status") == "NOT_FOUND"]
     manual = [item for item in accounts if item.get("status") == "MANUAL"]
-    unknown = [item for item in accounts if item.get("status") in {"UNKNOWN", "ERROR"}]
+    unknown = [item for item in accounts if item.get("status") in {"UNKNOWN", "ERROR", "NOT_CONFIGURED"}]
 
     def rows(items: list[dict], empty: str) -> str:
         if not items:
@@ -485,6 +490,7 @@ def export_to_html(data: dict, filepath: str) -> None:
             results = prepared["osint_username"]["results"]
             found_count = sum(1 for result in results if result["found"])
             unknown_count = sum(1 for result in results if result.get("status") == "unknown")
+            unknown_breakdown = _html(format_username_unknown_breakdown(results))
 
             html_content += f"""
                 <section class="section">
@@ -494,8 +500,9 @@ def export_to_html(data: dict, filepath: str) -> None:
                         <strong>{found_count}</strong> platformda kayıt bulundu.
                         <strong>{unknown_count}</strong> sonuç doğrulanamadı.
                     </p>
+                    <p><strong>Doğrulanamayan nedenler:</strong> {unknown_breakdown or 'Yok'}</p>
                     <table>
-                        <tr><th>Platform</th><th>URL</th><th>Durum</th></tr>
+                        <tr><th>Platform</th><th>URL</th><th>Durum</th><th>Neden</th></tr>
             """
             for result in results:
                 result_status = result.get(
@@ -514,6 +521,9 @@ def export_to_html(data: dict, filepath: str) -> None:
                 platform_name = _html(result.get("platform", "Bilinmiyor"))
                 url = _safe_url(result.get("url", ""))
                 warning = result.get("warning", "")
+                cause = ""
+                if result_status == "unknown":
+                    cause = _html(username_unknown_cause_label(result.get("unknown_cause")))
                 warning_html = (
                     f'<br><span class="unknown">{_html(warning)}</span>'
                     if warning
@@ -524,6 +534,7 @@ def export_to_html(data: dict, filepath: str) -> None:
                         <td>{platform_name}</td>
                         <td>{_link_cell(url)}</td>
                         <td class="{status_class}">{status_text}{warning_html}</td>
+                        <td>{cause}</td>
                     </tr>
                 """
             html_content += """

@@ -64,11 +64,18 @@ def _load_platform_definitions() -> list[dict]:
             "accept",
             "json_path",
             "json_list_path",
+            "query_body",
             "profile_id_path",
             "error_msg",
             "expected_status",
             "actions",
             "metadata_fields",
+            "not_found_markers",
+            "not_found_url_contains",
+            "raw_found_markers",
+            "raw_not_found_markers",
+            "allow_title_username_match",
+            "disable_html_found",
         ):
             if key in item:
                 runtime_entry[key] = item[key]
@@ -132,6 +139,8 @@ _BLOCKED_KEYWORDS = [
     "checking your browser",
     "verify you are human",
     "captcha",
+    "client challenge",
+    "verify you are a human",
 ]
 
 
@@ -146,14 +155,20 @@ def _normalize_text(value: object) -> str:
 def _visible_page_text(page: str) -> str:
     title_match = re.search(r"<title[^>]*>(.*?)</title>", page, flags=re.I | re.S)
     title = title_match.group(1) if title_match else ""
+    return re.sub(r"\s+", " ", f"{title} {_visible_body_text(page)}")
+
+
+def _visible_body_text(page: str) -> str:
+    body_match = re.search(r"<body\b[^>]*>(.*?)</body>", page, flags=re.I | re.S)
+    body_source = body_match.group(1) if body_match else page
     body = re.sub(
-        r"<(script|style|noscript|svg)\b[^>]*>.*?</\1>",
+        r"<(head|title|script|style|noscript|svg)\b[^>]*>.*?</\1>",
         " ",
-        page,
+        body_source,
         flags=re.I | re.S,
     )
     body = re.sub(r"<[^>]+>", " ", body)
-    return re.sub(r"\s+", " ", f"{title} {body}")
+    return re.sub(r"\s+", " ", body)
 
 
 def _contains_exact_username(text: str, username: str) -> bool:
@@ -176,11 +191,20 @@ def _contains_block_marker(text: str) -> bool:
 
 
 def _json_value(data: object, path: str) -> object | None:
+    if path == "":
+        return data
     current = data
     for part in path.split("."):
-        if not isinstance(current, dict) or part not in current:
-            return None
-        current = current[part]
+        if isinstance(current, list) and part.isdigit():
+            index = int(part)
+            if index >= len(current):
+                return None
+            current = current[index]
+            continue
+        if isinstance(current, dict) and part in current:
+            current = current[part]
+            continue
+        return None
     return current
 
 
@@ -199,11 +223,82 @@ def _extract_metadata(data: object, fields: dict[str, object] | None) -> dict[st
     return metadata
 
 
-def _set_result(result: dict, status: str, detail: str = "") -> dict:
+def _format_platform_value(value: object, username: str) -> object:
+    if isinstance(value, str):
+        return value.replace("{username}", username.strip())
+    if isinstance(value, list):
+        return [_format_platform_value(item, username) for item in value]
+    if isinstance(value, dict):
+        return {
+            str(key): _format_platform_value(item, username)
+            for key, item in value.items()
+        }
+    return value
+
+
+def _set_result(result: dict, status: str, detail: str = "", cause: str | None = None) -> dict:
     result["status"] = status
     result["found"] = status == "found"
     result["detail"] = detail
+    if cause:
+        result["diagnostic_cause"] = cause
+        if status == "unknown":
+            result["unknown_cause"] = cause
     return result
+
+
+def _http_unknown_cause(status_code: int, text: str = "") -> str:
+    if status_code == 429:
+        return "rate_limited"
+    if status_code == 403:
+        return "bot_blocked" if _contains_block_marker(text) else "forbidden"
+    if status_code == 503 and _contains_block_marker(text):
+        return "bot_blocked"
+    return "unexpected_status"
+
+
+def _exception_cause(exc: Exception) -> str:
+    if isinstance(exc, httpx.TimeoutException):
+        return "timeout"
+    if isinstance(exc, httpx.HTTPError):
+        return "network_error"
+    if isinstance(exc, (KeyError, IndexError, TypeError, ValueError)):
+        return "parser_mismatch"
+    return "unknown"
+
+
+def _platform_markers(platform: dict, key: str) -> list[str]:
+    raw = platform.get(key, [])
+    if isinstance(raw, str):
+        return [raw]
+    if isinstance(raw, list):
+        return [str(item) for item in raw if str(item).strip()]
+    return []
+
+
+def _formatted_platform_markers(platform: dict, key: str, username: str) -> list[str]:
+    return [
+        _normalize_text(str(_format_platform_value(marker, username)))
+        for marker in _platform_markers(platform, key)
+    ]
+
+
+def _url_contains_not_found_marker(platform: dict, url: str) -> bool:
+    normalized_url = _normalize_text(url)
+    return any(
+        _normalize_text(marker) in normalized_url
+        for marker in _platform_markers(platform, "not_found_url_contains")
+    )
+
+
+def _contains_platform_negative_marker(platform: dict, text: str, username: str) -> bool:
+    normalized = _normalize_text(text)
+    return any(marker in normalized for marker in _formatted_platform_markers(platform, "not_found_markers", username))
+
+
+def _contains_platform_raw_marker(platform: dict, key: str, text: str, username: str) -> bool:
+    normalized = _normalize_text(text)
+    return any(marker in normalized for marker in _formatted_platform_markers(platform, key, username))
 
 
 def _expected_statuses(platform: dict, default: tuple[int, ...]) -> set[int]:
@@ -223,20 +318,25 @@ def _check_json_response(
 ) -> dict:
     not_found_statuses = _expected_statuses(platform, (404, 410))
     if response.status_code in not_found_statuses:
-        return _set_result(result, "not_found", f"HTTP {response.status_code}")
+        return _set_result(result, "not_found", f"HTTP {response.status_code}", "soft_404")
     if response.status_code != 200:
-        return _set_result(result, "unknown", f"HTTP {response.status_code}")
+        return _set_result(
+            result,
+            "unknown",
+            f"HTTP {response.status_code}",
+            _http_unknown_cause(response.status_code, response.text),
+        )
 
     try:
         data = response.json()
     except ValueError:
-        return _set_result(result, "unknown", "Geçersiz JSON yanıtı")
+        return _set_result(result, "unknown", "Geçersiz JSON yanıtı", "parser_mismatch")
 
     method = platform.get("check")
     if method == "json_list":
         items = _json_value(data, platform["json_list_path"])
         if not isinstance(items, list):
-            return _set_result(result, "unknown", "JSON listesi bulunamadı")
+            return _set_result(result, "unknown", "JSON listesi bulunamadı", "parser_mismatch")
 
         for item in items:
             value = _json_value(item, platform["json_path"])
@@ -252,7 +352,7 @@ def _check_json_response(
                 result["public_metadata"] = metadata
             return _set_result(result, "found", "JSON kullanıcı adı eşleşti")
 
-        return _set_result(result, "not_found", "JSON eşleşmesi yok")
+        return _set_result(result, "not_found", "JSON eşleşmesi yok", "soft_404")
 
     value = _json_value(data, platform["json_path"])
     if _normalize_text(value) == _normalize_text(username):
@@ -261,7 +361,7 @@ def _check_json_response(
         if metadata:
             result["public_metadata"] = metadata
         return _set_result(result, "found", "JSON kullanıcı adı eşleşti")
-    return _set_result(result, "not_found", "JSON eşleşmesi yok")
+    return _set_result(result, "not_found", "JSON eşleşmesi yok", "soft_404")
 
 
 def _check_html_response(
@@ -272,24 +372,51 @@ def _check_html_response(
 ) -> dict:
     not_found_statuses = _expected_statuses(platform, (404, 410))
     if response.status_code in not_found_statuses:
-        return _set_result(result, "not_found", f"HTTP {response.status_code}")
+        return _set_result(result, "not_found", f"HTTP {response.status_code}", "soft_404")
     if response.status_code != 200:
-        return _set_result(result, "unknown", f"HTTP {response.status_code}")
+        return _set_result(
+            result,
+            "unknown",
+            f"HTTP {response.status_code}",
+            _http_unknown_cause(response.status_code, response.text),
+        )
 
     visible_text = _visible_page_text(response.text)
+    visible_body = _visible_body_text(response.text)
+    raw_text = response.text
     if _contains_block_marker(visible_text):
-        return _set_result(result, "unknown", "Site otomatik taramayı engelledi")
+        return _set_result(result, "unknown", "Site otomatik taramayı engelledi", "bot_blocked")
 
-    if platform.get("error_type", "message") == "message" and _contains_negative_marker(visible_text):
-        return _set_result(result, "not_found", "Bulunamadı işareti görüldü")
+    if _url_contains_not_found_marker(platform, str(response.url)):
+        return _set_result(result, "not_found", "Genel arama sayfasına yönlendirildi", "redirect_changed")
+
+    if _contains_platform_raw_marker(platform, "raw_not_found_markers", raw_text, username):
+        return _set_result(result, "not_found", "Bulunamadı işareti görüldü", "soft_404")
+
+    if (
+        platform.get("error_type", "message") == "message"
+        and (
+            _contains_negative_marker(visible_text)
+            or _contains_platform_negative_marker(platform, visible_text, username)
+        )
+    ):
+        return _set_result(result, "not_found", "Bulunamadı işareti görüldü", "soft_404")
 
     if response.history and not _contains_exact_username(unquote(str(response.url)), username):
-        return _set_result(result, "not_found", "Genel sayfaya yönlendirildi")
+        return _set_result(result, "not_found", "Genel sayfaya yönlendirildi", "redirect_changed")
 
-    if _contains_exact_username(visible_text, username):
+    if _contains_platform_raw_marker(platform, "raw_found_markers", raw_text, username):
+        return _set_result(result, "found", "Ham yanıt işaretleri kullanıcıyı doğruladı")
+
+    if platform.get("disable_html_found") is True:
+        return _set_result(result, "unknown", "Profil kanıtı bulunamadı", "parser_mismatch")
+
+    if _contains_exact_username(visible_body, username) or (
+        platform.get("allow_title_username_match") is True and _contains_exact_username(visible_text, username)
+    ):
         return _set_result(result, "found", "Sayfada kullanıcı adı doğrulandı")
 
-    return _set_result(result, "unknown", "Profil kanıtı bulunamadı")
+    return _set_result(result, "unknown", "Profil kanıtı bulunamadı", "parser_mismatch")
 
 
 async def _run_json_detector(
@@ -303,6 +430,23 @@ async def _run_json_detector(
         platform["probe_url"].format(quote(username.strip(), safe="._-~")),
         follow_redirects=True,
         headers=request_headers,
+    )
+    return _check_json_response(username, platform, response, result)
+
+
+async def _run_graphql_detector(
+    username: str,
+    platform: dict,
+    client: httpx.AsyncClient,
+    result: dict,
+) -> dict:
+    request_headers = {"Accept": platform.get("accept", "application/json")}
+    body = _format_platform_value(platform.get("query_body", {}), username)
+    response = await client.post(
+        platform["probe_url"],
+        follow_redirects=True,
+        headers=request_headers,
+        json=body,
     )
     return _check_json_response(username, platform, response, result)
 
@@ -326,6 +470,7 @@ USERNAME_DETECTORS.register("content", _run_html_detector)
 USERNAME_DETECTORS.register("404", _run_html_detector)
 USERNAME_DETECTORS.register("json", _run_json_detector)
 USERNAME_DETECTORS.register("json_list", _run_json_detector)
+USERNAME_DETECTORS.register("graphql", _run_graphql_detector)
 
 
 async def check_single_username(username: str, platform: dict, client: httpx.AsyncClient) -> dict:
@@ -339,15 +484,20 @@ async def check_single_username(username: str, platform: dict, client: httpx.Asy
         method = str(platform.get("check", "html"))
         detector = USERNAME_DETECTORS.get(method)
         if detector is None:
-            return _set_result(result, "unknown", f"Desteklenmeyen detector tipi: {method}")
+            return _set_result(result, "unknown", f"Desteklenmeyen detector tipi: {method}", "unsupported_detector")
         return await safe_execute(
             lambda: detector(username, platform, client, result),
-            on_error=lambda exc: _set_result(result, "unknown", type(exc).__name__),
+            on_error=lambda exc: _set_result(result, "unknown", type(exc).__name__, _exception_cause(exc)),
         )
     except httpx.HTTPError as exc:
-        return _set_result(result, "unknown", type(exc).__name__)
+        return _set_result(result, "unknown", type(exc).__name__, _exception_cause(exc))
     except (KeyError, IndexError, TypeError, ValueError) as exc:
-        return _set_result(result, "unknown", f"Platform yapılandırma hatası: {type(exc).__name__}")
+        return _set_result(
+            result,
+            "unknown",
+            f"Platform yapılandırma hatası: {type(exc).__name__}",
+            _exception_cause(exc),
+        )
 
 
 async def check_username_async(

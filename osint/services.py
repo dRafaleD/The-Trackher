@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -35,9 +36,9 @@ def _base_result(platform: dict[str, Any], status: str, detail: str = "") -> dic
     return normalize_email_result(platform, status, detail)
 
 
-def _md5(text: str) -> str:
+def _email_hash(text: str) -> str:
     payload = text.strip().casefold().encode("utf-8")
-    return hashlib.md5(payload, usedforsecurity=False).hexdigest()
+    return hashlib.sha256(payload).hexdigest()
 
 
 def _safe_json(response: httpx.Response) -> dict | list | None:
@@ -82,6 +83,48 @@ def _extract_metadata(data: object, fields: dict[str, Any] | None) -> dict[str, 
     return metadata
 
 
+def _format_email_template(value: object, email: str) -> str:
+    raw_email = email.strip()
+    return str(value).format(
+        email=raw_email,
+        email_quoted=quote(raw_email, safe=""),
+    )
+
+
+def _xml_value(element: ET.Element | None, path: str) -> object | None:
+    if element is None:
+        return None
+
+    current = element
+    parts = [part for part in str(path).split(".") if part]
+    if parts and parts[0] == current.tag:
+        parts = parts[1:]
+
+    for part in parts:
+        if part.startswith("@"):
+            return current.attrib.get(part[1:])
+        child = current.find(part)
+        if child is None:
+            return None
+        current = child
+    return (current.text or "").strip()
+
+
+def _extract_xml_metadata(element: ET.Element, fields: dict[str, Any] | None) -> dict[str, str]:
+    if not isinstance(fields, dict):
+        return {}
+
+    metadata: dict[str, str] = {}
+    for key, path in fields.items():
+        value = _xml_value(element, str(path))
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            metadata[str(key)] = text
+    return metadata
+
+
 def _load_email_platforms() -> list[dict[str, Any]]:
     with open(EMAIL_PLATFORMS_PATH, "r", encoding="utf-8") as file_obj:
         data = json.load(file_obj)
@@ -102,7 +145,7 @@ PASSIVE_SERVICES = [(item["name"], item) for item in ACCOUNT_PLATFORMS if item.g
 
 async def check_gravatar(email: str, client: httpx.AsyncClient, platform: dict[str, Any] | None = None) -> dict[str, Any]:
     platform = platform or {"name": "Gravatar", "category": "verified"}
-    digest = _md5(email)
+    digest = _email_hash(email)
     try:
         response = await client.get(
             f"https://www.gravatar.com/avatar/{digest}",
@@ -119,6 +162,7 @@ async def check_gravatar(email: str, client: httpx.AsyncClient, platform: dict[s
         result = _base_result(platform, FOUND, f"https://gravatar.com/{digest}")
         result["public_metadata"] = {
             "avatar_hash": digest,
+            "hash_algorithm": "sha256",
             "profile_url": f"https://gravatar.com/{digest}",
         }
         return result
@@ -236,6 +280,82 @@ async def check_public_profile_email(email: str, client: httpx.AsyncClient, plat
     return _base_result(platform, UNKNOWN, "Search results were inconclusive")
 
 
+async def check_documented_email_lookup(
+    email: str,
+    client: httpx.AsyncClient,
+    platform: dict[str, Any],
+) -> dict[str, Any]:
+    """Run a documented, read-only email lookup API."""
+    probe_url = str(platform.get("probe_url", "")).strip()
+    if not probe_url:
+        return _base_result(platform, MANUAL, "No documented lookup probe configured")
+
+    params = {
+        str(key): _format_email_template(value, email)
+        for key, value in dict(platform.get("probe_params", {})).items()
+    }
+    headers = {"User-Agent": f"Trackher/{__version__}"}
+    headers.update({str(key): str(value) for key, value in platform.get("headers", {}).items()})
+
+    api_key_env = str(platform.get("api_key_env", "")).strip()
+    if api_key_env:
+        api_key = os.environ.get(api_key_env, "").strip()
+        if not api_key:
+            return _base_result(platform, NOT_CONFIGURED, f"{api_key_env} not configured")
+        api_key_param = str(platform.get("api_key_param", "api_key")).strip() or "api_key"
+        params[api_key_param] = api_key
+
+    try:
+        response = await client.get(probe_url, params=params, follow_redirects=True, headers=headers)
+    except httpx.TimeoutException as exc:
+        return _base_result(platform, ERROR, type(exc).__name__)
+    except httpx.HTTPError as exc:
+        return _base_result(platform, ERROR, type(exc).__name__)
+
+    if response.status_code != 200:
+        return _base_result(platform, UNKNOWN, f"HTTP {response.status_code}")
+
+    response_format = str(platform.get("response_format", "xml")).strip().casefold()
+    if response_format != "xml":
+        return _base_result(platform, UNKNOWN, "Unsupported documented lookup response format")
+
+    try:
+        root = ET.fromstring(response.text)
+    except ET.ParseError:
+        return _base_result(platform, UNKNOWN, "Lookup response was not valid XML")
+
+    error_node = root.find(".//err")
+    if error_node is not None:
+        error_code = str(error_node.attrib.get("code", "")).strip()
+        error_message = str(error_node.attrib.get("msg", "")).strip() or "Lookup failed"
+        not_found_codes = {str(code) for code in platform.get("not_found_error_codes", [])}
+        invalid_key_codes = {str(code) for code in platform.get("invalid_key_error_codes", [])}
+        if error_code in not_found_codes:
+            return _base_result(platform, NOT_FOUND, error_message)
+        if error_code in invalid_key_codes:
+            return _base_result(platform, ERROR, error_message)
+        return _base_result(platform, UNKNOWN, error_message)
+
+    success_path = str(platform.get("success_path", "")).strip()
+    success_value = _xml_value(root, success_path) if success_path else None
+    if success_path and success_value is None:
+        return _base_result(platform, UNKNOWN, "Lookup response shape was unexpected")
+
+    status = FOUND if platform.get("category") == "verified" else POSSIBLE
+    detail = str(platform.get("success_detail", "Documented public lookup matched exactly")).strip()
+    label_path = str(platform.get("label_path", "")).strip()
+    if label_path:
+        label = _xml_value(root, label_path)
+        if isinstance(label, str) and label.strip():
+            detail = f"{detail} ({label.strip()})"
+
+    result = _base_result(platform, status, detail)
+    metadata = _extract_xml_metadata(root, platform.get("profile_metadata_fields"))
+    if metadata:
+        result["public_metadata"] = metadata
+    return result
+
+
 async def check_manual(_email: str, _client: httpx.AsyncClient, platform: dict[str, Any]) -> dict[str, Any]:
     return _base_result(platform, MANUAL, "Manual investigation required")
 
@@ -317,6 +437,7 @@ async def check_haveibeenpwned(email: str, client: httpx.AsyncClient, platform: 
 
 
 ACCOUNT_DETECTORS = DetectorRegistry()
+ACCOUNT_DETECTORS.register("documented_email_lookup", check_documented_email_lookup)
 ACCOUNT_DETECTORS.register("gravatar", check_gravatar)
 ACCOUNT_DETECTORS.register("heuristic", check_heuristic)
 ACCOUNT_DETECTORS.register("public_profile_email", check_public_profile_email)

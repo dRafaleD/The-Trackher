@@ -101,7 +101,31 @@
   {"name": "Vimeo", "category": "manual", "section": "account", "check": "manual", "url": "https://vimeo.com/"},
   {"name": "Dailymotion", "category": "manual", "section": "account", "check": "manual", "url": "https://www.dailymotion.com/"},
   {"name": "Last.fm", "category": "manual", "section": "account", "check": "manual", "url": "https://www.last.fm/"},
-  {"name": "Flickr", "category": "manual", "section": "account", "check": "manual", "url": "https://www.flickr.com/"},
+  {
+    "name": "Flickr",
+    "category": "verified",
+    "section": "account",
+    "check": "documented_email_lookup",
+    "url": "https://www.flickr.com/",
+    "probe_url": "https://api.flickr.com/services/rest",
+    "probe_params": {
+      "method": "flickr.people.findByEmail",
+      "find_email": "{email}",
+      "format": "rest"
+    },
+    "response_format": "xml",
+    "api_key_env": "FLICKR_API_KEY",
+    "api_key_param": "api_key",
+    "success_path": "user.@nsid",
+    "label_path": "user.username",
+    "not_found_error_codes": ["1"],
+    "invalid_key_error_codes": ["100"],
+    "success_detail": "Documented public lookup matched exactly",
+    "profile_metadata_fields": {
+      "username": "user.username",
+      "flickr_nsid": "user.@nsid"
+    }
+  },
   {"name": "Wattpad", "category": "manual", "section": "account", "check": "manual", "url": "https://www.wattpad.com/"},
   {"name": "Imgur", "category": "manual", "section": "account", "check": "manual", "url": "https://imgur.com/"},
   {"name": "Discord", "category": "manual", "section": "account", "check": "manual", "url": "https://discord.com/"},

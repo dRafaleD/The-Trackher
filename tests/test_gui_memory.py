@@ -99,6 +99,7 @@ class GuiMemoryTests(unittest.TestCase):
                 "found": False,
                 "status": "unknown",
                 "detail": "",
+                "unknown_cause": "bot_blocked",
             }
         ]
 
@@ -107,7 +108,12 @@ class GuiMemoryTests(unittest.TestCase):
 
         printed = [args[0] for args, _kwargs in app.print_to_terminal.call_args_list]
         self.assertIn("  [-] No verified username matches were found.", printed)
-        self.assertTrue(any("Could not verify 1 platforms: Reddit" in line for line in printed))
+        self.assertTrue(
+            any(
+                "Could not verify 1 platforms (bot blocked 1): Reddit" in line
+                for line in printed
+            )
+        )
         self.assertTrue(any("Digital Footprint Risk Score" in line for line in printed))
         self.assertTrue(any("SCAN DIFF" in line for line in printed))
         app.post_ui.assert_called_once_with(app.btn_user.configure, state="normal")
@@ -175,6 +181,12 @@ class GuiMemoryTests(unittest.TestCase):
         results = {
             "accounts": [
                 {"service": "GitHub", "found": False, "status": "UNKNOWN", "detail": ""},
+                {
+                    "service": "Flickr",
+                    "found": False,
+                    "status": "NOT_CONFIGURED",
+                    "detail": "FLICKR_API_KEY not configured",
+                },
                 {"service": "Netflix", "found": False, "status": "MANUAL", "detail": ""},
             ],
             "breaches": [
@@ -188,7 +200,7 @@ class GuiMemoryTests(unittest.TestCase):
         printed = [args[0] for args, _kwargs in app.print_to_terminal.call_args_list]
         self.assertIn("    0 verified accounts discovered automatically.", printed)
         self.assertTrue(any("does not mean the email has no accounts" in line for line in printed))
-        self.assertTrue(any("Could not verify 1 services: GitHub" in line for line in printed))
+        self.assertTrue(any("Could not verify 2 services: GitHub, Flickr" in line for line in printed))
         self.assertTrue(any("1 services require manual review." in line for line in printed))
         self.assertTrue(any("Sample: Netflix" in line for line in printed))
         self.assertTrue(any("Have I Been Pwned: NOT CONFIGURED" in line for line in printed))

@@ -33,6 +33,7 @@ class DetectorRegistryTests(unittest.TestCase):
         self.assertIn("html", USERNAME_DETECTORS.names())
         self.assertIn("content", USERNAME_DETECTORS.names())
         self.assertIn("json", USERNAME_DETECTORS.names())
+        self.assertIn("graphql", USERNAME_DETECTORS.names())
 
 
 class NormalizationTests(unittest.TestCase):

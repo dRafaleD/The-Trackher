@@ -75,6 +75,23 @@ class UsernameDetectionTests(unittest.TestCase):
 
         self.assertFalse(result["found"])
         self.assertEqual(result["status"], "unknown")
+        self.assertEqual(result["unknown_cause"], "bot_blocked")
+
+    def test_plain_forbidden_response_has_forbidden_cause(self):
+        result = self.run_check(
+            lambda request: httpx.Response(403, text="Forbidden")
+        )
+
+        self.assertEqual(result["status"], "unknown")
+        self.assertEqual(result["unknown_cause"], "forbidden")
+
+    def test_rate_limit_response_has_rate_limited_cause(self):
+        result = self.run_check(
+            lambda request: httpx.Response(429, text="Too many requests")
+        )
+
+        self.assertEqual(result["status"], "unknown")
+        self.assertEqual(result["unknown_cause"], "rate_limited")
 
     def test_malformed_platform_configuration_is_isolated(self):
         result = self.run_check(
@@ -99,6 +116,7 @@ class UsernameDetectionTests(unittest.TestCase):
         self.assertFalse(result["found"])
         self.assertEqual(result["status"], "unknown")
         self.assertIn("Desteklenmeyen detector tipi", result["detail"])
+        self.assertEqual(result["unknown_cause"], "unsupported_detector")
 
     def test_successful_bot_challenge_page_is_unknown(self):
         result = self.run_check(
@@ -110,6 +128,60 @@ class UsernameDetectionTests(unittest.TestCase):
 
         self.assertFalse(result["found"])
         self.assertEqual(result["status"], "unknown")
+        self.assertEqual(result["unknown_cause"], "bot_blocked")
+
+    def test_title_only_username_is_not_enough_for_found(self):
+        result = self.run_check(
+            lambda request: httpx.Response(
+                200,
+                text="<html><title>missing_user_123 profile</title><body>Loading</body></html>",
+            )
+        )
+
+        self.assertFalse(result["found"])
+        self.assertEqual(result["status"], "unknown")
+        self.assertEqual(result["unknown_cause"], "parser_mismatch")
+
+    def test_platform_can_disable_generic_html_found(self):
+        result = self.run_check(
+            lambda request: httpx.Response(
+                200,
+                text="<html><body><h1>missing_user_123</h1></body></html>",
+            ),
+            platform={
+                "name": "Echoing Search Page",
+                "url": "https://example.test/{}",
+                "disable_html_found": True,
+            },
+        )
+
+        self.assertFalse(result["found"])
+        self.assertEqual(result["status"], "unknown")
+        self.assertEqual(result["unknown_cause"], "parser_mismatch")
+
+    def test_not_found_redirect_marker_fixture(self):
+        def handler(_request: httpx.Request) -> httpx.Response:
+            request = httpx.Request("GET", "https://giphy.test/explore/missing_user_123")
+            redirect = httpx.Response(301, request=httpx.Request("GET", "https://giphy.test/missing_user_123"))
+            return httpx.Response(
+                200,
+                request=request,
+                history=[redirect],
+                text="<html><title>missing_user_123 GIFs</title><body>missing_user_123</body></html>",
+            )
+
+        result = self.run_check(
+            handler,
+            platform={
+                "name": "Giphy Example",
+                "url": "https://giphy.test/explore/{}",
+                "not_found_url_contains": ["giphy.test/explore/"],
+            },
+        )
+
+        self.assertFalse(result["found"])
+        self.assertEqual(result["status"], "not_found")
+        self.assertEqual(result["diagnostic_cause"], "redirect_changed")
 
     def test_json_probe_requires_exact_username(self):
         platform = {
@@ -133,6 +205,111 @@ class UsernameDetectionTests(unittest.TestCase):
         self.assertEqual(found["status"], "found")
         self.assertEqual(missing["status"], "not_found")
         self.assertEqual(found["public_metadata"]["username"], "missing_user_123")
+        self.assertEqual(missing["diagnostic_cause"], "soft_404")
+
+    def test_json_probe_parser_mismatch_has_cause(self):
+        platform = {
+            "name": "JSON Example",
+            "url": "https://example.test/users/{}",
+            "probe_url": "https://api.example.test/users/{}",
+            "check": "json",
+            "json_path": "user.username",
+        }
+        result = self.run_check(
+            lambda request: httpx.Response(200, text="not-json"),
+            platform,
+        )
+
+        self.assertEqual(result["status"], "unknown")
+        self.assertEqual(result["unknown_cause"], "parser_mismatch")
+
+    def test_json_list_supports_root_array(self):
+        platform = {
+            "name": "GitLab Example",
+            "url": "https://example.test/users/{}",
+            "probe_url": "https://api.example.test/users?username={}",
+            "check": "json_list",
+            "json_list_path": "",
+            "json_path": "username",
+        }
+        found = self.run_check(
+            lambda request: httpx.Response(200, json=[{"username": "missing_user_123"}]),
+            platform,
+        )
+        missing = self.run_check(
+            lambda request: httpx.Response(200, json=[]),
+            platform,
+        )
+
+        self.assertEqual(found["status"], "found")
+        self.assertEqual(missing["status"], "not_found")
+
+    def test_raw_not_found_marker_can_resolve_soft_404(self):
+        result = self.run_check(
+            lambda request: httpx.Response(
+                200,
+                text='<html><title></title><script>{"message":"User not found."}</script></html>',
+            ),
+            platform={
+                "name": "Pinterest Example",
+                "url": "https://example.test/{}",
+                "raw_not_found_markers": ["User not found."],
+            },
+        )
+
+        self.assertEqual(result["status"], "not_found")
+        self.assertEqual(result["diagnostic_cause"], "soft_404")
+
+    def test_raw_found_marker_can_confirm_profile(self):
+        result = self.run_check(
+            lambda request: httpx.Response(
+                200,
+                text='<html><head><meta property="og:url" content="https://example.test/users/missing_user_123"></head></html>',
+            ),
+            platform={
+                "name": "Facebook Example",
+                "url": "https://example.test/users/{}",
+                "raw_found_markers": ['content="https://example.test/users/{username}"'],
+            },
+        )
+
+        self.assertEqual(result["status"], "found")
+        self.assertTrue(result["found"])
+
+    def test_graphql_detector_supports_existing_and_missing_user(self):
+        platform = {
+            "name": "AniList Example",
+            "url": "https://example.test/users/{}",
+            "probe_url": "https://graphql.example.test",
+            "check": "graphql",
+            "accept": "application/json",
+            "expected_status": [404],
+            "query_body": {
+                "query": "query ($name: String) { User(name: $name) { name } }",
+                "variables": {"name": "{username}"},
+            },
+            "json_path": "data.User.name",
+        }
+
+        async def execute() -> tuple[dict, dict]:
+            captured = []
+
+            def handler(request: httpx.Request) -> httpx.Response:
+                captured.append(request.read().decode("utf-8"))
+                if "missing_user_123" in captured[-1]:
+                    return httpx.Response(200, json={"data": {"User": {"name": "missing_user_123"}}})
+                return httpx.Response(404, json={"errors": [{"message": "Not Found."}], "data": {"User": None}})
+
+            transport = httpx.MockTransport(handler)
+            async with httpx.AsyncClient(transport=transport) as client:
+                found = await check_single_username("missing_user_123", platform, client)
+                missing = await check_single_username("absent_user_404", platform, client)
+            return found, missing
+
+        found, missing = asyncio.run(execute())
+
+        self.assertEqual(found["status"], "found")
+        self.assertEqual(missing["status"], "not_found")
 
     def test_json_probe_can_extract_public_metadata(self):
         platform = {
@@ -238,14 +415,22 @@ class UsernameReportTests(unittest.TestCase):
                 "url": "https://example.test/test-user",
                 "found": False,
                 "status": "unknown",
+                "unknown_cause": "bot_blocked",
             }
         ]
 
         with patch("utils.display.console.print") as console_print:
             print_username_results("test-user", results)
 
-        summary = console_print.call_args_list[-1].args[0]
+        rendered = [
+            call.args[0]
+            for call in console_print.call_args_list
+            if call.args and isinstance(call.args[0], str)
+        ]
+        summary = next(text for text in rendered if "sonuç doğrulanamadı" in text)
         self.assertIn("1 sonuç doğrulanamadı", summary)
+        breakdown = next(text for text in rendered if "Doğrulanamayan nedenler:" in text)
+        self.assertIn("bot blocked 1", breakdown)
 
     def test_unknown_result_is_not_rendered_as_not_found(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -260,6 +445,7 @@ class UsernameReportTests(unittest.TestCase):
                                 "url": "https://example.test/test-user",
                                 "found": False,
                                 "status": "unknown",
+                                "unknown_cause": "bot_blocked",
                             }
                         ],
                     }
@@ -270,6 +456,7 @@ class UsernameReportTests(unittest.TestCase):
 
         self.assertIn("Doğrulanamadı", report)
         self.assertIn('class="unknown"', report)
+        self.assertIn("bot blocked", report)
 
     def test_unreliable_platform_warning_is_rendered_in_html_report(self):
         with tempfile.TemporaryDirectory() as temp_dir:

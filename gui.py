@@ -29,6 +29,7 @@ from osint.username_checker import USERNAME_PLATFORMS, check_username_async
 from utils.app_logging import configure_logging, get_logger, safe_log
 from utils.app_paths import resource_path
 from utils.correlation import build_identity_correlation
+from utils.display import format_username_unknown_breakdown
 from utils.history import clear_scan_history, save_and_diff_scan
 from utils.helpers import expand_path, format_size, is_valid_email, is_valid_username_query
 from utils.risk import compute_risk
@@ -513,7 +514,7 @@ class TrackherApp(ctk.CTk):
             manual = [result for result in accounts if result.get("status") == "MANUAL"]
             unknown = [
                 result for result in accounts
-                if result.get("status") in {"UNKNOWN", "ERROR"}
+                if result.get("status") in {"UNKNOWN", "ERROR", "NOT_CONFIGURED"}
             ]
 
             self.print_to_terminal("  Verified Accounts")
@@ -678,8 +679,10 @@ class TrackherApp(ctk.CTk):
 
             if unknown:
                 sample = _format_result_sample(unknown, "platform")
+                breakdown = format_username_unknown_breakdown(unknown)
                 self.print_to_terminal(
                     f"  [?] Could not verify {unknown_count} platforms"
+                    f"{' (' + breakdown + ')' if breakdown else ''}"
                     f"{': ' + sample if sample else '.'}"
                 )
 

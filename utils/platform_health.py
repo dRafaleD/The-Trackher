@@ -177,7 +177,7 @@ def _schema_health_email_account(platform_def: dict[str, Any]) -> dict[str, Any]
         issues.append(_issue("Missing required field: url"))
     if ACCOUNT_DETECTORS.get(detector) is None:
         issues.append(_issue(f"Unsupported detector type: {detector}"))
-    if detector in {"heuristic", "public_profile_email"} and not str(platform_def.get("probe_url", "")).strip():
+    if detector in {"heuristic", "public_profile_email", "documented_email_lookup"} and not str(platform_def.get("probe_url", "")).strip():
         issues.append(_issue("Missing required field: probe_url"))
     if detector == "public_profile_email":
         if not str(platform_def.get("profile_email_field", "")).strip():
@@ -187,6 +187,11 @@ def _schema_health_email_account(platform_def: dict[str, Any]) -> dict[str, Any]
             or str(platform_def.get("profile_url_template", "")).strip()
         ):
             issues.append(_issue("Missing required field: profile_url_field or profile_url_template"))
+    if detector == "documented_email_lookup":
+        if not str(platform_def.get("success_path", "")).strip():
+            issues.append(_issue("Missing required field: success_path"))
+        if not str(platform_def.get("api_key_env", "")).strip():
+            issues.append(_issue("Missing required field: api_key_env"))
 
     return _offline_result(
         scope="email_account",
@@ -244,7 +249,7 @@ def _schema_health_username(platform_def: dict[str, Any]) -> dict[str, Any]:
     if detector == "json" and not str(platform_def.get("json_path", "")).strip():
         issues.append(_issue("Missing required field: json_path"))
     if detector == "json_list":
-        if not str(platform_def.get("json_list_path", "")).strip():
+        if "json_list_path" not in platform_def:
             issues.append(_issue("Missing required field: json_list_path"))
         if not str(platform_def.get("json_path", "")).strip():
             issues.append(_issue("Missing required field: json_path"))
@@ -267,7 +272,12 @@ def _eligible_for_live_probe(entry: dict[str, Any], platform_def: dict[str, Any]
 
     scope = entry["scope"]
     detector = entry["detector"]
-    if scope == "email_account" and detector in {"gravatar", "heuristic", "public_profile_email"}:
+    if scope == "email_account" and detector in {"gravatar", "heuristic", "public_profile_email", "documented_email_lookup"}:
+        if detector == "documented_email_lookup" and not os.environ.get(
+            str(platform_def.get("api_key_env", "")).strip(),
+            "",
+        ).strip():
+            return False, f"{platform_def.get('api_key_env', 'API key')} is not configured"
         return True, "Safe passive detector supports a live probe"
     if scope == "email_breach" and detector == "hibp":
         if not os.environ.get("HIBP_API_KEY", "").strip():
@@ -318,10 +328,7 @@ async def _live_probe_email_account(
     if detector == "gravatar":
         import hashlib
 
-        digest = hashlib.md5(
-            PLACEHOLDER_EMAIL.casefold().encode("utf-8"),
-            usedforsecurity=False,
-        ).hexdigest()
+        digest = hashlib.sha256(PLACEHOLDER_EMAIL.casefold().encode("utf-8")).hexdigest()
         response = await client.get(
             f"https://www.gravatar.com/avatar/{digest}",
             params={"d": "404", "s": "1"},
@@ -353,6 +360,8 @@ async def _live_probe_email_account(
             if isinstance(payload, (dict, list)):
                 return {"state": HEALTHY, "detail": f"HTTP {response.status_code}"}
             return {"state": UNKNOWN, "detail": "Live probe JSON shape was unexpected"}
+        if detector == "documented_email_lookup":
+            return {"state": HEALTHY, "detail": f"HTTP {response.status_code}"}
         return {"state": HEALTHY, "detail": f"HTTP {response.status_code}"}
     return {"state": UNKNOWN, "detail": f"Unexpected HTTP {response.status_code}"}
 

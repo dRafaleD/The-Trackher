@@ -73,6 +73,9 @@
     "expected_status": [
       404
     ],
+    "raw_not_found_markers": [
+      "User not found."
+    ],
     "check": "404"
   },
   {
@@ -121,6 +124,12 @@
     "error_type": "message",
     "reliability": "unreliable",
     "error_msg": "negative_marker",
+    "raw_found_markers": [
+      "content=\"https://www.facebook.com/{username}\""
+    ],
+    "raw_not_found_markers": [
+      "<title>Facebook</title>"
+    ],
     "check": "content"
   },
   {
@@ -220,7 +229,14 @@
     "url_pattern": "https://www.twitch.tv/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "raw_found_markers": [
+      "\"@type\":\"Person\"",
+      "content=\"https://www.twitch.tv/{username}\""
+    ],
+    "raw_not_found_markers": [
+      "<title>Twitch</title>"
+    ]
   },
   {
     "name": "SoundCloud",
@@ -303,9 +319,22 @@
   {
     "name": "GitLab",
     "url_pattern": "https://gitlab.com/{username}",
-    "error_type": "message",
+    "error_type": "status_code",
     "reliability": "unreliable",
-    "error_msg": "negative_marker",
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://gitlab.com/api/v4/users?username={username}",
+    "check": "json_list",
+    "json_list_path": "",
+    "json_path": "username",
+    "metadata_fields": {
+      "username": "username",
+      "display_name": "name",
+      "avatar_url": "avatar_url",
+      "profile_url": "web_url"
+    },
     "actions": [
       {
         "type": "Profile Page",
@@ -401,9 +430,21 @@
   {
     "name": "DockerHub",
     "url_pattern": "https://hub.docker.com/u/{username}",
-    "error_type": "message",
+    "error_type": "status_code",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://hub.docker.com/v2/users/{username}/",
+    "check": "json",
+    "json_path": "username",
+    "metadata_fields": {
+      "username": "username",
+      "display_name": "full_name",
+      "avatar_url": "gravatar_url",
+      "profile_url": "profile_url"
+    }
   },
   {
     "name": "NPM",
@@ -478,9 +519,21 @@
   {
     "name": "Dev.to",
     "url_pattern": "https://dev.to/{username}",
-    "error_type": "message",
+    "error_type": "status_code",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "expected_status": [
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://dev.to/api/users/by_username?url={username}",
+    "check": "json",
+    "json_path": "username",
+    "metadata_fields": {
+      "username": "username",
+      "display_name": "name",
+      "website": "website_url",
+      "avatar_url": "profile_image"
+    }
   },
   {
     "name": "Tumblr",
@@ -576,9 +629,24 @@
   {
     "name": "AniList",
     "url_pattern": "https://anilist.co/user/{username}",
-    "error_type": "message",
+    "error_type": "status_code",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "expected_status": [
+      404
+    ],
+    "probe_url_pattern": "https://graphql.anilist.co",
+    "check": "graphql",
+    "accept": "application/json",
+    "query_body": {
+      "query": "query ($name: String) { User(name: $name) { name } }",
+      "variables": {
+        "name": "{username}"
+      }
+    },
+    "json_path": "data.User.name",
+    "metadata_fields": {
+      "username": "data.User.name"
+    }
   },
   {
     "name": "Etsy",
@@ -634,7 +702,10 @@
     "url_pattern": "https://www.freelancer.com/u/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "not_found_url_contains": [
+      "/signup?next=%2Fu%2F"
+    ]
   },
   {
     "name": "TripAdvisor",
@@ -705,7 +776,10 @@
     "url_pattern": "https://giphy.com/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "not_found_url_contains": [
+      "giphy.com/explore/"
+    ]
   },
   {
     "name": "ForumTR",
@@ -779,9 +853,22 @@
   {
     "name": "Codeforces",
     "url_pattern": "https://codeforces.com/profile/{username}",
-    "error_type": "message",
+    "error_type": "status_code",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "expected_status": [
+      400,
+      404,
+      410
+    ],
+    "probe_url_pattern": "https://codeforces.com/api/user.info?handles={username}",
+    "check": "json_list",
+    "json_list_path": "result",
+    "json_path": "handle",
+    "metadata_fields": {
+      "username": "handle",
+      "display_name": "firstName",
+      "avatar_url": "titlePhoto"
+    }
   },
   {
     "name": "TopCoder",
@@ -984,7 +1071,8 @@
     "url_pattern": "https://valorant.op.gg/profile/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "disable_html_found": true
   },
   {
     "name": "PUBG (OP.GG)",
@@ -1131,14 +1219,27 @@
     "url_pattern": "https://odysee.com/@{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "probe_url_pattern": "https://odysee.com/$/oembed?url=https%3A%2F%2Fodysee.com%2F%40{username}&format=json",
+    "raw_found_markers": [
+      "The URL is not associated with a video claim."
+    ],
+    "raw_not_found_markers": [
+      "The URL is invalid or is not associated with any claim."
+    ]
   },
   {
     "name": "Bitchute",
     "url_pattern": "https://www.bitchute.com/channel/{username}/",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "raw_found_markers": [
+      "<meta name=\"x-stage\" content=\"channel\">"
+    ],
+    "raw_not_found_markers": [
+      "<meta name=\"x-stage\" content=\"default\">"
+    ]
   },
   {
     "name": "Trovo",

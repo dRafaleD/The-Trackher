@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import platform
 import sys
+from collections import Counter
 
 from rich import box
 from rich.console import Console
@@ -35,6 +36,28 @@ BANNER = r"""
  /_____/_/\__, /_/\__/\__,_/_/  /_/  |_|\__, /\__,_/_/|_/_/\__,_/_/_/
          /____/                        /____/
 """
+
+USERNAME_UNKNOWN_CAUSE_LABELS = {
+    "bot_blocked": "bot blocked",
+    "parser_mismatch": "parser mismatch",
+    "network_error": "network error",
+    "forbidden": "forbidden",
+    "rate_limited": "rate limited",
+    "timeout": "timeout",
+    "unexpected_status": "unexpected response",
+    "unknown": "unknown",
+}
+
+USERNAME_UNKNOWN_CAUSE_ORDER = (
+    "bot_blocked",
+    "parser_mismatch",
+    "network_error",
+    "forbidden",
+    "rate_limited",
+    "timeout",
+    "unexpected_status",
+    "unknown",
+)
 
 
 def show_banner() -> None:
@@ -312,6 +335,39 @@ def print_dry_run_table(items: list[dict]) -> None:
     )
 
 
+def username_unknown_cause_label(cause: object) -> str:
+    key = str(cause or "unknown").strip() or "unknown"
+    return USERNAME_UNKNOWN_CAUSE_LABELS.get(key, key.replace("_", " "))
+
+
+def username_unknown_cause_counts(results: list[dict]) -> Counter[str]:
+    counts: Counter[str] = Counter()
+    for result in results:
+        if result.get("status") != "unknown":
+            continue
+        cause = str(result.get("unknown_cause", "unknown")).strip() or "unknown"
+        counts[cause] += 1
+    return counts
+
+
+def format_username_unknown_breakdown(results: list[dict]) -> str:
+    counts = username_unknown_cause_counts(results)
+    if not counts:
+        return ""
+
+    parts: list[str] = []
+    seen: set[str] = set()
+    for cause in USERNAME_UNKNOWN_CAUSE_ORDER:
+        if counts.get(cause):
+            parts.append(f"{username_unknown_cause_label(cause)} {counts[cause]}")
+            seen.add(cause)
+    for cause in sorted(counts):
+        if cause in seen:
+            continue
+        parts.append(f"{username_unknown_cause_label(cause)} {counts[cause]}")
+    return ", ".join(parts)
+
+
 def _email_accounts(results: dict | list) -> list[dict]:
     if isinstance(results, dict):
         return list(results.get("accounts", []))
@@ -336,7 +392,7 @@ def print_email_results(
     possible = [item for item in accounts if item.get("status") == "POSSIBLE"]
     not_found = [item for item in accounts if item.get("status") == "NOT_FOUND"]
     manual = [item for item in accounts if item.get("status") == "MANUAL"]
-    unknown = [item for item in accounts if item.get("status") in {"UNKNOWN", "ERROR"}]
+    unknown = [item for item in accounts if item.get("status") in {"UNKNOWN", "ERROR", "NOT_CONFIGURED"}]
 
     console.print(f"[bold cyan]E-posta OSINT - {email}[/bold cyan]\n")
 
@@ -434,11 +490,14 @@ def print_username_results(username: str, results: list[dict]) -> None:
         table.add_row(result["platform"], status, result.get("url", ""))
 
     console.print(table)
+    breakdown = format_username_unknown_breakdown(results)
     console.print(
         f"\n  [bold magenta]Toplam:[/bold magenta] "
         f"[bold white]{found_count}[/bold white] platformda kayıt tespit edildi "
         f"([dim]{len(results)} servis tarandı, {unknown_count} sonuç doğrulanamadı[/dim]).\n"
     )
+    if breakdown:
+        console.print(f"  [dim]Doğrulanamayan nedenler: {breakdown}[/dim]\n")
 
 
 def print_dork_results(target: str, dorks: list[dict]) -> None:
