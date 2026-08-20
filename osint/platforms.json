@@ -1509,6 +1509,857 @@
     "json_path": "user.username"
   },
   {
+    "name": "Academia.edu",
+    "url_pattern": "https://independent.academia.edu/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Apple Developer Forums",
+    "url_pattern": "https://developer.apple.com/forums/profile/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Asciinema",
+    "url_pattern": "https://asciinema.org/~{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "AtCoder",
+    "url_pattern": "https://atcoder.jp/users/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "AudioJungle",
+    "url_pattern": "https://audiojungle.net/user/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Bugcrowd",
+    "url_pattern": "https://bugcrowd.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "BuzzFeed",
+    "url_pattern": "https://buzzfeed.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Carrd",
+    "url_pattern": "https://{username}.carrd.co/",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Cash App",
+    "url_pattern": "https://cash.app/${username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "CGTrader",
+    "url_pattern": "https://www.cgtrader.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Clubhouse",
+    "url_pattern": "https://www.clubhouse.com/@{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Codeberg",
+    "url_pattern": "https://codeberg.org/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Coderwall",
+    "url_pattern": "https://coderwall.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Codewars",
+    "url_pattern": "https://www.codewars.com/users/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Credly",
+    "url_pattern": "https://www.credly.com/users/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Crevado",
+    "url_pattern": "https://{username}.crevado.com/",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Crowdin",
+    "url_pattern": "https://crowdin.com/profile/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "CSSBattle",
+    "url_pattern": "https://cssbattle.dev/player/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "CurseForge",
+    "url_pattern": "https://www.curseforge.com/members/{username}/projects",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Disqus",
+    "url_pattern": "https://disqus.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Exposure",
+    "url_pattern": "https://{username}.exposure.co/",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Flightradar24",
+    "url_pattern": "https://my.flightradar24.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "freeCodeCamp",
+    "url_pattern": "https://www.freecodecamp.org/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Freesound",
+    "url_pattern": "https://freesound.org/people/{username}/",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Geocaching",
+    "url_pattern": "https://www.geocaching.com/p/default.aspx?u={username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Hackaday",
+    "url_pattern": "https://hackaday.io/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "HackerEarth",
+    "url_pattern": "https://hackerearth.com/@{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "HackMD",
+    "url_pattern": "https://hackmd.io/@{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Hackster.io",
+    "url_pattern": "https://www.hackster.io/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Hack The Box Forum",
+    "url_pattern": "https://forum.hackthebox.com/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "HubPages",
+    "url_pattern": "https://hubpages.com/@{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Hugging Face",
+    "url_pattern": "https://huggingface.co/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "IFTTT",
+    "url_pattern": "https://www.ifttt.com/p/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Instructables",
+    "url_pattern": "https://www.instructables.com/member/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Intigriti",
+    "url_pattern": "https://app.intigriti.com/profile/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Issuu",
+    "url_pattern": "https://issuu.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Jimdo",
+    "url_pattern": "https://{username}.jimdosite.com/",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Keybase",
+    "url_pattern": "https://keybase.io/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "LottieFiles",
+    "url_pattern": "https://lottiefiles.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Monkeytype",
+    "url_pattern": "https://monkeytype.com/profile/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "MuseScore",
+    "url_pattern": "https://musescore.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "MyMiniFactory",
+    "url_pattern": "https://www.myminifactory.com/users/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Nightbot",
+    "url_pattern": "https://nightbot.tv/t/{username}/commands",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "NotABug.org",
+    "url_pattern": "https://notabug.org/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Open Collective",
+    "url_pattern": "https://opencollective.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "OpenGameArt",
+    "url_pattern": "https://opengameart.org/users/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "OpenStreetMap",
+    "url_pattern": "https://www.openstreetmap.org/user/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "PentesterLab",
+    "url_pattern": "https://pentesterlab.com/profile/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Pinkbike",
+    "url_pattern": "https://www.pinkbike.com/u/{username}/",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Platzi",
+    "url_pattern": "https://platzi.com/p/{username}/",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Playstrategy",
+    "url_pattern": "https://playstrategy.org/@/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Rarible",
+    "url_pattern": "https://rarible.com/marketplace/api/v4/urls/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "RubyGems",
+    "url_pattern": "https://rubygems.org/profiles/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Speaker Deck",
+    "url_pattern": "https://speakerdeck.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Sporcle",
+    "url_pattern": "https://www.sporcle.com/user/{username}/people",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "2Dimensions",
+    "url_pattern": "https://2dimensions.com/a/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "7 Cups",
+    "url_pattern": "https://www.7cups.com/@{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Airbit",
+    "url_pattern": "https://airbit.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Airliners.net",
+    "url_pattern": "https://www.airliners.net/user/{username}/profile/photos",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Aparat",
+    "url_pattern": "https://www.aparat.com/{username}/",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Ask Fedora",
+    "url_pattern": "https://ask.fedoraproject.org/u/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "BiggerPockets",
+    "url_pattern": "https://www.biggerpockets.com/users/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "BookCrossing",
+    "url_pattern": "https://www.bookcrossing.com/mybookshelf/{username}/",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Caddy Community",
+    "url_pattern": "https://caddy.community/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Car Talk Community",
+    "url_pattern": "https://community.cartalk.com/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Cfx.re Forum",
+    "url_pattern": "https://forum.cfx.re/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Chaos.social",
+    "url_pattern": "https://chaos.social/@{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Chollometro",
+    "url_pattern": "https://www.chollometro.com/profile/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Clapper",
+    "url_pattern": "https://clapperapp.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Cloudflare Community",
+    "url_pattern": "https://community.cloudflare.com/u/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "CNET",
+    "url_pattern": "https://www.cnet.com/profiles/{username}/",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "COLOURlovers",
+    "url_pattern": "https://www.colourlovers.com/lover/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Couchsurfing",
+    "url_pattern": "https://www.couchsurfing.com/people/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "CTAN",
+    "url_pattern": "https://ctan.org/author/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "CyberDefenders",
+    "url_pattern": "https://cyberdefenders.org/p/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "DCInside",
+    "url_pattern": "https://gallog.dcinside.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Drive2",
+    "url_pattern": "https://www.drive2.ru/users/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Envato Forum",
+    "url_pattern": "https://forums.envato.com/u/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "F3.cool",
+    "url_pattern": "https://f3.cool/{username}/",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "FameSwap",
+    "url_pattern": "https://fameswap.com/user/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Fixya",
+    "url_pattern": "https://www.fixya.com/users/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Fosstodon",
+    "url_pattern": "https://fosstodon.org/@{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Genius Artists",
+    "url_pattern": "https://genius.com/artists/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Genius Users",
+    "url_pattern": "https://genius.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "GitBook",
+    "url_pattern": "https://{username}.gitbook.io/",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Gradle",
+    "url_pattern": "https://plugins.gradle.org/u/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Habr",
+    "url_pattern": "https://habr.com/ru/users/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "HotUKdeals",
+    "url_pattern": "https://www.hotukdeals.com/profile/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Icons8 Community",
+    "url_pattern": "https://community.icons8.com/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Instapaper",
+    "url_pattern": "https://www.instapaper.com/p/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Ionic Forum",
+    "url_pattern": "https://forum.ionicframework.com/u/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Jellyfin Weblate",
+    "url_pattern": "https://translate.jellyfin.org/user/{username}/",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Jeuxvideo.com",
+    "url_pattern": "https://www.jeuxvideo.com/profil/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Joplin Forum",
+    "url_pattern": "https://discourse.joplinapp.org/u/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Kaskus",
+    "url_pattern": "https://www.kaskus.co.id/@{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Laracasts",
+    "url_pattern": "https://laracasts.com/@{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Leasehackr",
+    "url_pattern": "https://forum.leasehackr.com/u/{username}/summary/",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "LinuxFR.org",
+    "url_pattern": "https://linuxfr.org/users/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Mamot",
+    "url_pattern": "https://mamot.fr/@{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "n8n Community",
+    "url_pattern": "https://community.n8n.io/u/{username}/summary",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Nairaland",
+    "url_pattern": "https://www.nairaland.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Naver Blog",
+    "url_pattern": "https://blog.naver.com/{username}",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Needrom",
+    "url_pattern": "https://www.needrom.com/author/{username}/",
+    "error_type": "status_code",
+    "reliability": "unreliable",
+    "expected_status": [404],
+    "check": "404"
+  },
+  {
+    "name": "Onedio",
+    "url_pattern": "https://onedio.com/profil/{username}",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [404],
+    "check": "404",
+    "raw_not_found_markers": ["Kullanıcı Bulunamadı"]
+  },
+  {
+    "name": "TeknoSeyir",
+    "url_pattern": "https://teknoseyir.com/u/{username}",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [404],
+    "check": "404",
+    "raw_not_found_markers": ["Sayfa bulunamadı"]
+  },
+  {
+    "name": "WM Aracı",
+    "url_pattern": "https://wmaraci.com/{username}",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [404],
+    "check": "404",
+    "not_found_url_contains": ["wmaraci.com/404"]
+  },
+  {
     "name": "Kayıp Rıhtım Forum",
     "url_pattern": "https://forum.kayiprihtim.com/u/{username}/summary",
     "error_type": "status_code",

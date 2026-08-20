@@ -103,7 +103,7 @@ class GuiMemoryTests(unittest.TestCase):
             }
         ]
 
-        with patch("gui.asyncio.run", side_effect=self.fake_asyncio_run(results)):
+        with patch("gui.tabs.osint.asyncio.run", side_effect=self.fake_asyncio_run(results)):
             app.do_username_osint("reddit-user")
 
         printed = [args[0] for args, _kwargs in app.print_to_terminal.call_args_list]
@@ -124,7 +124,7 @@ class GuiMemoryTests(unittest.TestCase):
         app.post_ui = Mock()
         app.btn_user = Mock()
 
-        with patch("gui.asyncio.run", side_effect=self.fake_asyncio_run([])):
+        with patch("gui.tabs.osint.asyncio.run", side_effect=self.fake_asyncio_run([])):
             app.do_username_osint("empty-user")
 
         app.print_to_terminal.assert_called_once_with(
@@ -164,7 +164,7 @@ class GuiMemoryTests(unittest.TestCase):
             }
         ]
 
-        with patch("gui.asyncio.run", side_effect=self.fake_asyncio_run(results)):
+        with patch("gui.tabs.osint.asyncio.run", side_effect=self.fake_asyncio_run(results)):
             app.do_username_osint("octocat")
 
         printed = [args[0] for args, _kwargs in app.print_to_terminal.call_args_list]
@@ -194,7 +194,7 @@ class GuiMemoryTests(unittest.TestCase):
             ],
         }
 
-        with patch("gui.asyncio.run", side_effect=self.fake_asyncio_run(results)):
+        with patch("gui.tabs.osint.asyncio.run", side_effect=self.fake_asyncio_run(results)):
             app.do_email_osint("new@example.test")
 
         printed = [args[0] for args, _kwargs in app.print_to_terminal.call_args_list]
@@ -215,7 +215,7 @@ class GuiMemoryTests(unittest.TestCase):
         app.post_ui = Mock()
         app.btn_email = Mock()
 
-        with patch("gui.asyncio.run", side_effect=self.fake_asyncio_run([])):
+        with patch("gui.tabs.osint.asyncio.run", side_effect=self.fake_asyncio_run([])):
             app.do_email_osint("empty@example.test")
 
         app.print_to_terminal.assert_called_once_with(
@@ -238,7 +238,7 @@ class GuiMemoryTests(unittest.TestCase):
             captured["profile"] = profile
             return {"accounts": [], "breaches": []}
 
-        with patch("gui.check_email", side_effect=fake_check_email):
+        with patch("gui.tabs.osint.check_email", side_effect=fake_check_email):
             app.do_email_osint("owner@example.test", profile=app.profile_var.get())
 
         self.assertEqual(captured["profile"], "quick")
@@ -258,7 +258,7 @@ class GuiMemoryTests(unittest.TestCase):
             captured["profile"] = profile
             return []
 
-        with patch("gui.check_username_async", side_effect=fake_check_username):
+        with patch("gui.tabs.osint.check_username_async", side_effect=fake_check_username):
             app.do_username_osint("octocat", profile=app.profile_var.get())
 
         self.assertEqual(captured["profile"], "email-only")
@@ -269,7 +269,7 @@ class GuiMemoryTests(unittest.TestCase):
         app.post_ui = Mock()
 
         with patch(
-            "gui.run_platform_health_check",
+            "gui.tabs.osint.run_platform_health_check",
             return_value={
                 "counts": {"HEALTHY": 10, "DEGRADED": 2, "BROKEN": 1, "UNKNOWN": 0},
                 "items": [],

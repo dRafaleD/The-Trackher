@@ -70,7 +70,7 @@ class PlatformCatalogTests(unittest.TestCase):
         return asyncio.run(execute())
 
     def test_json_catalog_entries_have_required_fields(self):
-        self.assertEqual(len(self.raw_platforms), 197)
+        self.assertEqual(len(self.raw_platforms), 303)
         self.assertEqual(len(self.raw_platforms), len(USERNAME_PLATFORMS))
 
         allowed_error_types = {"status_code", "message", "response_url"}

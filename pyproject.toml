@@ -34,8 +34,8 @@ classifiers = [
 trackher = "main:main"
 
 [tool.setuptools]
-packages = ["assets", "footprint", "osint", "utils"]
-py-modules = ["main", "gui", "setup_context_menu"]
+packages = ["assets", "footprint", "osint", "utils", "gui", "gui.tabs", "gui.widgets"]
+py-modules = ["main", "setup_context_menu"]
 include-package-data = true
 
 [tool.setuptools.package-data]

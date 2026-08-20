@@ -183,6 +183,42 @@ class UsernameDetectionTests(unittest.TestCase):
         self.assertEqual(result["status"], "not_found")
         self.assertEqual(result["diagnostic_cause"], "redirect_changed")
 
+    def test_turkish_profile_definitions_handle_soft_404_and_redirects(self):
+        platforms = {
+            platform["name"]: platform
+            for platform in USERNAME_PLATFORMS
+            if platform["name"] in {"Onedio", "TeknoSeyir", "WM Aracı"}
+        }
+        self.assertEqual(set(platforms), {"Onedio", "TeknoSeyir", "WM Aracı"})
+
+        for name, marker in (
+            ("Onedio", "Kullanıcı Bulunamadı"),
+            ("TeknoSeyir", "Sayfa bulunamadı"),
+        ):
+            with self.subTest(platform=name, scenario="soft_404"):
+                result = self.run_check(
+                    lambda request, marker=marker: httpx.Response(
+                        200,
+                        request=request,
+                        text=f"<h1>missing_user_123</h1><p>{marker}</p>",
+                    ),
+                    platforms[name],
+                )
+                self.assertEqual(result["status"], "not_found")
+                self.assertEqual(result["diagnostic_cause"], "soft_404")
+
+        def wmaraci_redirect(request: httpx.Request) -> httpx.Response:
+            if request.url.path != "/404":
+                return httpx.Response(302, headers={"Location": "/404"})
+            return httpx.Response(
+                200,
+                text="<title>WM Aracı - Webmaster Portalı</title>",
+            )
+
+        result = self.run_check(wmaraci_redirect, platforms["WM Aracı"])
+        self.assertEqual(result["status"], "not_found")
+        self.assertEqual(result["diagnostic_cause"], "redirect_changed")
+
     def test_json_probe_requires_exact_username(self):
         platform = {
             "name": "JSON Example",

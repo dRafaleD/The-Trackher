@@ -15,7 +15,11 @@ class PackagingConfigTests(unittest.TestCase):
         self.assertIn('name = "Trackher"', text)
         self.assertIn('trackher = "main:main"', text)
         self.assertIn('version = { attr = "utils.__version__" }', text)
-        self.assertIn('packages = ["assets", "footprint", "osint", "utils"]', text)
+        self.assertIn(
+            'packages = ["assets", "footprint", "osint", "utils", "gui", "gui.tabs", "gui.widgets"]',
+            text,
+        )
+        self.assertIn('py-modules = ["main", "setup_context_menu"]', text)
         self.assertIn('assets = ["logo.jpg"]', text)
         self.assertIn('osint = ["*.json"]', text)
 
