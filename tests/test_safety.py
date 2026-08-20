@@ -106,6 +106,15 @@ class ExclusionSafetyTests(unittest.TestCase):
         self.assertTrue(is_critical_path(target))
         self.assertFalse(safe_remove(target, dry_run=True))
 
+    def test_temp_directory_descendants_are_not_critical(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            target = Path(temp_dir) / "cache" / "keep.txt"
+            target.parent.mkdir(parents=True)
+            target.write_text("data", encoding="utf-8")
+
+            self.assertFalse(is_critical_path(target))
+            self.assertTrue(safe_remove(target.parent, dry_run=True))
+
     def test_shredder_rejects_home_before_collecting_files(self):
         with patch("footprint.shredder.iter_files") as collect:
             result = shred_directory(str(Path.home()), dry_run=True)

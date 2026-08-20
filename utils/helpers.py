@@ -23,6 +23,17 @@ def is_critical_path(path: Path, *, allow_temp_root: bool = False) -> bool:
     user_home = Path.home().resolve()
     runtime_temp = Path(tempfile.gettempdir()).resolve()
     is_allowed_temp = allow_temp_root and resolved == runtime_temp
+
+    # Allow user-created children under the active temp root, but keep the temp
+    # root itself protected unless the caller explicitly opts in.
+    if not allow_temp_root and resolved != runtime_temp:
+        try:
+            resolved.relative_to(runtime_temp)
+        except ValueError:
+            pass
+        else:
+            return False
+
     protected_exact = {user_home, *user_home.parents}
     if not allow_temp_root:
         protected_exact.add(runtime_temp)
@@ -35,7 +46,7 @@ def is_critical_path(path: Path, *, allow_temp_root: bool = False) -> bool:
                 protected_trees.add(Path(value).resolve())
     else:
         protected_trees.update(
-            Path(item)
+            Path(item).resolve()
             for item in (
                 "/bin", "/boot", "/dev", "/etc", "/lib", "/lib64", "/opt",
                 "/proc", "/root", "/run", "/sbin", "/srv", "/sys", "/usr",
