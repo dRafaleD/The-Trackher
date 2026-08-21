@@ -20,13 +20,18 @@ class PackagingConfigTests(unittest.TestCase):
             text,
         )
         self.assertIn('py-modules = ["main", "setup_context_menu"]', text)
-        self.assertIn('assets = ["logo.jpg"]', text)
+        self.assertIn(
+            'assets = ["logo.jpg", "trackher-banner.png", "trackher-terminal.png"]',
+            text,
+        )
         self.assertIn('osint = ["*.json"]', text)
 
     def test_catalog_paths_exist(self):
         self.assertTrue(EMAIL_PLATFORMS_PATH.exists())
         self.assertTrue(PLATFORMS_PATH.exists())
         self.assertTrue(resource_path("assets", "logo.jpg").exists())
+        self.assertTrue(resource_path("assets", "trackher-banner.png").exists())
+        self.assertTrue(resource_path("assets", "trackher-terminal.png").exists())
 
 
 class RuntimePathTests(unittest.TestCase):

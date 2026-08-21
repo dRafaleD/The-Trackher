@@ -40,7 +40,7 @@ include-package-data = true
 
 [tool.setuptools.package-data]
 osint = ["*.json"]
-assets = ["logo.jpg"]
+assets = ["logo.jpg", "trackher-banner.png", "trackher-terminal.png"]
 
 [tool.setuptools.dynamic]
 version = { attr = "utils.__version__" }

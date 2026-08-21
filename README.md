@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="assets/logo.jpg" alt="Trackher logo" width="140">
+  <img src="assets/trackher-banner.png" alt="Trackher - Digital Footprint & Privacy Toolkit" width="920">
+</p>
+
+<p align="center">
+  <img src="assets/trackher-terminal.png" alt="Trackher terminal interface" width="760">
 </p>
 
 # Trackher
