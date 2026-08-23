@@ -4,12 +4,14 @@
     "url_pattern": "https://github.com/{username}",
     "error_type": "status_code",
     "reliability": "verified",
+    "reference_username": "octocat",
     "expected_status": [
       404,
       410
     ],
     "probe_url_pattern": "https://api.github.com/users/{username}",
     "check": "json",
+    "detector_chain": ["json", "profile_html"],
     "json_path": "login",
     "metadata_fields": {
       "username": "login",
@@ -47,6 +49,9 @@
     "error_type": "message",
     "reliability": "unreliable",
     "error_msg": "negative_marker",
+    "scan_tier": "deep",
+    "min_request_interval_seconds": 10,
+    "rate_limit_key": "twitter.com",
     "check": "content"
   },
   {
@@ -55,6 +60,9 @@
     "error_type": "message",
     "reliability": "unreliable",
     "error_msg": "negative_marker",
+    "scan_tier": "deep",
+    "min_request_interval_seconds": 10,
+    "rate_limit_key": "instagram.com",
     "check": "content"
   },
   {
@@ -63,6 +71,9 @@
     "error_type": "message",
     "reliability": "unreliable",
     "error_msg": "negative_marker",
+    "scan_tier": "deep",
+    "min_request_interval_seconds": 10,
+    "rate_limit_key": "tiktok.com",
     "check": "content"
   },
   {
@@ -82,7 +93,10 @@
     "name": "Reddit",
     "url_pattern": "https://www.reddit.com/user/{username}/",
     "error_type": "status_code",
-    "reliability": "verified",
+    "reliability": "unreliable",
+    "scan_tier": "deep",
+    "min_request_interval_seconds": 10,
+    "rate_limit_key": "reddit.com",
     "expected_status": [
       404,
       410
@@ -90,6 +104,9 @@
     "probe_url_pattern": "https://www.reddit.com/user/{username}/about.json",
     "check": "json",
     "json_path": "data.name",
+    "request_headers": {
+      "User-Agent": "windows:com.trackher.osint:1.0 (public-profile-check)"
+    },
     "metadata_fields": {
       "username": "data.name",
       "display_name": "data.subreddit.title",
@@ -119,10 +136,10 @@
     ]
   },
   {
-    "name": "Facebook",
-    "url_pattern": "https://www.facebook.com/{username}",
+   "name": "Facebook",
+   "url_pattern": "https://www.facebook.com/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker",
     "raw_found_markers": [
       "content=\"https://www.facebook.com/{username}\""
@@ -138,34 +155,51 @@
     "error_type": "message",
     "reliability": "unreliable",
     "error_msg": "negative_marker",
+    "scan_tier": "deep",
+    "min_request_interval_seconds": 10,
+    "rate_limit_key": "snapchat.com",
     "check": "content"
   },
   {
     "name": "Telegram",
     "url_pattern": "https://t.me/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "reliability": "verified",
+    "error_msg": "negative_marker",
+    "disable_html_found": true,
+    "raw_found_markers": [
+      "<title>Telegram: View @{username}</title>"
+    ],
+    "raw_not_found_markers": [
+      "<title>Telegram: Contact @{username}</title>"
+    ]
   },
   {
     "name": "VK",
     "url_pattern": "https://vk.com/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "reliability": "verified",
+    "error_msg": "negative_marker",
+    "disable_html_found": true,
+    "raw_found_markers": [
+      "<link rel=\"canonical\" href=\"https://vk.com/{username}\""
+    ]
   },
   {
     "name": "OK.ru",
     "url_pattern": "https://ok.ru/{username}",
     "error_type": "message",
     "reliability": "unreliable",
+    "scan_tier": "deep",
+    "min_request_interval_seconds": 5,
+    "rate_limit_key": "ok.ru",
     "error_msg": "negative_marker"
   },
   {
     "name": "Myspace",
     "url_pattern": "https://myspace.com/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker"
   },
   {
@@ -173,14 +207,26 @@
     "url_pattern": "https://eksisozluk.com/biri/{username}",
     "error_type": "message",
     "reliability": "unreliable",
+    "scan_tier": "deep",
+    "min_request_interval_seconds": 5,
+    "rate_limit_key": "eksisozluk.com",
     "error_msg": "negative_marker"
   },
   {
     "name": "DonanımHaber",
     "url_pattern": "https://forum.donanimhaber.com/profil/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "reliability": "verified",
+    "reference_username": "ccc231",
+    "error_msg": "empty_body",
+    "empty_body_not_found": true,
+    "disable_html_found": true,
+    "raw_found_markers": [
+      "<title>Profil: {username} | DonanımHaber Forum</title>"
+    ],
+    "request_headers": {
+      "Accept-Language": "tr-TR,tr;q=0.9"
+    }
   },
   {
     "name": "KızlarSoruyor",
@@ -208,6 +254,9 @@
     "url_pattern": "https://www.technopat.net/sosyal/uye/{username}",
     "error_type": "message",
     "reliability": "unreliable",
+    "scan_tier": "deep",
+    "min_request_interval_seconds": 5,
+    "rate_limit_key": "technopat.net",
     "error_msg": "negative_marker"
   },
   {
@@ -222,13 +271,16 @@
     "url_pattern": "https://www.youtube.com/@{username}",
     "error_type": "message",
     "reliability": "unreliable",
+    "scan_tier": "deep",
+    "min_request_interval_seconds": 10,
+    "rate_limit_key": "youtube.com",
     "error_msg": "negative_marker"
   },
   {
-    "name": "Twitch",
-    "url_pattern": "https://www.twitch.tv/{username}",
+   "name": "Twitch",
+   "url_pattern": "https://www.twitch.tv/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker",
     "raw_found_markers": [
       "\"@type\":\"Person\"",
@@ -239,17 +291,17 @@
     ]
   },
   {
-    "name": "SoundCloud",
-    "url_pattern": "https://soundcloud.com/{username}",
+  "name": "SoundCloud",
+  "url_pattern": "https://soundcloud.com/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker"
   },
   {
-    "name": "Spotify",
-    "url_pattern": "https://open.spotify.com/user/{username}",
+   "name": "Spotify",
+   "url_pattern": "https://open.spotify.com/user/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker",
     "actions": [
       {
@@ -282,11 +334,19 @@
     "error_msg": "negative_marker"
   },
   {
-    "name": "Dailymotion",
-    "url_pattern": "https://www.dailymotion.com/{username}",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+   "name": "Dailymotion",
+   "url_pattern": "https://www.dailymotion.com/{username}",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [404],
+    "probe_url_pattern": "https://api.dailymotion.com/user/{username}?fields=id,username,screenname",
+    "check": "json",
+    "json_path": "username",
+    "metadata_fields": {
+      "username": "username",
+      "display_name": "screenname",
+      "dailymotion_id": "id"
+    }
   },
   {
     "name": "Bandcamp",
@@ -299,15 +359,20 @@
     "name": "Last.fm",
     "url_pattern": "https://www.last.fm/user/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker"
   },
   {
     "name": "Mixcloud",
     "url_pattern": "https://www.mixcloud.com/{username}",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [404],
+    "error_msg": "negative_marker",
+    "probe_url_pattern": "https://api.mixcloud.com/{username}/",
+    "check": "json",
+    "json_path": "username",
+    "metadata_fields": {"username": "username", "display_name": "name", "profile_url": "url"}
   },
   {
     "name": "Smule",
@@ -320,7 +385,8 @@
     "name": "GitLab",
     "url_pattern": "https://gitlab.com/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
+    "reference_username": "gitlab-bot",
     "expected_status": [
       404,
       410
@@ -368,28 +434,43 @@
   {
     "name": "Gitea",
     "url_pattern": "https://gitea.com/{username}",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_type": "status_code",
+    "reliability": "verified",
+    "reference_username": "lunny",
+    "expected_status": [404, 410],
+    "probe_url_pattern": "https://gitea.com/api/v1/users/{username}",
+    "check": "json",
+    "json_path": "login",
+    "metadata_fields": {
+      "username": "login",
+      "display_name": "full_name",
+      "avatar_url": "avatar_url",
+      "profile_url": "html_url"
+    }
   },
   {
     "name": "HackerNews",
     "url_pattern": "https://news.ycombinator.com/user?id={username}",
-    "error_type": "status_code",
+    "error_type": "message",
     "reliability": "verified",
-    "expected_status": [
-      404,
-      410
+    "reference_username": "pg",
+    "error_msg": "no_such_user",
+    "check": "html",
+    "timeout_seconds": 20,
+    "retry_attempts": 2,
+    "disable_html_found": true,
+    "raw_found_markers": [
+      "<title>Profile: {username} | Hacker News</title>"
     ],
-    "probe_url_pattern": "https://hacker-news.firebaseio.com/v0/user/{username}.json",
-    "check": "json",
-    "json_path": "id"
+    "raw_not_found_markers": ["No such user."]
   },
   {
     "name": "Kaggle",
     "url_pattern": "https://www.kaggle.com/{username}",
-    "error_type": "message",
-    "reliability": "unreliable",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [404],
+    "check": "404",
     "error_msg": "negative_marker"
   },
   {
@@ -423,15 +504,21 @@
   {
     "name": "Pastebin",
     "url_pattern": "https://pastebin.com/u/{username}",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_type": "status_code",
+    "reliability": "verified",
+    "reference_username": "admin",
+    "expected_status": [404, 410],
+    "disable_html_found": true,
+    "raw_found_markers": [
+      "<title>{username}&#039;s Pastebin - Pastebin.com</title>"
+    ]
   },
   {
     "name": "DockerHub",
     "url_pattern": "https://hub.docker.com/u/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
+    "reference_username": "sindresorhus",
     "expected_status": [
       404,
       410
@@ -439,6 +526,7 @@
     "probe_url_pattern": "https://hub.docker.com/v2/users/{username}/",
     "check": "json",
     "json_path": "username",
+    "json_paths": ["username", "orgname"],
     "metadata_fields": {
       "username": "username",
       "display_name": "full_name",
@@ -478,8 +566,13 @@
     "name": "Steam",
     "url_pattern": "https://steamcommunity.com/id/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "reliability": "verified",
+    "reference_username": "gaben",
+    "error_msg": "profile_not_found",
+    "probe_url_pattern": "https://steamcommunity.com/id/{username}?xml=1",
+    "disable_html_found": true,
+    "raw_found_markers": ["<steamID64>"],
+    "raw_not_found_markers": ["<error>"]
   },
   {
     "name": "PSNProfiles",
@@ -498,29 +591,45 @@
   {
     "name": "Chess.com",
     "url_pattern": "https://www.chess.com/member/{username}",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_type": "status_code",
+    "reliability": "verified",
+    "reference_username": "erik",
+    "expected_status": [404],
+    "error_msg": "negative_marker",
+    "probe_url_pattern": "https://api.chess.com/pub/player/{username}",
+    "check": "json",
+    "json_path": "username",
+    "metadata_fields": {"username": "username", "chess_id": "player_id", "profile_url": "url"}
   },
   {
     "name": "Lichess",
     "url_pattern": "https://lichess.org/@/{username}",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_type": "status_code",
+    "reliability": "verified",
+    "reference_username": "DrNykterstein",
+    "expected_status": [404],
+    "error_msg": "negative_marker",
+    "probe_url_pattern": "https://lichess.org/api/user/{username}",
+    "check": "json",
+    "json_path": "username",
+    "metadata_fields": {"username": "username", "lichess_id": "id"}
   },
   {
     "name": "Medium",
     "url_pattern": "https://medium.com/@{username}",
     "error_type": "message",
     "reliability": "unreliable",
+    "scan_tier": "deep",
+    "min_request_interval_seconds": 5,
+    "rate_limit_key": "medium.com",
     "error_msg": "negative_marker"
   },
   {
-    "name": "Dev.to",
-    "url_pattern": "https://dev.to/{username}",
+   "name": "Dev.to",
+   "url_pattern": "https://dev.to/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
+    "reference_username": "ben",
     "expected_status": [
       404,
       410
@@ -537,10 +646,13 @@
   },
   {
     "name": "Tumblr",
-    "url_pattern": "https://{username}.tumblr.com/",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "url_pattern": "https://www.tumblr.com/{username}",
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [404],
+    "check": "404",
+    "timeout_seconds": 20,
+    "retry_attempts": 2
   },
   {
     "name": "Blogger",
@@ -552,9 +664,16 @@
   {
     "name": "WordPress",
     "url_pattern": "https://{username}.wordpress.com/",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [404],
+    "probe_url_pattern": "https://public-api.wordpress.com/rest/v1.1/sites/{username}.wordpress.com/",
+    "check": "json_exists",
+    "json_path": "ID",
+    "metadata_fields": {
+      "site_name": "name",
+      "site_url": "URL"
+    }
   },
   {
     "name": "Substack",
@@ -564,10 +683,10 @@
     "error_msg": "negative_marker"
   },
   {
-    "name": "Wattpad",
-    "url_pattern": "https://www.wattpad.com/user/{username}",
+  "name": "Wattpad",
+  "url_pattern": "https://www.wattpad.com/user/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker"
   },
   {
@@ -588,22 +707,24 @@
     "name": "Dribbble",
     "url_pattern": "https://dribbble.com/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker"
   },
   {
     "name": "Behance",
     "url_pattern": "https://www.behance.net/{username}",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [404],
+    "check": "404"
   },
   {
     "name": "DeviantArt",
     "url_pattern": "https://www.deviantart.com/{username}",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [404],
+    "check": "404"
   },
   {
     "name": "ArtStation",
@@ -630,7 +751,8 @@
     "name": "AniList",
     "url_pattern": "https://anilist.co/user/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
+    "reference_username": "AniList",
     "expected_status": [
       404
     ],
@@ -660,6 +782,9 @@
     "url_pattern": "https://linktr.ee/{username}",
     "error_type": "message",
     "reliability": "unreliable",
+    "scan_tier": "deep",
+    "min_request_interval_seconds": 5,
+    "rate_limit_key": "linktr.ee",
     "error_msg": "negative_marker"
   },
   {
@@ -673,7 +798,7 @@
     "name": "Patreon",
     "url_pattern": "https://www.patreon.com/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker"
   },
   {
@@ -701,7 +826,7 @@
     "name": "Freelancer",
     "url_pattern": "https://www.freelancer.com/u/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker",
     "not_found_url_contains": [
       "/signup?next=%2Fu%2F"
@@ -717,15 +842,27 @@
   {
     "name": "Wikipedia",
     "url_pattern": "https://en.wikipedia.org/wiki/User:{username}",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [404],
+    "probe_url_pattern": "https://en.wikipedia.org/w/api.php?action=query&list=users&ususers={username}&format=json",
+    "check": "json",
+    "json_path": "query.users.0.name",
+    "json_not_found_path": "query.users.0.missing",
+    "username_equivalence": "underscore_space",
+    "request_headers": {
+      "User-Agent": "Trackher/1.2 (https://github.com/dRafaleD/The-Trackher)"
+    },
+    "metadata_fields": {
+      "username": "query.users.0.name",
+      "wikipedia_user_id": "query.users.0.userid"
+    }
   },
   {
     "name": "Gravatar",
     "url_pattern": "https://en.gravatar.com/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker",
     "actions": [
       {
@@ -854,7 +991,7 @@
     "name": "Codeforces",
     "url_pattern": "https://codeforces.com/profile/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [
       400,
       404,
@@ -888,21 +1025,23 @@
     "name": "Hashnode",
     "url_pattern": "https://hashnode.com/@{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker"
   },
   {
     "name": "SourceHut",
     "url_pattern": "https://sr.ht/~{username}/",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_type": "status_code",
+    "reliability": "verified",
+    "reference_username": "sircmpwn",
+    "expected_status": [404],
+    "check": "404"
   },
   {
     "name": "TradingView",
     "url_pattern": "https://www.tradingview.com/u/{username}/",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker"
   },
   {
@@ -1027,9 +1166,18 @@
   {
     "name": "Speedrun.com",
     "url_pattern": "https://www.speedrun.com/users/{username}",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [404],
+    "probe_url_pattern": "https://www.speedrun.com/api/v1/users?lookup={username}",
+    "check": "json_list",
+    "json_list_path": "data",
+    "json_path": "names.international",
+    "metadata_fields": {
+      "username": "names.international",
+      "speedrun_id": "id",
+      "profile_url": "weblink"
+    }
   },
   {
     "name": "ModDB",
@@ -1049,7 +1197,7 @@
     "name": "Kongregate",
     "url_pattern": "https://www.kongregate.com/accounts/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker"
   },
   {
@@ -1218,7 +1366,7 @@
     "name": "Odysee",
     "url_pattern": "https://odysee.com/@{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker",
     "probe_url_pattern": "https://odysee.com/$/oembed?url=https%3A%2F%2Fodysee.com%2F%40{username}&format=json",
     "raw_found_markers": [
@@ -1232,7 +1380,7 @@
     "name": "Bitchute",
     "url_pattern": "https://www.bitchute.com/channel/{username}/",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker",
     "raw_found_markers": [
       "<meta name=\"x-stage\" content=\"channel\">"
@@ -1252,7 +1400,7 @@
     "name": "Audiomack",
     "url_pattern": "https://audiomack.com/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker"
   },
   {
@@ -1321,9 +1469,18 @@
   {
     "name": "Discogs",
     "url_pattern": "https://www.discogs.com/user/{username}",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [404],
+    "probe_url_pattern": "https://api.discogs.com/users/{username}",
+    "check": "json",
+    "json_path": "username",
+    "metadata_fields": {
+      "username": "username",
+      "discogs_id": "id",
+      "profile_url": "uri",
+      "display_name": "name"
+    }
   },
   {
     "name": "RateYourMusic",
@@ -1357,7 +1514,7 @@
     "name": "Runkeeper",
     "url_pattern": "https://runkeeper.com/user/{username}/profile",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker"
   },
   {
@@ -1378,7 +1535,7 @@
     "name": "Komoot",
     "url_pattern": "https://www.komoot.com/user/{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker"
   },
   {
@@ -1392,7 +1549,7 @@
     "name": "Slashdot",
     "url_pattern": "https://slashdot.org/~{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker"
   },
   {
@@ -1405,15 +1562,20 @@
   {
     "name": "Lobsters",
     "url_pattern": "https://lobste.rs/u/{username}",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [404],
+    "error_msg": "negative_marker",
+    "probe_url_pattern": "https://lobste.rs/u/{username}.json",
+    "check": "json",
+    "json_path": "username",
+    "metadata_fields": {"username": "username", "profile_url": "url"}
   },
   {
     "name": "Flipboard",
     "url_pattern": "https://flipboard.com/@{username}",
     "error_type": "message",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "error_msg": "negative_marker"
   },
   {
@@ -1463,9 +1625,14 @@
   {
     "name": "Shikimori",
     "url_pattern": "https://shikimori.one/{username}",
-    "error_type": "message",
-    "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_type": "status_code",
+    "reliability": "verified",
+    "expected_status": [404],
+    "error_msg": "negative_marker",
+    "probe_url_pattern": "https://shikimori.one/api/users/{username}",
+    "check": "json",
+    "json_path": "nickname",
+    "metadata_fields": {"username": "nickname", "shikimori_id": "id", "profile_url": "url"}
   },
   {
     "name": "MyDramaList",
@@ -1528,7 +1695,7 @@
     "name": "Asciinema",
     "url_pattern": "https://asciinema.org/~{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -1536,7 +1703,7 @@
     "name": "AtCoder",
     "url_pattern": "https://atcoder.jp/users/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -1560,7 +1727,7 @@
     "name": "BuzzFeed",
     "url_pattern": "https://buzzfeed.com/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -1584,7 +1751,7 @@
     "name": "CGTrader",
     "url_pattern": "https://www.cgtrader.com/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -1600,9 +1767,13 @@
     "name": "Codeberg",
     "url_pattern": "https://codeberg.org/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
+    "reference_username": "forgejo",
     "expected_status": [404],
-    "check": "404"
+    "probe_url_pattern": "https://codeberg.org/api/v1/users/{username}",
+    "check": "json",
+    "json_path": "login",
+    "metadata_fields": {"username": "login", "display_name": "full_name", "profile_url": "html_url"}
   },
   {
     "name": "Coderwall",
@@ -1616,15 +1787,18 @@
     "name": "Codewars",
     "url_pattern": "https://www.codewars.com/users/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
-    "check": "404"
+    "probe_url_pattern": "https://www.codewars.com/api/v1/users/{username}",
+    "check": "json",
+    "json_path": "username",
+    "metadata_fields": {"username": "username", "codewars_id": "id", "honor": "honor"}
   },
   {
     "name": "Credly",
     "url_pattern": "https://www.credly.com/users/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -1640,7 +1814,7 @@
     "name": "Crowdin",
     "url_pattern": "https://crowdin.com/profile/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -1696,7 +1870,7 @@
     "name": "Freesound",
     "url_pattern": "https://freesound.org/people/{username}/",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -1704,7 +1878,7 @@
     "name": "Geocaching",
     "url_pattern": "https://www.geocaching.com/p/default.aspx?u={username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -1728,7 +1902,7 @@
     "name": "HackMD",
     "url_pattern": "https://hackmd.io/@{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -1736,7 +1910,7 @@
     "name": "Hackster.io",
     "url_pattern": "https://www.hackster.io/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -1760,7 +1934,7 @@
     "name": "Hugging Face",
     "url_pattern": "https://huggingface.co/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -1808,9 +1982,13 @@
     "name": "Keybase",
     "url_pattern": "https://keybase.io/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
+    "reference_username": "max",
     "expected_status": [404],
-    "check": "404"
+    "probe_url_pattern": "https://keybase.io/_/api/1.0/user/lookup.json?username={username}",
+    "check": "json",
+    "json_path": "them.basics.username",
+    "metadata_fields": {"username": "them.basics.username", "keybase_id": "them.id"}
   },
   {
     "name": "LottieFiles",
@@ -1861,18 +2039,21 @@
     "check": "404"
   },
   {
-    "name": "Open Collective",
-    "url_pattern": "https://opencollective.com/{username}",
-    "error_type": "status_code",
-    "reliability": "unreliable",
+   "name": "Open Collective",
+   "url_pattern": "https://opencollective.com/{username}",
+   "error_type": "status_code",
+    "reliability": "verified",
     "expected_status": [404],
-    "check": "404"
+    "probe_url_pattern": "https://opencollective.com/{username}.json",
+    "check": "json",
+    "json_path": "slug",
+    "metadata_fields": {"username": "slug", "display_name": "name", "profile_url": "website"}
   },
   {
     "name": "OpenGameArt",
     "url_pattern": "https://opengameart.org/users/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -1880,7 +2061,7 @@
     "name": "OpenStreetMap",
     "url_pattern": "https://www.openstreetmap.org/user/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -1904,17 +2085,20 @@
     "name": "Platzi",
     "url_pattern": "https://platzi.com/p/{username}/",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
   {
-    "name": "Playstrategy",
-    "url_pattern": "https://playstrategy.org/@/{username}",
-    "error_type": "status_code",
-    "reliability": "unreliable",
+   "name": "Playstrategy",
+   "url_pattern": "https://playstrategy.org/@/{username}",
+   "error_type": "status_code",
+    "reliability": "verified",
     "expected_status": [404],
-    "check": "404"
+    "probe_url_pattern": "https://playstrategy.org/api/user/{username}",
+    "check": "json",
+    "json_path": "username",
+    "metadata_fields": {"username": "username", "playstrategy_id": "id"}
   },
   {
     "name": "Rarible",
@@ -1925,18 +2109,21 @@
     "check": "404"
   },
   {
-    "name": "RubyGems",
-    "url_pattern": "https://rubygems.org/profiles/{username}",
-    "error_type": "status_code",
-    "reliability": "unreliable",
+   "name": "RubyGems",
+   "url_pattern": "https://rubygems.org/profiles/{username}",
+   "error_type": "status_code",
+    "reliability": "verified",
     "expected_status": [404],
-    "check": "404"
+    "probe_url_pattern": "https://rubygems.org/api/v1/profiles/{username}.json",
+    "check": "json",
+    "json_path": "handle",
+    "metadata_fields": {"username": "handle", "rubygems_id": "id", "email": "email"}
   },
   {
     "name": "Speaker Deck",
     "url_pattern": "https://speakerdeck.com/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -1989,12 +2176,15 @@
     "check": "404"
   },
   {
-    "name": "Ask Fedora",
-    "url_pattern": "https://ask.fedoraproject.org/u/{username}",
-    "error_type": "status_code",
-    "reliability": "unreliable",
+   "name": "Ask Fedora",
+   "url_pattern": "https://ask.fedoraproject.org/u/{username}",
+   "error_type": "status_code",
+    "reliability": "verified",
     "expected_status": [404],
-    "check": "404"
+    "probe_url_pattern": "https://discussion.fedoraproject.org/askfedora/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username",
+    "metadata_fields": {"username": "user.username", "display_name": "user.name"}
   },
   {
     "name": "BiggerPockets",
@@ -2013,12 +2203,15 @@
     "check": "404"
   },
   {
-    "name": "Caddy Community",
-    "url_pattern": "https://caddy.community/u/{username}/summary",
-    "error_type": "status_code",
-    "reliability": "unreliable",
+   "name": "Caddy Community",
+   "url_pattern": "https://caddy.community/u/{username}/summary",
+   "error_type": "status_code",
+    "reliability": "verified",
     "expected_status": [404],
-    "check": "404"
+    "probe_url_pattern": "https://caddy.community/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username",
+    "metadata_fields": {"username": "user.username", "display_name": "user.name", "profile_url": "user.avatar_template"}
   },
   {
     "name": "Car Talk Community",
@@ -2029,27 +2222,33 @@
     "check": "404"
   },
   {
-    "name": "Cfx.re Forum",
-    "url_pattern": "https://forum.cfx.re/u/{username}/summary",
-    "error_type": "status_code",
-    "reliability": "unreliable",
+   "name": "Cfx.re Forum",
+   "url_pattern": "https://forum.cfx.re/u/{username}/summary",
+   "error_type": "status_code",
+    "reliability": "verified",
     "expected_status": [404],
-    "check": "404"
+    "probe_url_pattern": "https://forum.cfx.re/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username",
+    "metadata_fields": {"username": "user.username", "display_name": "user.name"}
   },
   {
-    "name": "Chaos.social",
-    "url_pattern": "https://chaos.social/@{username}",
-    "error_type": "status_code",
-    "reliability": "unreliable",
+   "name": "Chaos.social",
+   "url_pattern": "https://chaos.social/@{username}",
+   "error_type": "status_code",
+    "reliability": "verified",
     "expected_status": [404],
-    "check": "404"
+    "probe_url_pattern": "https://chaos.social/api/v1/accounts/lookup?acct={username}",
+    "check": "json",
+    "json_path": "username",
+    "metadata_fields": {"username": "username", "display_name": "display_name", "profile_url": "url"}
   },
   {
     "name": "Chollometro",
     "url_pattern": "https://www.chollometro.com/profile/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [404, 410],
     "check": "404"
   },
   {
@@ -2157,18 +2356,21 @@
     "check": "404"
   },
   {
-    "name": "Fosstodon",
-    "url_pattern": "https://fosstodon.org/@{username}",
-    "error_type": "status_code",
-    "reliability": "unreliable",
+   "name": "Fosstodon",
+   "url_pattern": "https://fosstodon.org/@{username}",
+   "error_type": "status_code",
+    "reliability": "verified",
     "expected_status": [404],
-    "check": "404"
+    "probe_url_pattern": "https://fosstodon.org/api/v1/accounts/lookup?acct={username}",
+    "check": "json",
+    "json_path": "username",
+    "metadata_fields": {"username": "username", "display_name": "display_name", "profile_url": "url"}
   },
   {
     "name": "Genius Artists",
     "url_pattern": "https://genius.com/artists/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -2176,7 +2378,7 @@
     "name": "Genius Users",
     "url_pattern": "https://genius.com/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -2192,7 +2394,7 @@
     "name": "Gradle",
     "url_pattern": "https://plugins.gradle.org/u/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -2200,7 +2402,7 @@
     "name": "Habr",
     "url_pattern": "https://habr.com/ru/users/{username}",
     "error_type": "status_code",
-    "reliability": "unreliable",
+    "reliability": "verified",
     "expected_status": [404],
     "check": "404"
   },
@@ -2209,7 +2411,7 @@
     "url_pattern": "https://www.hotukdeals.com/profile/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [404, 410],
     "check": "404"
   },
   {
@@ -2229,12 +2431,15 @@
     "check": "404"
   },
   {
-    "name": "Ionic Forum",
-    "url_pattern": "https://forum.ionicframework.com/u/{username}",
-    "error_type": "status_code",
-    "reliability": "unreliable",
+   "name": "Ionic Forum",
+   "url_pattern": "https://forum.ionicframework.com/u/{username}",
+   "error_type": "status_code",
+    "reliability": "verified",
     "expected_status": [404],
-    "check": "404"
+    "probe_url_pattern": "https://forum.ionicframework.com/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username",
+    "metadata_fields": {"username": "user.username", "display_name": "user.name"}
   },
   {
     "name": "Jellyfin Weblate",
@@ -2253,12 +2458,15 @@
     "check": "404"
   },
   {
-    "name": "Joplin Forum",
-    "url_pattern": "https://discourse.joplinapp.org/u/{username}",
-    "error_type": "status_code",
-    "reliability": "unreliable",
+   "name": "Joplin Forum",
+   "url_pattern": "https://discourse.joplinapp.org/u/{username}",
+   "error_type": "status_code",
+    "reliability": "verified",
     "expected_status": [404],
-    "check": "404"
+    "probe_url_pattern": "https://discourse.joplinapp.org/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username",
+    "metadata_fields": {"username": "user.username", "display_name": "user.name"}
   },
   {
     "name": "Kaskus",
@@ -2293,20 +2501,26 @@
     "check": "404"
   },
   {
-    "name": "Mamot",
-    "url_pattern": "https://mamot.fr/@{username}",
-    "error_type": "status_code",
-    "reliability": "unreliable",
+   "name": "Mamot",
+   "url_pattern": "https://mamot.fr/@{username}",
+   "error_type": "status_code",
+    "reliability": "verified",
     "expected_status": [404],
-    "check": "404"
+    "probe_url_pattern": "https://mamot.fr/api/v1/accounts/lookup?acct={username}",
+    "check": "json",
+    "json_path": "username",
+    "metadata_fields": {"username": "username", "display_name": "display_name", "profile_url": "url"}
   },
   {
-    "name": "n8n Community",
-    "url_pattern": "https://community.n8n.io/u/{username}/summary",
-    "error_type": "status_code",
-    "reliability": "unreliable",
+   "name": "n8n Community",
+   "url_pattern": "https://community.n8n.io/u/{username}/summary",
+   "error_type": "status_code",
+    "reliability": "verified",
     "expected_status": [404],
-    "check": "404"
+    "probe_url_pattern": "https://community.n8n.io/u/{username}.json",
+    "check": "json",
+    "json_path": "user.username",
+    "metadata_fields": {"username": "user.username", "display_name": "user.name"}
   },
   {
     "name": "Nairaland",
@@ -2383,7 +2597,9 @@
     ],
     "probe_url_pattern": "https://meta.discourse.org/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "timeout_seconds": 20,
+    "retry_attempts": 2
   },
   {
     "name": "Python Discuss",
@@ -2617,7 +2833,8 @@
     ],
     "probe_url_pattern": "https://forum.yazbel.com/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "disabled_reason": "Site TLS sertifikası alan adıyla eşleşmiyor; güvenli doğrulama yapılamıyor"
   },
   {
     "name": "Pardus Forumları",

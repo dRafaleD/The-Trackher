@@ -68,7 +68,7 @@ def _python_shred(file_path: Path, passes: int = 3) -> bool:
         return True
 
     except (PermissionError, OSError) as exc:
-        print_error(f"Python shred başarısız: {exc}")
+        print_error(f"Python shred failed: {exc}")
         return False
 
 
@@ -165,15 +165,15 @@ def shred_file(
     target = expand_path(file_path, resolve_symlinks=False)
 
     if target.is_symlink() or not target.is_file():
-        print_error(f"Dosya bulunamadı veya normal bir dosya değil: {target}")
+        print_error(f"File not found or not a regular file: {target}")
         return False
 
     if should_exclude(target):
-        print_warning(f"Dosya dışlama listesi tarafından korunuyor: {target}")
+        print_warning(f"File is protected by the exclusion list: {target}")
         return False
 
     if passes < 1:
-        print_error("Üzerine yazma geçiş sayısı en az 1 olmalıdır.")
+        print_error("The overwrite pass count must be at least 1.")
         return False
 
     size = get_file_size(target)
@@ -181,7 +181,7 @@ def shred_file(
     if dry_run:
         print_info(
             f"[bold]SHRED[/bold] edilecek: {target}  "
-            f"({size:,} bayt, {passes} geçiş)"
+            f"({size:,} bytes, {passes} passes)"
         )
         return True
 
@@ -202,11 +202,11 @@ def shred_file(
 
     if success:
         print_success(
-            f"Güvenli silme tamamlandı ({method}): {target.name}  "
-            f"({size:,} bayt, {passes} geçiş)"
+            f"Secure deletion completed ({method}): {target.name}  "
+            f"({size:,} bytes, {passes} passes)"
         )
     else:
-        print_error(f"Güvenli silme başarısız: {target}")
+        print_error(f"Secure deletion failed: {target}")
 
     return success
 
@@ -234,24 +234,24 @@ def shred_directory(
     target = expand_path(dir_path, resolve_symlinks=False)
 
     if target.is_symlink() or not target.is_dir():
-        print_error(f"Dizin bulunamadı: {target}")
+        print_error(f"Directory not found: {target}")
         return []
 
     if is_critical_path(target):
-        print_error(f"Kritik sistem veya kullanıcı dizini silinemez: {target}")
+        print_error(f"Critical system or user directory cannot be deleted: {target}")
         return []
 
     if should_exclude(target):
-        print_warning(f"Dizin dışlama listesi tarafından korunuyor: {target}")
+        print_warning(f"Directory is protected by the exclusion list: {target}")
         return []
 
     if passes < 1:
-        print_error("Üzerine yazma geçiş sayısı en az 1 olmalıdır.")
+        print_error("The overwrite pass count must be at least 1.")
         return []
 
     results: list[dict] = []
     file_count = 0
-    print_info(f"Dizin taranıyor: {target}")
+    print_info(f"Scanning directory: {target}")
 
     for file_entry in iter_files(target):
         file_count += 1
@@ -269,16 +269,16 @@ def shred_directory(
                 results.append(item)
 
     if file_count == 0:
-        print_info(f"Dizinde dosya bulunamadı: {target}")
+        print_info(f"No files found in directory: {target}")
         if dry_run:
             return results
     else:
-        print_info(f"Dizinde [bold]{file_count}[/bold] dosya işlendi: {target}")
+        print_info(f"[bold]{file_count}[/bold] files processed in directory: {target}")
 
     if not dry_run:
         if safe_remove(target):
-            print_success(f"Dizin kaldırıldı: {target}")
+            print_success(f"Directory removed: {target}")
         elif target.exists():
-            print_warning(f"Dizin tamamen kaldırılamadı; korunan veya kilitli öğeler var: {target}")
+            print_warning(f"Directory could not be fully removed; protected or locked items remain: {target}")
 
     return results

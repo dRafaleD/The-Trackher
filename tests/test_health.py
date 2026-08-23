@@ -155,6 +155,36 @@ class PlatformHealthTests(unittest.TestCase):
         self.assertEqual(result["items"][0]["state"], HEALTHY)
         self.assertEqual(client.requests[0].method, "GET")
 
+    def test_reference_username_live_health_requires_positive_and_negative_pair(self):
+        def handler(request, **kwargs):
+            if request.url.path.endswith("/known-user"):
+                return httpx.Response(
+                    200,
+                    request=request,
+                    text="<html><body><h1>known-user</h1></body></html>",
+                )
+            return httpx.Response(404, request=request)
+
+        result, client = self.run_health(
+            username_platforms=[
+                {
+                    "name": "Reference Example",
+                    "url": "https://example.test/users/{}",
+                    "error_type": "status_code",
+                    "expected_status": [404],
+                    "reliability": "verified",
+                    "check": "html",
+                    "reference_username": "known-user",
+                }
+            ],
+            live=True,
+            handler=handler,
+        )
+
+        self.assertEqual(result["items"][0]["state"], HEALTHY)
+        self.assertIn("Reference pair passed", result["items"][0]["detail"])
+        self.assertEqual(len(client.requests), 2)
+
     def test_timeout_becomes_degraded(self):
         result, _client = self.run_health(
             username_platforms=[

@@ -9,7 +9,10 @@ import httpx
 
 from osint.username_checker import (
     USERNAME_PLATFORMS,
+    USERNAME_REFERENCE_PLATFORMS,
     _ENTERTAINMENT_FORUM_PLATFORMS,
+    PoliteAsyncClient,
+    check_username_async,
     check_single_username,
 )
 from utils.display import print_username_results
@@ -45,6 +48,20 @@ class UsernameDetectionTests(unittest.TestCase):
 
         self.assertFalse(result["found"])
         self.assertEqual(result["status"], "unknown")
+
+    def test_platform_can_treat_empty_200_profile_as_not_found(self):
+        result = self.run_check(
+            lambda request: httpx.Response(200, text=""),
+            platform={
+                "name": "Empty Profile Example",
+                "url": "https://example.test/users/{}",
+                "empty_body_not_found": True,
+            },
+        )
+
+        self.assertFalse(result["found"])
+        self.assertEqual(result["status"], "not_found")
+        self.assertEqual(result["diagnostic_cause"], "soft_404")
 
     def test_not_found_page_that_echoes_username_stays_not_found(self):
         result = self.run_check(
@@ -93,6 +110,41 @@ class UsernameDetectionTests(unittest.TestCase):
         self.assertEqual(result["status"], "unknown")
         self.assertEqual(result["unknown_cause"], "rate_limited")
 
+    def test_rate_limited_api_does_not_run_profile_fallback(self):
+        calls = []
+        platform = {
+            "name": "Rate-Limited API",
+            "url": "https://example.test/users/{}",
+            "probe_url": "https://api.example.test/users/{}",
+            "check": "json",
+            "json_path": "login",
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append(str(request.url))
+            return httpx.Response(429, headers={"Retry-After": "60"}, text="Too many requests")
+
+        result = self.run_check(handler, platform)
+
+        self.assertEqual(result["status"], "unknown")
+        self.assertEqual(result["unknown_cause"], "rate_limited")
+        self.assertEqual(result["detector_used"], "json")
+        self.assertFalse(result["fallback_used"])
+        self.assertEqual(len(calls), 1)
+
+    def test_gone_response_is_treated_as_not_found_even_with_explicit_404_config(self):
+        result = self.run_check(
+            lambda request: httpx.Response(410),
+            platform={
+                "name": "Gone Profile",
+                "url": "https://example.test/users/{}",
+                "expected_status": [404],
+            },
+        )
+
+        self.assertEqual(result["status"], "not_found")
+        self.assertEqual(result["diagnostic_cause"], "soft_404")
+
     def test_malformed_platform_configuration_is_isolated(self):
         result = self.run_check(
             lambda request: httpx.Response(500),
@@ -101,7 +153,7 @@ class UsernameDetectionTests(unittest.TestCase):
 
         self.assertFalse(result["found"])
         self.assertEqual(result["status"], "unknown")
-        self.assertIn("yapılandırma", result["detail"])
+        self.assertIn("configuration", result["detail"])
 
     def test_unsupported_detector_type_is_isolated(self):
         result = self.run_check(
@@ -187,9 +239,30 @@ class UsernameDetectionTests(unittest.TestCase):
         platforms = {
             platform["name"]: platform
             for platform in USERNAME_PLATFORMS
-            if platform["name"] in {"Onedio", "TeknoSeyir", "WM Aracı"}
+            if platform["name"] in {"DonanımHaber", "Onedio", "TeknoSeyir", "WM Aracı"}
         }
-        self.assertEqual(set(platforms), {"Onedio", "TeknoSeyir", "WM Aracı"})
+        self.assertEqual(set(platforms), {"DonanımHaber", "Onedio", "TeknoSeyir", "WM Aracı"})
+
+        donanimhaber = platforms["DonanımHaber"]
+        found = self.run_check(
+            lambda request: httpx.Response(
+                200,
+                text=(
+                    "<html><title>Profil: fixture_user | DonanımHaber Forum</title>"
+                    "<body>fixture_user</body></html>"
+                ),
+            ),
+            donanimhaber,
+            username="fixture_user",
+        )
+        missing = self.run_check(
+            lambda request: httpx.Response(200, text=""),
+            donanimhaber,
+            username="fixture_user",
+        )
+        self.assertEqual(found["status"], "found")
+        self.assertEqual(found["reliability"], "verified")
+        self.assertEqual(missing["status"], "not_found")
 
         for name, marker in (
             ("Onedio", "Kullanıcı Bulunamadı"),
@@ -243,6 +316,83 @@ class UsernameDetectionTests(unittest.TestCase):
         self.assertEqual(found["public_metadata"]["username"], "missing_user_123")
         self.assertEqual(missing["diagnostic_cause"], "soft_404")
 
+    def test_json_probe_can_match_one_of_multiple_username_paths(self):
+        platform = {
+            "name": "Container Registry Example",
+            "url": "https://example.test/u/{}",
+            "probe_url": "https://api.example.test/users/{}",
+            "check": "json",
+            "json_path": "username",
+            "json_paths": ["username", "orgname"],
+        }
+        result = self.run_check(
+            lambda request: httpx.Response(200, json={"orgname": "fixture_org"}),
+            platform,
+            username="fixture_org",
+        )
+
+        self.assertEqual(result["status"], "found")
+        self.assertEqual(result["public_metadata"]["username"], "fixture_org")
+
+    def test_json_probe_can_use_documented_underscore_space_equivalence(self):
+        platform = {
+            "name": "Wiki Example",
+            "url": "https://example.test/users/{}",
+            "probe_url": "https://api.example.test/users?name={}",
+            "check": "json",
+            "json_path": "user.name",
+            "username_equivalence": "underscore_space",
+        }
+        result = self.run_check(
+            lambda request: httpx.Response(200, json={"user": {"name": "Example User"}}),
+            platform,
+            username="Example_User",
+        )
+
+        self.assertEqual(result["status"], "found")
+
+    def test_json_not_found_flag_prevents_echoed_username_false_positive(self):
+        platform = {
+            "name": "Wikipedia Example",
+            "url": "https://example.test/users/{}",
+            "probe_url": "https://api.example.test/users?name={}",
+            "check": "json",
+            "json_path": "query.users.0.name",
+            "json_not_found_path": "query.users.0.missing",
+            "username_equivalence": "underscore_space",
+        }
+        result = self.run_check(
+            lambda request: httpx.Response(
+                200,
+                json={"query": {"users": [{"name": "Missing User 123", "missing": ""}]}},
+            ),
+            platform,
+            username="Missing_User_123",
+        )
+
+        self.assertEqual(result["status"], "not_found")
+        self.assertEqual(result["diagnostic_cause"], "soft_404")
+
+    def test_json_exists_requires_a_profile_evidence_value(self):
+        platform = {
+            "name": "WordPress Example",
+            "url": "https://example.test/users/{}",
+            "probe_url": "https://api.example.test/sites/{}",
+            "check": "json_exists",
+            "json_path": "ID",
+        }
+        found = self.run_check(
+            lambda request: httpx.Response(200, json={"ID": 42}),
+            platform,
+        )
+        inconclusive = self.run_check(
+            lambda request: httpx.Response(200, json={"name": "Example"}),
+            platform,
+        )
+
+        self.assertEqual(found["status"], "found")
+        self.assertEqual(inconclusive["status"], "unknown")
+
     def test_json_probe_parser_mismatch_has_cause(self):
         platform = {
             "name": "JSON Example",
@@ -258,6 +408,74 @@ class UsernameDetectionTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "unknown")
         self.assertEqual(result["unknown_cause"], "parser_mismatch")
+
+    def test_api_unknown_falls_back_to_public_profile_html(self):
+        platform = {
+            "name": "GitHub Example",
+            "url": "https://example.test/users/{}",
+            "probe_url": "https://api.example.test/users/{}",
+            "check": "json",
+            "json_path": "login",
+            "expected_status": [404],
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.host == "api.example.test":
+                return httpx.Response(403, text="API rate limit exceeded")
+            return httpx.Response(
+                200,
+                text="<html><body><h1>missing_user_123</h1></body></html>",
+            )
+
+        result = self.run_check(handler, platform)
+
+        self.assertEqual(result["status"], "found")
+        self.assertEqual(result["detector_used"], "profile_html")
+        self.assertTrue(result["fallback_used"])
+        self.assertEqual([item["status"] for item in result["evidence"]], ["unknown", "found"])
+        self.assertEqual(result["evidence"][0]["cause"], "forbidden")
+
+    def test_api_terminal_result_does_not_run_fallback(self):
+        calls = []
+        platform = {
+            "name": "API Example",
+            "url": "https://example.test/users/{}",
+            "probe_url": "https://api.example.test/users/{}",
+            "check": "json",
+            "json_path": "login",
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append(str(request.url))
+            return httpx.Response(200, json={"login": "missing_user_123"})
+
+        result = self.run_check(handler, platform)
+
+        self.assertEqual(result["status"], "found")
+        self.assertEqual(result["detector_used"], "json")
+        self.assertFalse(result["fallback_used"])
+        self.assertEqual(len(calls), 1)
+
+    def test_profile_fallback_can_confirm_not_found(self):
+        platform = {
+            "name": "Fallback Example",
+            "url": "https://example.test/users/{}",
+            "probe_url": "https://api.example.test/users/{}",
+            "check": "json",
+            "json_path": "login",
+            "expected_status": [404],
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            status = 503 if request.url.host == "api.example.test" else 404
+            return httpx.Response(status)
+
+        result = self.run_check(handler, platform)
+
+        self.assertEqual(result["status"], "not_found")
+        self.assertEqual(result["detector_used"], "profile_html")
+        self.assertTrue(result["fallback_used"])
+        self.assertEqual([item["status"] for item in result["evidence"]], ["unknown", "not_found"])
 
     def test_json_list_supports_root_array(self):
         platform = {
@@ -374,6 +592,41 @@ class UsernameDetectionTests(unittest.TestCase):
         self.assertEqual(result["public_metadata"]["display_name"], "Missing User")
         self.assertEqual(result["public_metadata"]["website"], "https://example.test")
 
+    def test_json_probe_uses_platform_headers_and_timeout(self):
+        platform = {
+            "name": "Reddit Example",
+            "url": "https://example.test/users/{}",
+            "probe_url": "https://api.example.test/users/{}",
+            "check": "json",
+            "json_path": "data.name",
+            "request_headers": {"User-Agent": "Trackher test agent"},
+            "timeout_seconds": 20,
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            self.assertEqual(request.headers["user-agent"], "Trackher test agent")
+            return httpx.Response(200, json={"data": {"name": "missing_user_123"}})
+
+        result = self.run_check(handler, platform)
+
+        self.assertEqual(result["status"], "found")
+
+    def test_disabled_platform_is_reported_without_a_network_request(self):
+        platform = {
+            "name": "Unavailable Platform",
+            "url": "https://example.test/users/{}",
+            "disabled_reason": "TLS certificate mismatch",
+        }
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            self.fail("Disabled platform must not make a request")
+
+        result = self.run_check(handler, platform)
+
+        self.assertEqual(result["status"], "unknown")
+        self.assertEqual(result["unknown_cause"], "service_unavailable")
+        self.assertIn("TLS certificate mismatch", result["detail"])
+
     def test_json_list_resolves_verified_profile_id(self):
         platform = {
             "name": "Kitsu Example",
@@ -418,6 +671,70 @@ class UsernameDetectionTests(unittest.TestCase):
 
 
 class UsernamePlatformTests(unittest.TestCase):
+    def test_reference_platform_set_has_exactly_fifteen_verified_sites(self):
+        expected = {
+            "GitHub",
+            "GitLab",
+            "DonanımHaber",
+            "Gitea",
+            "HackerNews",
+            "Pastebin",
+            "DockerHub",
+            "Steam",
+            "Chess.com",
+            "Lichess",
+            "Dev.to",
+            "AniList",
+            "SourceHut",
+            "Codeberg",
+            "Keybase",
+        }
+
+        self.assertEqual({item["name"] for item in USERNAME_REFERENCE_PLATFORMS}, expected)
+        self.assertTrue(
+            all(item["reliability"] == "verified" for item in USERNAME_REFERENCE_PLATFORMS)
+        )
+        self.assertTrue(all(item["reference_username"] for item in USERNAME_REFERENCE_PLATFORMS))
+
+    def test_reference_platforms_run_before_the_rest_and_stream_results(self):
+        reference = {
+            "name": "Reference",
+            "url": "https://reference.test/{}",
+            "error_type": "status_code",
+            "reliability": "verified",
+            "reference_username": "known",
+        }
+        other = {
+            "name": "Other",
+            "url": "https://other.test/{}",
+            "error_type": "status_code",
+            "reliability": "verified",
+        }
+        execution_order = []
+        streamed = []
+
+        async def fake_check(username, platform, client):
+            execution_order.append(platform["name"])
+            return {
+                "platform": platform["name"],
+                "url": platform["url"].format(username),
+                "found": platform["name"] == "Reference",
+                "status": "found" if platform["name"] == "Reference" else "not_found",
+                "detail": "",
+                "reliability": "verified",
+            }
+
+        with patch("osint.username_checker.USERNAME_PLATFORMS", [other, reference]), patch(
+            "osint.username_checker.check_single_username", side_effect=fake_check
+        ):
+            results = asyncio.run(
+                check_username_async("fixture", on_result=lambda item: streamed.append(item["platform"]))
+            )
+
+        self.assertEqual(execution_order, ["Reference", "Other"])
+        self.assertEqual(streamed, ["Reference", "Other"])
+        self.assertEqual(len(results), 2)
+
     def test_entertainment_and_forum_group_contains_30_unique_sites(self):
         names = [item["name"] for item in _ENTERTAINMENT_FORUM_PLATFORMS]
 
@@ -463,9 +780,9 @@ class UsernameReportTests(unittest.TestCase):
             for call in console_print.call_args_list
             if call.args and isinstance(call.args[0], str)
         ]
-        summary = next(text for text in rendered if "sonuç doğrulanamadı" in text)
-        self.assertIn("1 sonuç doğrulanamadı", summary)
-        breakdown = next(text for text in rendered if "Doğrulanamayan nedenler:" in text)
+        summary = next(text for text in rendered if "could not be verified" in text)
+        self.assertIn("1 could not be verified", summary)
+        breakdown = next(text for text in rendered if "Verification details:" in text)
         self.assertIn("bot blocked 1", breakdown)
 
     def test_unknown_result_is_not_rendered_as_not_found(self):
@@ -490,7 +807,7 @@ class UsernameReportTests(unittest.TestCase):
             )
             report = output.read_text(encoding="utf-8")
 
-        self.assertIn("Doğrulanamadı", report)
+        self.assertIn("Unverified", report)
         self.assertIn('class="unknown"', report)
         self.assertIn("bot blocked", report)
 
@@ -544,6 +861,78 @@ class UsernameReportTests(unittest.TestCase):
             report["osint_username"]["results"][0]["warning"],
             UNRELIABLE_WARNING,
         )
+
+
+class UsernameRequestBudgetTests(unittest.TestCase):
+    def test_rate_limited_origin_is_paused_without_a_second_network_request(self):
+        calls = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append(str(request.url))
+            return httpx.Response(429, headers={"Retry-After": "30"})
+
+        async def execute() -> tuple[httpx.Response, httpx.Response]:
+            transport = httpx.MockTransport(handler)
+            async with httpx.AsyncClient(transport=transport) as raw_client:
+                client = PoliteAsyncClient(raw_client, origin_interval_seconds=0)
+                first = await client.get("https://example.test/first")
+                second = await client.get("https://example.test/second")
+                return first, second
+
+        first, second = asyncio.run(execute())
+
+        self.assertEqual(first.status_code, 429)
+        self.assertEqual(second.status_code, 429)
+        self.assertEqual(second.headers.get("X-Trackher-Cooldown"), "1")
+        self.assertEqual(len(calls), 1)
+
+    def test_shared_site_key_pauses_related_hosts(self):
+        calls = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append(str(request.url))
+            return httpx.Response(429, headers={"Retry-After": "30"})
+
+        async def execute() -> httpx.Response:
+            transport = httpx.MockTransport(handler)
+            async with httpx.AsyncClient(transport=transport) as raw_client:
+                client = PoliteAsyncClient(raw_client, origin_interval_seconds=0)
+                scoped = client.for_platform(
+                    {"rate_limit_key": "example.test", "min_request_interval_seconds": 0}
+                )
+                await scoped.get("https://api.example.test/search")
+                return await scoped.get("https://www.example.test/profile")
+
+        second = asyncio.run(execute())
+
+        self.assertEqual(second.status_code, 429)
+        self.assertEqual(second.headers.get("X-Trackher-Cooldown"), "1")
+        self.assertEqual(len(calls), 1)
+
+    def test_requests_to_the_same_origin_are_serialized(self):
+        active_requests = 0
+        max_active_requests = 0
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal active_requests, max_active_requests
+            active_requests += 1
+            max_active_requests = max(max_active_requests, active_requests)
+            await asyncio.sleep(0.01)
+            active_requests -= 1
+            return httpx.Response(200, request=request)
+
+        async def execute() -> None:
+            transport = httpx.MockTransport(handler)
+            async with httpx.AsyncClient(transport=transport) as raw_client:
+                client = PoliteAsyncClient(raw_client, max_concurrent=4, origin_interval_seconds=0)
+                await asyncio.gather(
+                    client.get("https://example.test/first"),
+                    client.get("https://example.test/second"),
+                )
+
+        asyncio.run(execute())
+
+        self.assertEqual(max_active_requests, 1)
 
 
 if __name__ == "__main__":

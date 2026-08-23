@@ -17,11 +17,14 @@ from osint.services import (
     MANUAL,
     NOT_CONFIGURED,
     NOT_FOUND,
+    NO_PUBLIC_EVIDENCE,
     POSSIBLE,
     ERROR,
     check_account_platform,
+    check_breach_platform,
     check_gravatar,
     check_haveibeenpwned,
+    check_email_domain,
 )
 from utils.display import print_email_results
 from utils.reporter import export_to_html, export_to_json
@@ -70,6 +73,20 @@ class EmailDetectionTests(unittest.TestCase):
 
         self.assertEqual(result["status"], MANUAL)
         self.assertFalse(result["found"])
+
+    def test_manual_platform_gets_site_scoped_public_search_link(self):
+        platform = {
+            "name": "Example",
+            "category": "manual",
+            "check": "manual",
+            "url": "https://community.example.test/path",
+        }
+
+        result = self.run_account_check(platform, httpx.Response(200))
+
+        self.assertEqual(result["investigation_method"], "exact_public_web_search")
+        self.assertIn("site%3Acommunity.example.test", result["investigation_url"])
+        self.assertIn("owner%40example.test", result["investigation_url"])
 
     def test_unsupported_email_detector_type_falls_back_to_manual(self):
         platform = {
@@ -170,7 +187,7 @@ class EmailDetectionTests(unittest.TestCase):
         self.assertRegex(found["public_metadata"]["avatar_hash"], r"^[a-f0-9]{64}$")
         self.assertEqual(found["public_metadata"]["hash_algorithm"], "sha256")
 
-    def test_gitlab_public_email_miss_stays_unknown(self):
+    def test_gitlab_public_email_miss_is_no_public_evidence(self):
         platform = {
             "name": "GitLab",
             "category": "verified",
@@ -194,7 +211,7 @@ class EmailDetectionTests(unittest.TestCase):
 
         result = asyncio.run(execute())
 
-        self.assertEqual(result["status"], UNKNOWN)
+        self.assertEqual(result["status"], NO_PUBLIC_EVIDENCE)
         self.assertFalse(result["found"])
 
     def test_gitlab_public_email_timeout_is_error(self):
@@ -221,7 +238,7 @@ class EmailDetectionTests(unittest.TestCase):
 
         self.assertEqual(result["status"], ERROR)
 
-    def test_public_profile_email_without_exact_match_stays_unknown(self):
+    def test_public_profile_email_without_exact_match_is_no_public_evidence(self):
         platform = {
             "name": "GitHub",
             "category": "heuristic",
@@ -246,8 +263,69 @@ class EmailDetectionTests(unittest.TestCase):
 
         result = asyncio.run(execute())
 
-        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertEqual(result["status"], NO_PUBLIC_EVIDENCE)
         self.assertFalse(result["found"])
+
+    def test_github_email_chain_falls_back_to_public_commit_metadata(self):
+        platform = {
+            "name": "GitHub",
+            "category": "heuristic",
+            "check": "public_profile_email",
+            "detector_chain": ["public_profile_email", "github_commit_email"],
+            "probe_url": "https://api.github.com/search/users?q={email}",
+            "items_path": "items",
+            "profile_url_field": "url",
+            "profile_email_field": "email",
+        }
+
+        async def execute() -> dict:
+            def handler(request: httpx.Request) -> httpx.Response:
+                if request.url.path == "/search/users":
+                    return httpx.Response(200, json={"items": []})
+                if request.url.path == "/search/commits":
+                    return httpx.Response(
+                        200,
+                        json={
+                            "total_count": 1,
+                            "items": [{
+                                "sha": "abc123",
+                                "html_url": "https://github.com/example/repo/commit/abc123",
+                                "commit": {"author": {"email": "owner@example.test"}},
+                                "author": {"login": "owner", "html_url": "https://github.com/owner"},
+                            }],
+                        },
+                    )
+                raise AssertionError(f"Unexpected URL {request.url}")
+
+            transport = httpx.MockTransport(handler)
+            async with httpx.AsyncClient(transport=transport) as client:
+                return await check_account_platform("owner@example.test", client, platform)
+
+        result = asyncio.run(execute())
+
+        self.assertEqual(result["status"], POSSIBLE)
+        self.assertTrue(result["fallback_used"])
+        self.assertEqual(result["detector_used"], "github_commit_email")
+        self.assertEqual(result["public_metadata"]["username"], "owner")
+        self.assertEqual([item["status"] for item in result["evidence"]], [NO_PUBLIC_EVIDENCE, POSSIBLE])
+
+    def test_openpgp_exact_email_lookup(self):
+        platform = {
+            "name": "OpenPGP Key Directory",
+            "category": "verified",
+            "check": "public_text_email",
+            "probe_url": "https://keys.openpgp.org/vks/v1/by-email/{email_quoted}",
+            "found_marker": "-----BEGIN PGP PUBLIC KEY BLOCK-----",
+            "not_found_statuses": [404],
+        }
+        found = self.run_account_check(
+            platform,
+            httpx.Response(200, text="-----BEGIN PGP PUBLIC KEY BLOCK-----\nexample"),
+        )
+        missing = self.run_account_check(platform, httpx.Response(404))
+
+        self.assertEqual(found["status"], FOUND)
+        self.assertEqual(missing["status"], NO_PUBLIC_EVIDENCE)
 
     def test_public_profile_email_unexpected_response_is_unknown(self):
         platform = {
@@ -286,6 +364,93 @@ class EmailDetectionTests(unittest.TestCase):
         result = asyncio.run(execute())
 
         self.assertEqual(result["status"], ERROR)
+        self.assertEqual(result["unknown_cause"], "timeout")
+        self.assertEqual(result["attempts"], 2)
+
+    def test_transient_account_error_is_retried(self):
+        platform = {
+            "name": "Gravatar",
+            "category": "verified",
+            "check": "gravatar",
+        }
+        calls = 0
+
+        async def execute() -> dict:
+            def handler(_request: httpx.Request) -> httpx.Response:
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    raise httpx.ReadTimeout("slow")
+                return httpx.Response(200)
+
+            transport = httpx.MockTransport(handler)
+            async with httpx.AsyncClient(transport=transport) as client:
+                return await check_account_platform("owner@example.test", client, platform)
+
+        result = asyncio.run(execute())
+
+        self.assertEqual(result["status"], FOUND)
+        self.assertEqual(result["attempts"], 2)
+        self.assertEqual([item["status"] for item in result["evidence"]], [ERROR, FOUND])
+
+    def test_public_profile_transport_failure_stays_unknown(self):
+        platform = {
+            "name": "GitHub",
+            "category": "heuristic",
+            "check": "public_profile_email",
+            "probe_url": "https://api.github.com/search/users?q={email}",
+            "items_path": "items",
+            "profile_url_field": "url",
+            "profile_email_field": "email",
+            "retry_attempts": 1,
+        }
+
+        async def execute() -> dict:
+            def handler(request: httpx.Request) -> httpx.Response:
+                if request.url.path == "/search/users":
+                    return httpx.Response(200, json={"items": [{"url": "https://api.github.com/users/octocat"}]})
+                return httpx.Response(403)
+
+            transport = httpx.MockTransport(handler)
+            async with httpx.AsyncClient(transport=transport) as client:
+                return await check_account_platform("owner@example.test", client, platform)
+
+        result = asyncio.run(execute())
+
+        self.assertEqual(result["status"], UNKNOWN)
+        self.assertEqual(result["unknown_cause"], "forbidden")
+
+    def test_email_domain_reports_mx_and_provider(self):
+        async def execute() -> dict:
+            response = httpx.Response(
+                200,
+                json={
+                    "Status": 0,
+                    "Answer": [{"type": 15, "data": "10 mail.protection.outlook.com."}],
+                },
+            )
+            transport = httpx.MockTransport(lambda request: response)
+            async with httpx.AsyncClient(transport=transport) as client:
+                return await check_email_domain("owner@example.test", client)
+
+        result = asyncio.run(execute())
+
+        self.assertEqual(result["status"], "MX_FOUND")
+        self.assertTrue(result["mail_routable"])
+        self.assertEqual(result["provider"], "Microsoft 365")
+
+    def test_email_domain_reports_nxdomain(self):
+        async def execute() -> dict:
+            transport = httpx.MockTransport(
+                lambda request: httpx.Response(200, json={"Status": 3})
+            )
+            async with httpx.AsyncClient(transport=transport) as client:
+                return await check_email_domain("owner@example.invalid", client)
+
+        result = asyncio.run(execute())
+
+        self.assertEqual(result["status"], "DOMAIN_NOT_FOUND")
+        self.assertFalse(result["mail_routable"])
 
     def test_documented_email_lookup_without_api_key_is_not_configured(self):
         platform = {
@@ -508,6 +673,35 @@ class EmailDetectionTests(unittest.TestCase):
         self.assertEqual(result["section"], "breach")
         self.assertEqual(result["breaches"], ["ExampleBreach"])
 
+    def test_hibp_transient_failure_is_retried(self):
+        calls = 0
+        platform = {
+            "name": "Have I Been Pwned",
+            "category": "verified",
+            "section": "breach",
+            "check": "hibp",
+            "url": "https://haveibeenpwned.com/",
+        }
+
+        async def execute() -> dict:
+            def handler(_request: httpx.Request) -> httpx.Response:
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    raise httpx.ReadTimeout("slow")
+                return httpx.Response(404)
+
+            transport = httpx.MockTransport(handler)
+            async with httpx.AsyncClient(transport=transport) as client:
+                return await check_breach_platform("owner@example.test", client, platform)
+
+        with patch.dict("os.environ", {"HIBP_API_KEY": "a" * 32}, clear=False):
+            result = asyncio.run(execute())
+
+        self.assertEqual(result["status"], NOT_FOUND)
+        self.assertEqual(result["attempts"], 2)
+        self.assertEqual([item["status"] for item in result["evidence"]], [ERROR, NOT_FOUND])
+
     def test_check_email_groups_accounts_and_breaches(self):
         async def fake_account(email, client, platform):
             return {"service": platform["name"], "category": platform["category"], "status": MANUAL, "found": False}
@@ -515,21 +709,28 @@ class EmailDetectionTests(unittest.TestCase):
         async def fake_breach(email, client, platform):
             return {"service": platform["name"], "section": "breach", "status": NOT_CONFIGURED, "found": False, "breaches": []}
 
+        async def fake_domain(email, client):
+            return {"domain": "example.test", "status": "MX_FOUND", "mail_routable": True, "mx_hosts": ["mx.example.test"]}
+
         with (
             patch.object(checker, "ACCOUNT_PLATFORMS", [{"name": "Manual", "category": "manual"}]),
             patch.object(checker, "BREACH_PLATFORMS", [{"name": "HIBP", "section": "breach"}]),
             patch.object(checker, "check_account_platform", fake_account),
             patch.object(checker, "check_breach_platform", fake_breach),
+            patch.object(checker, "check_email_domain", fake_domain),
         ):
             result = asyncio.run(checker.check_email("owner@example.test"))
 
         self.assertEqual(result["accounts"][0]["status"], MANUAL)
         self.assertEqual(result["breaches"][0]["status"], NOT_CONFIGURED)
+        self.assertEqual(result["domain"]["status"], "MX_FOUND")
 
     def test_email_console_summary_separates_sections(self):
         results = {
+            "domain": {"domain": "example.test", "status": "MX_FOUND", "provider": "Example Mail", "detail": "1 MX record(s) found"},
             "accounts": [
                 {"service": "GitHub", "status": MANUAL, "found": False, "detail": ""},
+                {"service": "GitLab", "status": NO_PUBLIC_EVIDENCE, "found": False, "detail": "No public email"},
             ],
             "breaches": [
                 {"service": "Have I Been Pwned", "status": NOT_CONFIGURED, "found": False, "detail": ""},
@@ -543,6 +744,8 @@ class EmailDetectionTests(unittest.TestCase):
         self.assertIn("Verified Accounts", rendered)
         self.assertIn("Manual Investigation", rendered)
         self.assertIn("Breaches", rendered)
+        self.assertIn("Mail Domain", rendered)
+        self.assertIn("No Public Evidence", rendered)
         self.assertIn("Use --show-manual to display them.", rendered)
         self.assertNotIn("> GitHub", rendered)
 
@@ -565,7 +768,7 @@ class EmailCatalogAndReportTests(unittest.TestCase):
     def test_catalog_preserves_existing_service_count_and_manual_entries(self):
         names = [name for name, _platform in ALL_SERVICES]
 
-        self.assertEqual(len(names), 110)
+        self.assertEqual(len(names), 111)
         self.assertEqual(len(names), len(set(names)))
         self.assertIn("GitHub", names)
         self.assertIn("Have I Been Pwned", names)
@@ -593,11 +796,18 @@ class EmailCatalogAndReportTests(unittest.TestCase):
             "osint_email": {
                 "target": "owner@example.test",
                 "results": {
+                    "domain": {
+                        "domain": "example.test",
+                        "status": "MX_FOUND",
+                        "provider": "Example Mail",
+                        "detail": "1 MX record(s) found",
+                    },
                     "accounts": [
                         {"service": "Gravatar", "status": FOUND, "found": True, "detail": "avatar"},
                         {"service": "Example", "status": POSSIBLE, "found": False, "detail": "marker"},
                         {"service": "Missing", "status": NOT_FOUND, "found": False, "detail": "HTTP 404"},
                         {"service": "GitHub", "status": MANUAL, "found": False, "detail": ""},
+                        {"service": "GitLab", "status": NO_PUBLIC_EVIDENCE, "found": False, "detail": "No public email"},
                     ],
                     "breaches": [
                         {
@@ -623,6 +833,8 @@ class EmailCatalogAndReportTests(unittest.TestCase):
         self.assertEqual(json_report["osint_email"]["results"]["accounts"][0]["status"], FOUND)
         self.assertIn("Verified Accounts", html_report)
         self.assertIn("Checked and Not Found", html_report)
+        self.assertIn("No Public Evidence", html_report)
+        self.assertIn("MX_FOUND", html_report)
         self.assertIn("Breaches", html_report)
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import os
@@ -9,7 +10,7 @@ import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, quote_plus, urlsplit
 
 import httpx
 
@@ -30,10 +31,53 @@ UNKNOWN = "UNKNOWN"
 MANUAL = "MANUAL"
 ERROR = "ERROR"
 NOT_CONFIGURED = "NOT_CONFIGURED"
+NO_PUBLIC_EVIDENCE = "NO_PUBLIC_EVIDENCE"
 
 
-def _base_result(platform: dict[str, Any], status: str, detail: str = "") -> dict[str, Any]:
-    return normalize_email_result(platform, status, detail)
+def _base_result(
+    platform: dict[str, Any],
+    status: str,
+    detail: str = "",
+    cause: str | None = None,
+) -> dict[str, Any]:
+    if cause == "rate_limited":
+        detail = "Site paused; skipped because of rate limiting."
+    result = normalize_email_result(platform, status, detail)
+    if cause:
+        result["diagnostic_cause"] = cause
+        if status in {UNKNOWN, ERROR, NOT_CONFIGURED}:
+            result["unknown_cause"] = cause
+    return result
+
+
+def _http_unknown_cause(status_code: int) -> str:
+    if status_code == 429:
+        return "rate_limited"
+    if status_code in {401, 403}:
+        return "forbidden"
+    if status_code >= 500:
+        return "server_error"
+    return "unexpected_status"
+
+
+def _error_cause(exc: Exception) -> str:
+    if isinstance(exc, httpx.TimeoutException):
+        return "timeout"
+    if isinstance(exc, httpx.HTTPError):
+        return "network_error"
+    return "detector_error"
+
+
+def _email_evidence(detector: str, result: dict[str, Any]) -> dict[str, str]:
+    evidence = {
+        "detector": detector,
+        "status": str(result.get("status", UNKNOWN)),
+        "detail": str(result.get("detail", "")),
+    }
+    cause = result.get("unknown_cause") or result.get("diagnostic_cause")
+    if cause:
+        evidence["cause"] = str(cause)
+    return evidence
 
 
 def _email_hash(text: str) -> str:
@@ -152,11 +196,11 @@ async def check_gravatar(email: str, client: httpx.AsyncClient, platform: dict[s
             params={"d": "404", "s": "1"},
         )
     except httpx.TimeoutException as exc:
-        result = _base_result(platform, ERROR, type(exc).__name__)
+        result = _base_result(platform, ERROR, type(exc).__name__, _error_cause(exc))
         result["found"] = False
         return result
     except httpx.HTTPError as exc:
-        return _base_result(platform, ERROR, type(exc).__name__)
+        return _base_result(platform, ERROR, type(exc).__name__, _error_cause(exc))
 
     if response.status_code == 200:
         result = _base_result(platform, FOUND, f"https://gravatar.com/{digest}")
@@ -168,7 +212,12 @@ async def check_gravatar(email: str, client: httpx.AsyncClient, platform: dict[s
         return result
     if response.status_code == 404:
         return _base_result(platform, NOT_FOUND)
-    return _base_result(platform, UNKNOWN, f"HTTP {response.status_code}")
+    return _base_result(
+        platform,
+        UNKNOWN,
+        f"HTTP {response.status_code}",
+        _http_unknown_cause(response.status_code),
+    )
 
 
 async def check_heuristic(email: str, client: httpx.AsyncClient, platform: dict[str, Any]) -> dict[str, Any]:
@@ -180,14 +229,19 @@ async def check_heuristic(email: str, client: httpx.AsyncClient, platform: dict[
     try:
         response = await client.get(probe_url, follow_redirects=True)
     except httpx.TimeoutException as exc:
-        return _base_result(platform, ERROR, type(exc).__name__)
+        return _base_result(platform, ERROR, type(exc).__name__, _error_cause(exc))
     except httpx.HTTPError as exc:
-        return _base_result(platform, ERROR, type(exc).__name__)
+        return _base_result(platform, ERROR, type(exc).__name__, _error_cause(exc))
 
     if response.status_code in set(platform.get("not_found_statuses", [404, 410])):
         return _base_result(platform, NOT_FOUND, f"HTTP {response.status_code}")
     if response.status_code != 200:
-        return _base_result(platform, UNKNOWN, f"HTTP {response.status_code}")
+        return _base_result(
+            platform,
+            UNKNOWN,
+            f"HTTP {response.status_code}",
+            _http_unknown_cause(response.status_code),
+        )
 
     body = response.text.casefold()
     possible_markers = [str(item).casefold() for item in platform.get("possible_markers", [])]
@@ -196,7 +250,7 @@ async def check_heuristic(email: str, client: httpx.AsyncClient, platform: dict[
         return _base_result(platform, NOT_FOUND, "Not-found marker observed")
     if any(marker in body for marker in possible_markers):
         return _base_result(platform, POSSIBLE, "Heuristic marker observed")
-    return _base_result(platform, UNKNOWN, "Heuristic probe inconclusive")
+    return _base_result(platform, UNKNOWN, "Heuristic probe inconclusive", "no_decisive_marker")
 
 
 async def check_public_profile_email(email: str, client: httpx.AsyncClient, platform: dict[str, Any]) -> dict[str, Any]:
@@ -211,21 +265,26 @@ async def check_public_profile_email(email: str, client: httpx.AsyncClient, plat
     try:
         response = await client.get(probe_url, follow_redirects=True, headers=headers)
     except httpx.TimeoutException as exc:
-        return _base_result(platform, ERROR, type(exc).__name__)
+        return _base_result(platform, ERROR, type(exc).__name__, _error_cause(exc))
     except httpx.HTTPError as exc:
-        return _base_result(platform, ERROR, type(exc).__name__)
+        return _base_result(platform, ERROR, type(exc).__name__, _error_cause(exc))
 
     if response.status_code != 200:
-        return _base_result(platform, UNKNOWN, f"HTTP {response.status_code}")
+        return _base_result(
+            platform,
+            UNKNOWN,
+            f"HTTP {response.status_code}",
+            _http_unknown_cause(response.status_code),
+        )
 
     data = _safe_json(response)
     if data is None:
-        return _base_result(platform, UNKNOWN, "Search response was not valid JSON")
+        return _base_result(platform, UNKNOWN, "Search response was not valid JSON", "parser_mismatch")
 
     items_path = str(platform.get("items_path", "items"))
     items = _json_value(data, items_path) if items_path else data
     if not isinstance(items, list):
-        return _base_result(platform, UNKNOWN, "Search response shape was unexpected")
+        return _base_result(platform, UNKNOWN, "Search response shape was unexpected", "parser_mismatch")
 
     normalized_email = email.strip().casefold()
     profile_url_field = str(platform.get("profile_url_field", "url"))
@@ -233,6 +292,9 @@ async def check_public_profile_email(email: str, client: httpx.AsyncClient, plat
     profile_email_field = str(platform.get("profile_email_field", "email"))
     label_field = str(platform.get("label_field", "login"))
     inspected_profiles = 0
+    attempted_profiles = 0
+    profile_failure_causes: list[str] = []
+    profile_configuration_failed = False
 
     for item in items[: int(platform.get("profile_check_limit", 5))]:
         if not isinstance(item, dict):
@@ -242,24 +304,27 @@ async def check_public_profile_email(email: str, client: httpx.AsyncClient, plat
             try:
                 profile_url = _format_profile_url(profile_url_template, item)
             except KeyError:
+                profile_configuration_failed = True
                 continue
         if not isinstance(profile_url, str) or not profile_url:
             continue
 
+        attempted_profiles += 1
         try:
             profile_response = await client.get(profile_url, follow_redirects=True, headers=headers)
         except httpx.TimeoutException as exc:
-            return _base_result(platform, ERROR, type(exc).__name__)
+            return _base_result(platform, ERROR, type(exc).__name__, _error_cause(exc))
         except httpx.HTTPError as exc:
-            return _base_result(platform, ERROR, type(exc).__name__)
+            return _base_result(platform, ERROR, type(exc).__name__, _error_cause(exc))
 
         if profile_response.status_code != 200:
+            profile_failure_causes.append(_http_unknown_cause(profile_response.status_code))
             continue
-        inspected_profiles += 1
-
         profile_data = _safe_json(profile_response)
         if profile_data is None:
+            profile_failure_causes.append("parser_mismatch")
             continue
+        inspected_profiles += 1
         public_email = _json_value(profile_data, profile_email_field)
         if isinstance(public_email, str) and public_email.strip().casefold() == normalized_email:
             label = _json_value(item, label_field)
@@ -276,8 +341,123 @@ async def check_public_profile_email(email: str, client: httpx.AsyncClient, plat
             return result
 
     if inspected_profiles:
-        return _base_result(platform, UNKNOWN, "No exact public-email match; private accounts remain undetectable")
-    return _base_result(platform, UNKNOWN, "Search results were inconclusive")
+        return _base_result(
+            platform,
+            NO_PUBLIC_EVIDENCE,
+            "No exact public-email match; a private account may still exist",
+        )
+    if attempted_profiles:
+        cause = profile_failure_causes[0] if profile_failure_causes else "parser_mismatch"
+        return _base_result(
+            platform,
+            UNKNOWN,
+            "Public profile candidates were found but could not be verified",
+            cause,
+        )
+    if profile_configuration_failed:
+        return _base_result(
+            platform,
+            UNKNOWN,
+            "Public profile URL configuration could not be resolved",
+            "parser_mismatch",
+        )
+    return _base_result(
+        platform,
+        NO_PUBLIC_EVIDENCE,
+        "No publicly indexed profile exposed this email; a private account may still exist",
+    )
+
+
+async def check_github_commit_email(
+    email: str,
+    client: httpx.AsyncClient,
+    platform: dict[str, Any],
+) -> dict[str, Any]:
+    """Search GitHub's public commit index for an exact author-email match."""
+    headers = {
+        "User-Agent": f"Trackher/{__version__}",
+        "Accept": "application/vnd.github+json",
+    }
+    try:
+        response = await client.get(
+            "https://api.github.com/search/commits",
+            params={"q": f"author-email:{email.strip()}", "per_page": "1"},
+            headers=headers,
+        )
+    except httpx.TimeoutException as exc:
+        return _base_result(platform, ERROR, type(exc).__name__, _error_cause(exc))
+    except httpx.HTTPError as exc:
+        return _base_result(platform, ERROR, type(exc).__name__, _error_cause(exc))
+
+    if response.status_code != 200:
+        return _base_result(
+            platform,
+            UNKNOWN,
+            f"GitHub commit search HTTP {response.status_code}",
+            _http_unknown_cause(response.status_code),
+        )
+    data = _safe_json(response)
+    if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+        return _base_result(platform, UNKNOWN, "GitHub commit search shape was unexpected", "parser_mismatch")
+    if not data["items"]:
+        return _base_result(
+            platform,
+            NO_PUBLIC_EVIDENCE,
+            "No exact public commit-author email match",
+        )
+
+    item = data["items"][0]
+    public_email = _json_value(item, "commit.author.email")
+    if not isinstance(public_email, str) or public_email.strip().casefold() != email.strip().casefold():
+        return _base_result(platform, UNKNOWN, "Commit search did not return an exact email", "parser_mismatch")
+
+    result = _base_result(platform, POSSIBLE, "Exact email found in GitHub public commit metadata")
+    metadata = _extract_metadata(
+        item,
+        {
+            "username": "author.login",
+            "profile_url": "author.html_url",
+            "commit_url": "html_url",
+            "commit_sha": "sha",
+        },
+    )
+    metadata["public_email"] = public_email.strip()
+    result["public_metadata"] = metadata
+    return result
+
+
+async def check_public_text_email(
+    email: str,
+    client: httpx.AsyncClient,
+    platform: dict[str, Any],
+) -> dict[str, Any]:
+    """Check a documented exact-email endpoint that returns public text evidence."""
+    probe_url = _format_email_template(platform.get("probe_url", ""), email)
+    if not probe_url:
+        return _base_result(platform, MANUAL, "No public text endpoint configured")
+    try:
+        response = await client.get(probe_url, follow_redirects=True)
+    except httpx.TimeoutException as exc:
+        return _base_result(platform, ERROR, type(exc).__name__, _error_cause(exc))
+    except httpx.HTTPError as exc:
+        return _base_result(platform, ERROR, type(exc).__name__, _error_cause(exc))
+
+    if response.status_code in set(platform.get("not_found_statuses", [404, 410])):
+        return _base_result(platform, NO_PUBLIC_EVIDENCE, f"HTTP {response.status_code}; no opt-in public record")
+    if response.status_code != 200:
+        return _base_result(
+            platform,
+            UNKNOWN,
+            f"HTTP {response.status_code}",
+            _http_unknown_cause(response.status_code),
+        )
+    marker = str(platform.get("found_marker", "")).strip()
+    if marker and marker not in response.text:
+        return _base_result(platform, UNKNOWN, "Public record marker was missing", "parser_mismatch")
+    status = FOUND if platform.get("category") == "verified" else POSSIBLE
+    result = _base_result(platform, status, "Exact opt-in public email record found")
+    result["public_metadata"] = {"public_email": email.strip(), "record_url": str(response.url)}
+    return result
 
 
 async def check_documented_email_lookup(
@@ -308,21 +488,26 @@ async def check_documented_email_lookup(
     try:
         response = await client.get(probe_url, params=params, follow_redirects=True, headers=headers)
     except httpx.TimeoutException as exc:
-        return _base_result(platform, ERROR, type(exc).__name__)
+        return _base_result(platform, ERROR, type(exc).__name__, _error_cause(exc))
     except httpx.HTTPError as exc:
-        return _base_result(platform, ERROR, type(exc).__name__)
+        return _base_result(platform, ERROR, type(exc).__name__, _error_cause(exc))
 
     if response.status_code != 200:
-        return _base_result(platform, UNKNOWN, f"HTTP {response.status_code}")
+        return _base_result(
+            platform,
+            UNKNOWN,
+            f"HTTP {response.status_code}",
+            _http_unknown_cause(response.status_code),
+        )
 
     response_format = str(platform.get("response_format", "xml")).strip().casefold()
     if response_format != "xml":
-        return _base_result(platform, UNKNOWN, "Unsupported documented lookup response format")
+        return _base_result(platform, UNKNOWN, "Unsupported documented lookup response format", "parser_mismatch")
 
     try:
         root = ET.fromstring(response.text)
     except ET.ParseError:
-        return _base_result(platform, UNKNOWN, "Lookup response was not valid XML")
+        return _base_result(platform, UNKNOWN, "Lookup response was not valid XML", "parser_mismatch")
 
     error_node = root.find(".//err")
     if error_node is not None:
@@ -339,7 +524,7 @@ async def check_documented_email_lookup(
     success_path = str(platform.get("success_path", "")).strip()
     success_value = _xml_value(root, success_path) if success_path else None
     if success_path and success_value is None:
-        return _base_result(platform, UNKNOWN, "Lookup response shape was unexpected")
+        return _base_result(platform, UNKNOWN, "Lookup response shape was unexpected", "parser_mismatch")
 
     status = FOUND if platform.get("category") == "verified" else POSSIBLE
     detail = str(platform.get("success_detail", "Documented public lookup matched exactly")).strip()
@@ -356,8 +541,118 @@ async def check_documented_email_lookup(
     return result
 
 
-async def check_manual(_email: str, _client: httpx.AsyncClient, platform: dict[str, Any]) -> dict[str, Any]:
-    return _base_result(platform, MANUAL, "Manual investigation required")
+async def check_manual(email: str, _client: httpx.AsyncClient, platform: dict[str, Any]) -> dict[str, Any]:
+    """Build a side-effect-free, site-scoped public search lead."""
+    result = _base_result(platform, MANUAL, "No safe passive account endpoint; exact public search is available")
+    hostname = urlsplit(str(platform.get("url", ""))).hostname or ""
+    if hostname:
+        query = quote_plus(f'"{email.strip()}" site:{hostname}')
+        result["investigation_url"] = f"https://www.google.com/search?q={query}"
+        result["investigation_method"] = "exact_public_web_search"
+    return result
+
+
+def _mail_provider(mx_hosts: list[str]) -> str:
+    joined = " ".join(mx_hosts).casefold()
+    providers = (
+        ("Google Workspace", ("google.com", "googlemail.com")),
+        ("Microsoft 365", ("mail.protection.outlook.com",)),
+        ("Proton Mail", ("protonmail.ch", "protonmail.com")),
+        ("Zoho Mail", ("zoho.com", "zoho.eu")),
+        ("Fastmail", ("messagingengine.com",)),
+    )
+    for provider, markers in providers:
+        if any(marker in joined for marker in markers):
+            return provider
+    return ""
+
+
+async def check_email_domain(email: str, client: httpx.AsyncClient) -> dict[str, Any]:
+    """Resolve passive MX evidence without claiming that a mailbox exists."""
+    domain = email.strip().rsplit("@", 1)[-1].strip().casefold()
+    result: dict[str, Any] = {
+        "domain": domain,
+        "status": UNKNOWN,
+        "mail_routable": None,
+        "detail": "",
+        "mx_hosts": [],
+    }
+    if not domain or domain == email.strip().casefold():
+        result.update(status="INVALID", mail_routable=False, detail="Invalid email domain")
+        return result
+
+    try:
+        response = await client.get(
+            "https://dns.google/resolve",
+            params={"name": domain, "type": "MX"},
+            headers={"Accept": "application/dns-json"},
+        )
+    except httpx.TimeoutException:
+        result.update(detail="MX lookup timed out", unknown_cause="timeout")
+        return result
+    except httpx.HTTPError:
+        result.update(detail="MX lookup failed", unknown_cause="network_error")
+        return result
+
+    if response.status_code != 200:
+        result.update(
+            detail=f"MX lookup HTTP {response.status_code}",
+            unknown_cause=_http_unknown_cause(response.status_code),
+        )
+        return result
+
+    data = _safe_json(response)
+    if not isinstance(data, dict):
+        result.update(detail="MX response was not valid JSON", unknown_cause="parser_mismatch")
+        return result
+
+    dns_status = data.get("Status")
+    if dns_status == 3:
+        result.update(
+            status="DOMAIN_NOT_FOUND",
+            mail_routable=False,
+            detail="Email domain does not exist (NXDOMAIN)",
+        )
+        return result
+    if dns_status != 0:
+        result.update(detail=f"DNS lookup returned status {dns_status}", unknown_cause="dns_error")
+        return result
+
+    mx_hosts: list[str] = []
+    null_mx = False
+    for answer in data.get("Answer", []):
+        if not isinstance(answer, dict) or answer.get("type") != 15:
+            continue
+        raw_value = str(answer.get("data", "")).strip()
+        parts = raw_value.split(maxsplit=1)
+        raw_host = parts[1] if len(parts) == 2 else parts[0]
+        if raw_host == ".":
+            null_mx = True
+            continue
+        host = raw_host.rstrip(".")
+        if host:
+            mx_hosts.append(host)
+
+    if null_mx:
+        result.update(status="NO_MAIL", mail_routable=False, detail="Domain explicitly rejects email")
+        return result
+    if not mx_hosts:
+        result.update(
+            status="NO_MX",
+            detail="No explicit MX record; mailbox existence cannot be inferred",
+        )
+        return result
+
+    provider = _mail_provider(mx_hosts)
+    result.update(
+        status="MX_FOUND",
+        mail_routable=True,
+        detail=f"{len(mx_hosts)} MX record(s) found",
+        mx_hosts=mx_hosts,
+    )
+    if provider:
+        result["provider"] = provider
+    return result
 
 
 async def check_haveibeenpwned(email: str, client: httpx.AsyncClient, platform: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -395,11 +690,14 @@ async def check_haveibeenpwned(email: str, client: httpx.AsyncClient, platform: 
         status = ERROR
         detail = type(exc).__name__
         breaches: list[str] = []
+        cause = "timeout"
     except httpx.HTTPError as exc:
         status = ERROR
         detail = type(exc).__name__
         breaches = []
+        cause = "network_error"
     else:
+        cause = ""
         if response.status_code == 404:
             status = NOT_FOUND
             detail = "No known breaches"
@@ -408,38 +706,49 @@ async def check_haveibeenpwned(email: str, client: httpx.AsyncClient, platform: 
             status = ERROR
             detail = "HIBP API key rejected"
             breaches = []
+            cause = "forbidden"
         elif response.status_code == 429:
             status = ERROR
             detail = "HIBP rate limit exceeded"
             breaches = []
+            cause = "rate_limited"
         elif response.status_code != 200:
             status = UNKNOWN
             detail = f"HTTP {response.status_code}"
             breaches = []
+            cause = _http_unknown_cause(response.status_code)
         else:
             data = _safe_json(response)
             if not isinstance(data, list):
                 status = UNKNOWN
                 detail = "Unexpected HIBP response"
                 breaches = []
+                cause = "parser_mismatch"
             else:
                 breaches = [str(item.get("Name", "")) for item in data if isinstance(item, dict)]
                 breaches = [name for name in breaches if name]
                 status = FOUND if breaches else NOT_FOUND
                 detail = f"{len(breaches)} breaches" if breaches else "No known breaches"
 
+    extra: dict[str, Any] = {"breaches": breaches}
+    if cause:
+        extra["diagnostic_cause"] = cause
+        if status in {UNKNOWN, ERROR, NOT_CONFIGURED}:
+            extra["unknown_cause"] = cause
     return normalize_breach_result(
         platform,
         status,
         detail,
-        extra={"breaches": breaches},
+        extra=extra,
     )
 
 
 ACCOUNT_DETECTORS = DetectorRegistry()
 ACCOUNT_DETECTORS.register("documented_email_lookup", check_documented_email_lookup)
+ACCOUNT_DETECTORS.register("github_commit_email", check_github_commit_email)
 ACCOUNT_DETECTORS.register("gravatar", check_gravatar)
 ACCOUNT_DETECTORS.register("heuristic", check_heuristic)
+ACCOUNT_DETECTORS.register("public_text_email", check_public_text_email)
 ACCOUNT_DETECTORS.register("public_profile_email", check_public_profile_email)
 ACCOUNT_DETECTORS.register("manual", check_manual)
 
@@ -452,21 +761,70 @@ BREACH_CHECKS = BREACH_DETECTORS
 
 
 async def check_account_platform(email: str, client: httpx.AsyncClient, platform: dict[str, Any]) -> dict[str, Any]:
-    check_name = str(platform.get("check", "manual"))
-    check_fn = ACCOUNT_DETECTORS.get(check_name) or ACCOUNT_DETECTORS.get("manual")
-    assert check_fn is not None
-    result = await safe_execute(
-        lambda: check_fn(email, client, platform),
-        on_error=lambda exc: normalize_email_result(
-            platform,
-            ERROR,
-            type(exc).__name__,
-        ),
-    )
-    if platform.get("category") != "verified" and result.get("status") == FOUND:
-        result["status"] = POSSIBLE
-        result["found"] = False
-        result["detail"] = result.get("detail") or "Non-verified detector cannot return FOUND"
+    primary_check = str(platform.get("check", "manual"))
+    raw_chain = platform.get("detector_chain", [primary_check])
+    detector_chain = [str(item).strip() for item in raw_chain] if isinstance(raw_chain, list) else [primary_check]
+    detector_chain = [item for index, item in enumerate(detector_chain) if item and item not in detector_chain[:index]]
+    if primary_check not in detector_chain:
+        detector_chain.insert(0, primary_check)
+    default_attempts = 1 if primary_check == "manual" else 2
+    try:
+        attempts = max(1, min(int(platform.get("retry_attempts", default_attempts)), 3))
+    except (TypeError, ValueError):
+        attempts = default_attempts
+
+    evidence: list[dict[str, str]] = []
+    retryable_causes = {"timeout", "network_error", "server_error"}
+    result: dict[str, Any] = _base_result(platform, UNKNOWN)
+    unresolved_result: dict[str, Any] | None = None
+    unresolved_detector = primary_check
+    detector_used = primary_check
+
+    for check_name in detector_chain:
+        check_fn = ACCOUNT_DETECTORS.get(check_name) or ACCOUNT_DETECTORS.get("manual")
+        assert check_fn is not None
+        for attempt in range(attempts):
+            result = await safe_execute(
+                lambda: check_fn(email, client, platform),
+                on_error=lambda exc: _base_result(
+                    platform,
+                    ERROR,
+                    type(exc).__name__,
+                    _error_cause(exc),
+                ),
+            )
+            if platform.get("category") != "verified" and result.get("status") == FOUND:
+                result["status"] = POSSIBLE
+                result["found"] = False
+                result["detail"] = result.get("detail") or "Non-verified detector cannot return FOUND"
+            evidence.append(_email_evidence(check_name, result))
+            cause = str(result.get("unknown_cause", ""))
+            if cause not in retryable_causes or attempt + 1 == attempts:
+                break
+            await asyncio.sleep(0.15 * (attempt + 1))
+
+        detector_used = check_name
+        status = result.get("status")
+        if str(result.get("unknown_cause", "")) == "rate_limited":
+            unresolved_result = result
+            unresolved_detector = check_name
+            break
+        if status in {UNKNOWN, ERROR, NOT_CONFIGURED}:
+            unresolved_result = result
+            unresolved_detector = check_name
+            continue
+        if status == NO_PUBLIC_EVIDENCE and check_name != detector_chain[-1]:
+            continue
+        break
+
+    if unresolved_result is not None and result.get("status") == NO_PUBLIC_EVIDENCE:
+        result = unresolved_result
+        detector_used = unresolved_detector
+    result["detector_used"] = detector_used
+    result["fallback_used"] = detector_used != primary_check
+    result["attempts"] = len(evidence)
+    if len(evidence) > 1 or len(detector_chain) > 1:
+        result["evidence"] = evidence
     return result
 
 
@@ -474,11 +832,32 @@ async def check_breach_platform(email: str, client: httpx.AsyncClient, platform:
     check_name = str(platform.get("check", "hibp"))
     check_fn = BREACH_DETECTORS.get(check_name) or BREACH_DETECTORS.get("hibp")
     assert check_fn is not None
-    return await safe_execute(
-        lambda: check_fn(email, client, platform),
-        on_error=lambda exc: normalize_breach_result(
-            platform,
-            ERROR,
-            type(exc).__name__,
-        ),
-    )
+    try:
+        attempts = max(1, min(int(platform.get("retry_attempts", 2)), 3))
+    except (TypeError, ValueError):
+        attempts = 2
+
+    evidence: list[dict[str, str]] = []
+    retryable_causes = {"timeout", "network_error", "server_error"}
+    result: dict[str, Any] = normalize_breach_result(platform, UNKNOWN)
+    for attempt in range(attempts):
+        result = await safe_execute(
+            lambda: check_fn(email, client, platform),
+            on_error=lambda exc: normalize_breach_result(
+                platform,
+                ERROR,
+                type(exc).__name__,
+                extra={"unknown_cause": _error_cause(exc), "diagnostic_cause": _error_cause(exc)},
+            ),
+        )
+        evidence.append(_email_evidence(check_name, result))
+        cause = str(result.get("unknown_cause", ""))
+        if cause not in retryable_causes or attempt + 1 == attempts:
+            break
+        await asyncio.sleep(0.15 * (attempt + 1))
+
+    result["detector_used"] = check_name
+    result["attempts"] = len(evidence)
+    if len(evidence) > 1:
+        result["evidence"] = evidence
+    return result

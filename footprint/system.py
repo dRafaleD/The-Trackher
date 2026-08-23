@@ -43,28 +43,28 @@ def _system_targets() -> list[tuple[str, Path, str]]:
 
         targets = [
             # Geçici dosyalar
-            ("Kullanıcı Temp (%LOCALAPPDATA%\\Temp)",
+            ("User Temp (%LOCALAPPDATA%\\Temp)",
              local / "Temp",                                     "dir"),
             # Thumbnail veritabanı
-            ("Thumbnail Önbelleği",
+            ("Thumbnail Cache",
              local / "Microsoft" / "Windows" / "Explorer",       "dir"),
             # Son kullanılan dosyalar (Recent)
-            ("Son Kullanılan Dosyalar (Recent)",
+            ("Recent Files (Recent)",
              appdata / "Microsoft" / "Windows" / "Recent",       "dir"),
             # İnternet Explorer / Edge (Legacy) Önbelleği
-            ("IE/Edge (Legacy) Önbelleği",
+            ("IE/Edge (Legacy) Cache",
              local / "Microsoft" / "Windows" / "INetCache",      "dir"),
             # Crash dumps
-            ("Kullanıcı Crash Dump'ları",
+            ("User Crash Dumps",
              local / "CrashDumps",                               "dir"),
             # Teams önbelleği
-            ("Microsoft Teams Önbelleği",
+            ("Microsoft Teams Cache",
              appdata / "Microsoft" / "Teams" / "Cache",          "dir"),
             # Discord önbelleği
-            ("Discord Önbelleği",
+            ("Discord Cache",
              appdata / "discord" / "Cache",                      "dir"),
             # Spotify önbelleği
-            ("Spotify Önbelleği",
+            ("Spotify Cache",
              local / "Spotify" / "Storage",                      "dir"),
         ]
 
@@ -73,29 +73,29 @@ def _system_targets() -> list[tuple[str, Path, str]]:
 
         targets = [
             # Ana kullanıcı önbelleği
-            ("Kullanıcı Önbelleği (~/Library/Caches)",
+            ("User Cache (~/Library/Caches)",
              lib / "Caches",                                      "dir"),
             # Çöp Kutusu
-            ("Çöp Kutusu (~/.Trash)",
+            ("Trash (~/.Trash)",
              h / ".Trash",                                        "dir"),
             # QuickLook Thumbnail önbelleği
-            ("QuickLook Thumbnail Önbelleği",
+            ("QuickLook Thumbnail Cache",
              Path("/private/var/folders"),                        "ql_cache"),
             # Uygulama geçici dosyaları
-            ("Uygulama Geçici Dosyaları (~/Library/Application Support/.Trash)",
+            ("Application Temporary Files (~/Library/Application Support/.Trash)",
              lib / "Application Support" / ".Trash",             "dir"),
             # Son kullanılan dosyalar (plist)
-            ("Son Kullanılan Belgelere Yönelik Plist",
+            ("Recent Documents Plist",
              lib / "Application Support" / "com.apple.sharedfilelist",
              "dir"),
             # Crash raporları
-            ("Crash Raporları",
+            ("Crash Reports",
              lib / "Logs" / "DiagnosticReports",                 "dir"),
             # Xcode DerivedData (varsa)
             ("Xcode DerivedData",
              lib / "Developer" / "Xcode" / "DerivedData",        "dir"),
             # Simülatör önbelleği
-            ("iOS Simülatör Önbelleği",
+            ("iOS Simulator Cache",
              lib / "Developer" / "CoreSimulator" / "Caches",     "dir"),
         ]
 
@@ -103,19 +103,19 @@ def _system_targets() -> list[tuple[str, Path, str]]:
         user_cache = cache_dir() or (h / ".cache")
         user_trash = trash_dir() or (h / ".local" / "share" / "Trash")
         targets = [
-            ("Kullanıcı Önbelleği (~/.cache)",
+            ("User Cache (~/.cache)",
              user_cache,                                           "dir"),
-            ("Küçük Resim Önbelleği (Thumbnails)",
+            ("Thumbnail Cache (Thumbnails)",
              user_cache / "thumbnails",                           "dir"),
-            ("Son Kullanılan Dosyalar (recently-used)",
+            ("Recent Files (recently-used)",
              h / ".local" / "share" / "recently-used.xbel",     "file"),
-            ("Çöp Kutusu (~/.local/share/Trash)",
+            ("Trash (~/.local/share/Trash)",
              user_trash,                                           "dir"),
             # Flatpak var cache
-            ("Flatpak Var Önbelleği",
+            ("Flatpak Var Cache",
              h / ".var" / "app",                                 "flatpak"),
             # Snap önbelleği
-            ("Snap Önbelleği",
+            ("Snap Cache",
              h / "snap",                                         "snap"),
         ]
 
@@ -161,13 +161,13 @@ def _clean_temp_files(dry_run: bool = False) -> list[dict]:
     # Windows'ta UID kavramı farklı — TEMP klasörü zaten kullanıcıya özel
     if is_windows():
         # Windows Temp zaten kullanıcıya özel olduğu için direkt temizle
-        label = "Windows Kullanıcı Temp"
+        label = "Windows User Temp"
         size = get_dir_size(tmp_path)
         if size == 0:
             return results
         item = {"path": str(tmp_path), "size": size, "type": label}
         if dry_run:
-            print_info(f"[dim]{label}[/dim]  →  {tmp_path}  ({size:,} bayt)")
+            print_info(f"[dim]{label}[/dim]  →  {tmp_path}  ({size:,} bytes)")
             results.append(item)
         else:
             # Tüm alt dosyaları teker teker sil (dizinin kendisini değil)
@@ -179,7 +179,7 @@ def _clean_temp_files(dry_run: bool = False) -> list[dict]:
             except (PermissionError, OSError):
                 return results
             if deleted:
-                print_success(f"{label} temizlendi — {deleted} öğe kaldırıldı")
+                print_success(f"{label} cleaned — {deleted} items removed")
                 results.append(item)
         return results
 
@@ -200,14 +200,14 @@ def _clean_temp_files(dry_run: bool = False) -> list[dict]:
                     else get_dir_size(entry)
 
                 item = {"path": str(entry), "size": size,
-                        "type": "Kullanıcı geçici dosyası"}
+                        "type": "User temporary file"}
 
                 if dry_run:
-                    print_info(f"[dim]tmp[/dim]  →  {entry.name}  ({size:,} bayt)")
+                    print_info(f"[dim]tmp[/dim]  →  {entry.name}  ({size:,} bytes)")
                     results.append(item)
                 else:
                     if safe_remove(entry):
-                        print_success(f"tmp temizlendi  →  {entry.name}")
+                        print_success(f"tmp cleaned  →  {entry.name}")
                         results.append(item)
             except (PermissionError, OSError):
                 continue
@@ -234,12 +234,12 @@ def _clean_flatpak_cache(base: Path, dry_run: bool) -> list[dict]:
                 label = f"Flatpak Cache ({app_dir.name})"
                 item = {"path": str(cache), "size": size, "type": label}
                 if dry_run:
-                    print_info(f"[dim]{label}[/dim]  →  {cache}  ({size:,} bayt)")
+                    print_info(f"[dim]{label}[/dim]  →  {cache}  ({size:,} bytes)")
                     results.append(item)
                 else:
                     if safe_remove(cache):
                         cache.mkdir(parents=True, exist_ok=True)
-                        print_success(f"{label} temizlendi")
+                        print_success(f"{label} cleaned")
                         results.append(item)
     except (PermissionError, OSError):
         pass
@@ -277,7 +277,7 @@ def clean_system_traces(dry_run: bool = False) -> list[dict]:
             if target.is_dir():
                 size = get_dir_size(target)
                 if size > 0 and dry_run:
-                    print_info(f"[dim]Snap:[/dim]  {target}  ({size:,} bayt) — elle temizlenmeli")
+                    print_info(f"[dim]Snap:[/dim]  {target}  ({size:,} bytes) — manual cleanup required")
             continue
         if target_type == "ql_cache":
             # QuickLook önbelleği: kullanıcı klasörlerinde gömülü
@@ -289,13 +289,13 @@ def clean_system_traces(dry_run: bool = False) -> list[dict]:
                         capture_output=True, timeout=15,
                     )
                     if completed.returncode == 0:
-                        print_success("QuickLook Thumbnail Önbelleği temizlendi")
+                        print_success("QuickLook Thumbnail Cache cleaned")
                     else:
-                        print_warning("QuickLook Thumbnail Önbelleği temizlenemedi")
+                        print_warning("QuickLook Thumbnail Cache could not be cleaned")
                 else:
-                    print_info("[dim]QuickLook Cache:[/dim] temizlenecek (qlmanage -r cache)")
+                    print_info("[dim]QuickLook Cache:[/dim] will be cleaned (qlmanage -r cache)")
             except (OSError, subprocess.SubprocessError):
-                print_warning("QuickLook Thumbnail Önbelleği temizlenemedi")
+                print_warning("QuickLook Thumbnail Cache could not be cleaned")
             continue
 
         # Normal dir / file işleme
@@ -307,7 +307,7 @@ def clean_system_traces(dry_run: bool = False) -> list[dict]:
                 continue
             item = {"path": target_str, "size": size, "type": description}
             if dry_run:
-                print_info(f"[dim]{description}[/dim]  →  {target}  ({size:,} bayt)")
+                print_info(f"[dim]{description}[/dim]  →  {target}  ({size:,} bytes)")
                 results.append(item)
             else:
                 if safe_remove(target):
@@ -315,10 +315,10 @@ def clean_system_traces(dry_run: bool = False) -> list[dict]:
                         target.mkdir(parents=True, exist_ok=True)
                     except OSError:
                         pass
-                    print_success(f"{description} temizlendi  →  {target}")
+                    print_success(f"{description} cleaned  →  {target}")
                     results.append(item)
                 else:
-                    print_warning(f"{description} temizlenemedi  →  {target}")
+                    print_warning(f"{description} could not be cleaned  →  {target}")
             processed_paths.add(target)
 
         elif target_type == "file":
@@ -329,19 +329,19 @@ def clean_system_traces(dry_run: bool = False) -> list[dict]:
                 continue
             item = {"path": target_str, "size": size, "type": description}
             if dry_run:
-                print_info(f"[dim]{description}[/dim]  →  {target}  ({size:,} bayt)")
+                print_info(f"[dim]{description}[/dim]  →  {target}  ({size:,} bytes)")
                 results.append(item)
             else:
                 if safe_remove(target):
-                    print_success(f"{description} temizlendi  →  {target}")
+                    print_success(f"{description} cleaned  →  {target}")
                     results.append(item)
                 else:
-                    print_warning(f"{description} temizlenemedi  →  {target}")
+                    print_warning(f"{description} could not be cleaned  →  {target}")
 
     # Geçici dosya temizliği
     results.extend(_clean_temp_files(dry_run=dry_run))
 
     if not results:
-        print_info("Temizlenecek sistem izi bulunamadı.")
+        print_info("No system traces found to clean.")
 
     return results

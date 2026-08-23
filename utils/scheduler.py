@@ -43,7 +43,7 @@ def _schedule_windows(interval: str) -> None:
         stderr=subprocess.DEVNULL,
     )
     print_success(
-        f"Windows Görev Zamanlayıcıya '{task_name}' görevi ({schedule}) eklendi."
+        f"Windows Task Scheduler task '{task_name}' ({schedule}) added."
     )
 
 
@@ -71,7 +71,7 @@ def _schedule_linux(interval: str) -> None:
         capture_output=True,
         check=True,
     )
-    print_success(f"Linux cron görevi ({interval}) eklendi.")
+    print_success(f"Linux cron task ({interval}) added.")
 
 
 def _schedule_macos(interval: str) -> None:
@@ -102,23 +102,23 @@ def _schedule_macos(interval: str) -> None:
         capture_output=True,
         check=True,
     )
-    print_success(f"macOS launchd görevi ({interval}) eklendi: {plist_path}")
+    print_success(f"macOS launchd task ({interval}) added: {plist_path}")
 
 
 def schedule_task(interval: str = "daily", dry_run: bool = False) -> None:
     """Günlük veya haftalık temizliği işletim sisteminin zamanlayıcısına ekler."""
     interval = interval.lower()
     if interval not in {"daily", "weekly"}:
-        print_error("Zamanlama aralığı 'daily' veya 'weekly' olmalıdır.")
+        print_error("Schedule interval must be 'daily' or 'weekly'.")
         return
 
     system = platform.system()
     if dry_run:
         if system not in {"Windows", "Linux", "Darwin"}:
-            print_error(f"Bu işletim sistemi için zamanlama desteklenmiyor: {system}")
+            print_error(f"Scheduling is not supported on this operating system: {system}")
             return
         print_info(
-            f"Zamanlama simülasyonu: {system} üzerinde {interval} görev oluşturulacaktı."
+            f"Schedule simulation: a {interval} task would be created on {system}."
         )
         return
 
@@ -130,6 +130,6 @@ def schedule_task(interval: str = "daily", dry_run: bool = False) -> None:
         elif system == "Darwin":
             _schedule_macos(interval)
         else:
-            print_error(f"Bu işletim sistemi için zamanlama desteklenmiyor: {system}")
+            print_error(f"Scheduling is not supported on this operating system: {system}")
     except (OSError, subprocess.SubprocessError) as exc:
-        print_error(f"Zamanlanmış görev eklenemedi: {exc}")
+        print_error(f"Could not add scheduled task: {exc}")

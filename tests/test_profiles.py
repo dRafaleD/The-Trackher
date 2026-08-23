@@ -14,6 +14,9 @@ from utils.profiles import (
     normalize_scan_profile,
     profile_allows_email,
     profile_allows_username,
+    profile_request_policy,
+    select_email_platforms,
+    select_username_platforms,
 )
 from utils.reporter import export_to_html, export_to_json
 
@@ -29,6 +32,44 @@ class ProfileSelectionTests(unittest.TestCase):
         self.assertFalse(profile_allows_email("username-only"))
         self.assertFalse(profile_allows_username("email-only"))
         self.assertEqual(normalize_scan_profile(None), DEFAULT_SCAN_PROFILE)
+
+    def test_profiles_have_distinct_request_policies(self):
+        quick = profile_request_policy("quick")
+        standard = profile_request_policy("standard")
+        deep = profile_request_policy("deep")
+
+        self.assertGreater(quick["max_concurrent"], standard["max_concurrent"])
+        self.assertGreater(standard["max_concurrent"], deep["max_concurrent"])
+        self.assertLess(quick["request_interval_seconds"], standard["request_interval_seconds"])
+        self.assertLess(standard["request_interval_seconds"], deep["request_interval_seconds"])
+
+    def test_deep_username_profile_includes_sensitive_tier(self):
+        platforms = [
+            {"name": "Regular", "reliability": "unreliable"},
+            {"name": "Sensitive", "reliability": "unreliable", "scan_tier": "deep"},
+        ]
+
+        standard = select_username_platforms("standard", platforms)
+        deep = select_username_platforms("deep", platforms)
+
+        self.assertEqual([item["name"] for item in standard], ["Regular"])
+        self.assertCountEqual([item["name"] for item in deep], ["Regular", "Sensitive"])
+
+    def test_deep_email_profile_expands_public_profile_limit(self):
+        accounts = [
+            {
+                "name": "Public API",
+                "category": "verified",
+                "profile_check_limit": 5,
+                "deep_profile_check_limit": 10,
+            }
+        ]
+
+        standard, _ = select_email_platforms("standard", accounts, [])
+        deep, _ = select_email_platforms("deep", accounts, [])
+
+        self.assertEqual(standard[0]["profile_check_limit"], 5)
+        self.assertEqual(deep[0]["profile_check_limit"], 10)
 
 
 class EmailProfileRuntimeTests(unittest.TestCase):

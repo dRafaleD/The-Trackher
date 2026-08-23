@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0-rc7 - 2026-08-23
+
+- added profile-aware request pacing for quick, standard, deep, username-only, and email-only scans
+- added site and domain rate-limit handling with explicit paused/skipped states and Retry-After support
+- added site-specific pacing and deep-scan limits for sensitive platforms
+- expanded username and email verification coverage while preserving evidence-based unknown results
+- translated CLI, GUI, cleanup output, reports, and search-dork labels to English
+- documented profile usage and pacing examples in `--help`
+
 ## 1.2.0 - 2026-08-15
 
 - tightened GUI terminal queue handling and long-session memory behavior

@@ -7,7 +7,11 @@ from gui.widgets.common import ctk, format_result_sample
 from osint.checker import check_email
 from osint.dorking import generate_dorks
 from osint.services import ACCOUNT_PLATFORMS, BREACH_PLATFORMS
-from osint.username_checker import USERNAME_PLATFORMS, check_username_async
+from osint.username_checker import (
+    USERNAME_PLATFORMS,
+    USERNAME_REFERENCE_PLATFORMS,
+    check_username_async,
+)
 from utils.correlation import build_identity_correlation
 from utils.display import format_username_unknown_breakdown
 from utils.history import clear_scan_history, save_and_diff_scan
@@ -19,6 +23,7 @@ from utils.profiles import (
     profile_allows_email,
     profile_allows_username,
     profile_description,
+    profile_request_policy_description,
     select_email_platforms,
     select_username_platforms,
 )
@@ -211,6 +216,7 @@ class OsintTabMixin:
             f"\n[+] OSINT: Initiating email recon for '{target}' using profile '{profile}'"
             f" - {profile_description(profile)}..."
         )
+        self.print_to_terminal(f"  -> Network policy: {profile_request_policy_description(profile)}")
         account_platforms, breach_platforms = select_email_platforms(
             profile, ACCOUNT_PLATFORMS, BREACH_PLATFORMS
         )
@@ -263,6 +269,12 @@ class OsintTabMixin:
                     f"  [?] Could not verify {len(unknown)} services"
                     f"{': ' + sample if sample else '.'}"
                 )
+                for result in unknown:
+                    if result.get("unknown_cause") == "rate_limited":
+                        self.print_to_terminal(
+                            f"  [PAUSED] {result['service']}: "
+                            "site paused; skipped because of rate limiting."
+                        )
             self.print_to_terminal("  Manual Investigation")
             if manual:
                 self.print_to_terminal(f"    {len(manual)} services require manual review.")
@@ -311,16 +323,43 @@ class OsintTabMixin:
             f"\n[+] OSINT: Initiating username recon for '{target}' using profile '{profile}'"
             f" - {profile_description(profile)}..."
         )
+        self.print_to_terminal(f"  -> Network policy: {profile_request_policy_description(profile)}")
         selected_platforms = select_username_platforms(profile, USERNAME_PLATFORMS)
         self.print_to_terminal(
             f"  -> Username platform pool: {len(selected_platforms)} platforms; "
             f"{len(USERNAME_PLATFORMS) - len(selected_platforms)} excluded."
         )
+        reference_count = sum(
+            1 for item in selected_platforms if item.get("reference_username")
+        )
+        self.print_to_terminal(
+            f"  -> Reliable reference core: {reference_count}/{len(USERNAME_REFERENCE_PLATFORMS)} "
+            "platforms run first; matches are shown immediately."
+        )
         self.run_in_thread(self.do_username_osint, target, profile)
 
     def do_username_osint(self, target: str, profile: str = DEFAULT_SCAN_PROFILE):
         try:
-            results = asyncio.run(check_username_async(target, profile=profile))
+            streamed_found: set[tuple[str, str]] = set()
+
+            def stream_result(result: dict) -> None:
+                if result.get("unknown_cause") == "rate_limited":
+                    self.print_to_terminal(
+                        f"  [PAUSED] {result.get('platform', 'Site')}: "
+                        "site paused; skipped because of rate limiting."
+                    )
+                    return
+                if not result.get("found"):
+                    return
+                key = (str(result.get("platform", "")), str(result.get("url", "")))
+                if key in streamed_found:
+                    return
+                streamed_found.add(key)
+                self.print_to_terminal(f"  [+] FOUND: {key[0]} -> {key[1]}")
+
+            results = asyncio.run(
+                check_username_async(target, profile=profile, on_result=stream_result)
+            )
             if not results:
                 self.print_to_terminal("  [!] WARNING: Username scan returned no platform results.")
                 return
@@ -328,7 +367,9 @@ class OsintTabMixin:
             unknown = [result for result in results if result.get("status") == "unknown"]
             unknown_count = len(unknown)
             for result in found:
-                self.print_to_terminal(f"  [+] FOUND: {result['platform']} -> {result['url']}")
+                key = (str(result.get("platform", "")), str(result.get("url", "")))
+                if key not in streamed_found:
+                    self.print_to_terminal(f"  [+] FOUND: {key[0]} -> {key[1]}")
             if not found:
                 self.print_to_terminal("  [-] No verified username matches were found.")
             if unknown:

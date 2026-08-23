@@ -13,7 +13,7 @@ def setup_windows_context_menu():
         # Klasörler için sağ tık menüsü
         key_path_dir = r"Software\Classes\Directory\shell\FootprintShred"
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path_dir) as key:
-            winreg.SetValue(key, "", winreg.REG_SZ, "🛡️ Trackher ile Güvenli Sil (Shred)")
+            winreg.SetValue(key, "", winreg.REG_SZ, "🛡️ Securely delete with Trackher (Shred)")
             winreg.SetValueEx(key, "Icon", 0, winreg.REG_SZ, "imageres.dll,-53")
             with winreg.CreateKey(key, "command") as cmd_key:
                 winreg.SetValue(cmd_key, "", winreg.REG_SZ, command)
@@ -21,21 +21,21 @@ def setup_windows_context_menu():
         # Dosyalar için sağ tık menüsü
         key_path_file = r"Software\Classes\*\shell\FootprintShred"
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path_file) as key:
-            winreg.SetValue(key, "", winreg.REG_SZ, "🛡️ Trackher ile Güvenli Sil (Shred)")
+            winreg.SetValue(key, "", winreg.REG_SZ, "🛡️ Securely delete with Trackher (Shred)")
             winreg.SetValueEx(key, "Icon", 0, winreg.REG_SZ, "imageres.dll,-53")
             with winreg.CreateKey(key, "command") as cmd_key:
                 winreg.SetValue(cmd_key, "", winreg.REG_SZ, command)
                 
-        print("[OK] Trackher kullanıcı sağ tık menüsüne başarıyla eklendi!")
+        print("[OK] Trackher was added to the user context menu.")
     except PermissionError:
-        print("[HATA] Kullanıcı kayıt defterine yazma izni alınamadı.")
+        print("[ERROR] Could not write to the user registry.")
     except Exception as e:
-        print(f"[HATA] Hata oluştu: {e}")
+        print(f"[ERROR] An error occurred: {e}")
 
 def setup_linux_context_menu():
     desktop_file = """[Desktop Entry]
 Type=Action
-Name=Trackher ile Güvenli Sil (Shred)
+Name=Securely delete with Trackher (Shred)
 Icon=user-trash
 Terminal=true
 Profiles=profile-zero;
@@ -64,8 +64,8 @@ Name=Default profile
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
         
-    print(f"[OK] Trackher sağ tık menüsü aksiyonu oluşturuldu: {file_path}")
-    print("Not: Dosya yöneticisini (Nautilus, Nemo vb.) yeniden başlatmanız gerekebilir.")
+    print(f"[OK] Trackher context-menu action created: {file_path}")
+    print("Note: You may need to restart the file manager (Nautilus, Nemo, etc.).")
 
 if __name__ == "__main__":
     if platform.system() == "Windows":
@@ -73,4 +73,4 @@ if __name__ == "__main__":
     elif platform.system() == "Linux":
         setup_linux_context_menu()
     else:
-        print("[UYARI] Sağ tık menüsü yalnızca Windows ve Linux'ta destekleniyor.")
+        print("[WARN] Context-menu integration is supported only on Windows and Linux.")

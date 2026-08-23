@@ -10,7 +10,7 @@ class DorkingTests(unittest.TestCase):
         self.assertEqual(len(dorks), 8)
         self.assertTrue(all(item["url"] for item in dorks))
         self.assertTrue(any("new_account" in item["url"] for item in dorks))
-        self.assertTrue(any(item["type"] == "Sosyal Medya Arama" for item in dorks))
+        self.assertTrue(any(item["type"] == "Social Media Search" for item in dorks))
 
     def test_generate_dorks_encodes_special_characters(self):
         dorks = generate_dorks("test user")
@@ -22,9 +22,9 @@ class DorkingTests(unittest.TestCase):
         dorks = generate_dorks("owner@example.com")
 
         self.assertEqual(len(dorks), 8)
-        self.assertTrue(any("Tam E-posta Arama" == item["type"] for item in dorks))
+        self.assertTrue(any("Exact Email Search" == item["type"] for item in dorks))
         self.assertTrue(any("owner%40example.com" in item["url"] for item in dorks))
-        self.assertFalse(any(item["type"] == "Sosyal Medya Arama" for item in dorks))
+        self.assertFalse(any(item["type"] == "Social Media Search" for item in dorks))
 
 
 if __name__ == "__main__":

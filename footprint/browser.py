@@ -122,7 +122,7 @@ def _browser_targets() -> list[tuple[str, Path, list[str]]]:
             ("Brave Browser",
              app_support / "BraveSoftware" / "Brave-Browser",
              _CHROMIUM_CACHE_DIRS),
-            ("Safari (WebKit önbelleği)",
+             ("Safari (WebKit cache)",
              caches / "com.apple.Safari",
              ["."]),
             ("Opera",
@@ -321,7 +321,7 @@ def clean_browser_data(dry_run: bool = False) -> list[dict]:
                 item = {"path": str(target), "size": size, "type": label}
 
                 if dry_run:
-                    print_info(f"[dim]{label}[/dim]  →  {target}  ({size:,} bayt)")
+                    print_info(f"[dim]{label}[/dim]  →  {target}  ({size:,} bytes)")
                     results.append(item)
                 else:
                     if safe_remove(target):
@@ -329,10 +329,10 @@ def clean_browser_data(dry_run: bool = False) -> list[dict]:
                             target.mkdir(parents=True, exist_ok=True)
                         except OSError:
                             pass
-                        print_success(f"{label} temizlendi  →  {target}")
+                        print_success(f"{label} cleaned  →  {target}")
                         results.append(item)
                     else:
-                        print_warning(f"{label} temizlenemedi (İstisna veya İzin Hatası)  →  {target}")
+                        print_warning(f"{label} could not be cleaned (exception or permission error)  →  {target}")
 
         # 2. SQLite veritabanlarını profil bazında temizle (History, Cookies)
         for profile_base in search_bases:
@@ -350,23 +350,23 @@ def clean_browser_data(dry_run: bool = False) -> list[dict]:
                 if dry_run:
                     item["size"] = 0
                     print_info(
-                        f"[dim]{label} (SQLite)[/dim]  →  İçerik temizlenecek  "
-                        f"(veritabanı boyutu: {size:,} bayt)"
+                        f"[dim]{label} (SQLite)[/dim]  →  Content will be cleaned  "
+                        f"(database size: {size:,} bytes)"
                     )
                     results.append(item)
                 else:
                     success, freed_size = _clean_sqlite_db(target_file, queries)
                     if success:
                         item["size"] = freed_size
-                        print_success(f"{label} içerisindeki kayıtlar silindi  →  {target_file}")
+                        print_success(f"Records in {label} were deleted  →  {target_file}")
                         results.append(item)
                     else:
-                        print_warning(f"{label} temizlenemedi (Tarayıcı açık veya kilitli)  →  {target_file}")
+                        print_warning(f"{label} could not be cleaned (browser is open or locked)  →  {target_file}")
 
         if not browser_found:
-            print_info(f"[dim]{browser_name}:[/dim] Temizlenecek önbellek bulunamadı.")
+            print_info(f"[dim]{browser_name}:[/dim] No cache found to clean.")
 
     if not results:
-        print_info("Hiçbir tarayıcıda temizlenecek önbellek bulunamadı.")
+        print_info("No browser cache found to clean.")
 
     return results

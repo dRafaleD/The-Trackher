@@ -32,14 +32,14 @@ def _history_targets() -> list[tuple[str, Path]]:
 
     # ── Ortak (tüm platformlarda aranır) ─────────────────────────
     common: list[tuple[str, Path]] = [
-        ("Python REPL geçmişi",    h / ".python_history"),
-        ("Node.js REPL geçmişi",   h / ".node_repl_history"),
+        ("Python REPL history",    h / ".python_history"),
+        ("Node.js REPL history",   h / ".node_repl_history"),
         ("Vim bilgi dosyası",       h / ".viminfo"),
-        ("MySQL geçmişi",           h / ".mysql_history"),
-        ("PostgreSQL geçmişi",      h / ".psql_history"),
-        ("SQLite geçmişi",          h / ".sqlite_history"),
-        ("GDB geçmişi",             h / ".gdb_history"),
-        ("IRB (Ruby) geçmişi",      h / ".irb_history"),
+        ("MySQL history",           h / ".mysql_history"),
+        ("PostgreSQL history",      h / ".psql_history"),
+        ("SQLite history",          h / ".sqlite_history"),
+        ("GDB history",             h / ".gdb_history"),
+        ("IRB (Ruby) history",      h / ".irb_history"),
         ("Wget HSTS veritabanı",    h / ".wget-hsts"),
     ]
     targets.extend(common)
@@ -51,27 +51,27 @@ def _history_targets() -> list[tuple[str, Path]]:
 
         windows_targets: list[tuple[str, Path]] = [
             # PowerShell (v5 - ConsoleHost)
-            ("PowerShell geçmişi",
+        ("PowerShell history",
              appdata / "Microsoft" / "Windows" / "PowerShell"
              / "PSReadLine" / "ConsoleHost_history.txt"),
             # PowerShell 7+ (pwsh)
-            ("PowerShell 7 geçmişi",
+        ("PowerShell 7 history",
              local / "Microsoft" / "PowerShell" / "PSReadLine"
              / "ConsoleHost_history.txt"),
             # WSL bash (Windows Subsystem for Linux)
-            ("WSL Bash geçmişi",
+        ("WSL Bash history",
              local / "Packages" / "CanonicalGroupLimited.Ubuntu"
              / "LocalState" / "rootfs" / "root" / ".bash_history"),
             # Cmder / ConEmu
-            ("Cmder geçmişi",
+        ("Cmder history",
              appdata / "Cmder" / "history"),
             # Git Bash (MSYS2)
-            ("Git Bash geçmişi", h / ".bash_history"),
+        ("Git Bash history", h / ".bash_history"),
             # Neovim (Windows)
             ("Neovim ShaDa",
              local / "nvim-data" / "shada" / "main.shada"),
             # Python Launcher geçmişi (bazen oluşur)
-            ("Python Launcher geçmişi",
+        ("Python Launcher history",
              appdata / "Python" / "Python3" / "history"),
         ]
         targets.extend(windows_targets)
@@ -79,14 +79,14 @@ def _history_targets() -> list[tuple[str, Path]]:
     # ── macOS ─────────────────────────────────────────────────────
     elif is_macos():
         macos_targets: list[tuple[str, Path]] = [
-            ("Zsh geçmişi",             h / ".zsh_history"),
-            ("Bash geçmişi",            h / ".bash_history"),
-            ("Fish geçmişi",
+            ("Zsh history",             h / ".zsh_history"),
+            ("Bash history",            h / ".bash_history"),
+            ("Fish history",
              h / ".local" / "share" / "fish" / "fish_history"),
-            ("Nano arama geçmişi",      h / ".nano" / "search_history"),
-            ("Less geçmişi",            h / ".lesshst"),
+            ("Nano search history",      h / ".nano" / "search_history"),
+            ("Less history",            h / ".lesshst"),
             # macOS varsayılan zsh geçmişi (zsh_sessions)
-            ("Zsh Oturum geçmişi",
+            ("Zsh session history",
              h / ".zsh_sessions"),
             # Neovim
             ("Neovim ShaDa",
@@ -102,12 +102,12 @@ def _history_targets() -> list[tuple[str, Path]]:
     elif is_linux():
         data_home = localappdata_dir() or (h / ".local" / "share")
         linux_targets: list[tuple[str, Path]] = [
-            ("Bash geçmişi",            h / ".bash_history"),
-            ("Zsh geçmişi",             h / ".zsh_history"),
-            ("Fish geçmişi",
+            ("Bash history",            h / ".bash_history"),
+            ("Zsh history",             h / ".zsh_history"),
+            ("Fish history",
              data_home / "fish" / "fish_history"),
-            ("Nano arama geçmişi",      h / ".nano" / "search_history"),
-            ("Less geçmişi",            h / ".lesshst"),
+            ("Nano search history",      h / ".nano" / "search_history"),
+            ("Less history",            h / ".lesshst"),
             ("Neovim ShaDa",
              h / ".local" / "state" / "nvim" / "shada" / "main.shada"),
         ]
@@ -141,14 +141,14 @@ def clean_shell_history(dry_run: bool = False) -> list[dict]:
                 continue
             item = {"path": str(file_path), "size": size, "type": description}
             if dry_run:
-                print_info(f"[dim]{description}[/dim]  →  {file_path}  ({size:,} bayt)")
+                print_info(f"[dim]{description}[/dim]  →  {file_path}  ({size:,} bytes)")
                 results.append(item)
             else:
                 if safe_remove(file_path):
-                    print_success(f"{description} temizlendi  →  {file_path}")
+                    print_success(f"{description} cleaned  →  {file_path}")
                     results.append(item)
                 else:
-                    print_warning(f"{description} temizlenemedi  →  {file_path}")
+                    print_warning(f"{description} could not be cleaned  →  {file_path}")
             continue
 
         if not file_path.is_file():
@@ -161,17 +161,17 @@ def clean_shell_history(dry_run: bool = False) -> list[dict]:
         item = {"path": str(file_path), "size": size, "type": description}
 
         if dry_run:
-            print_info(f"[dim]{description}[/dim]  →  {file_path}  ({size:,} bayt)")
+            print_info(f"[dim]{description}[/dim]  →  {file_path}  ({size:,} bytes)")
             results.append(item)
         else:
             try:
                 file_path.write_text("", encoding="utf-8")
-                print_success(f"{description} temizlendi  →  {file_path}")
+                print_success(f"{description} cleaned  →  {file_path}")
                 results.append(item)
             except (PermissionError, OSError) as exc:
-                print_warning(f"{description} temizlenemedi: {exc}")
+                print_warning(f"{description} could not be cleaned: {exc}")
 
     if not results:
-        print_info("Temizlenecek kabuk geçmişi bulunamadı.")
+        print_info("No shell history found to clean.")
 
     return results

@@ -31,7 +31,7 @@ def _safe_url(value: object) -> str:
 
 def _link_cell(url: str, label: str | None = None) -> str:
     if not url:
-        return '<span style="color: #888;">Geçersiz veya kullanılamayan bağlantı</span>'
+        return '<span style="color: #888;">Invalid or unavailable link</span>'
     visible_label = _html(label) if label else url
     return (
         f'<a href="{url}" target="_blank" rel="noopener noreferrer" '
@@ -296,9 +296,11 @@ def _render_email_section(email_data: dict) -> str:
     results = email_data["results"]
     accounts = results.get("accounts", []) if isinstance(results, dict) else results
     breaches = results.get("breaches", []) if isinstance(results, dict) else []
+    domain = results.get("domain", {}) if isinstance(results, dict) else {}
     verified = [item for item in accounts if item.get("status") == "FOUND"]
     possible = [item for item in accounts if item.get("status") == "POSSIBLE"]
     not_found = [item for item in accounts if item.get("status") == "NOT_FOUND"]
+    no_public_evidence = [item for item in accounts if item.get("status") == "NO_PUBLIC_EVIDENCE"]
     manual = [item for item in accounts if item.get("status") == "MANUAL"]
     unknown = [item for item in accounts if item.get("status") in {"UNKNOWN", "ERROR", "NOT_CONFIGURED"}]
 
@@ -310,6 +312,9 @@ def _render_email_section(email_data: dict) -> str:
             service = _html(item.get("service", "Bilinmiyor"))
             status = _html(item.get("status", "UNKNOWN"))
             detail = _html(item.get("detail", ""))
+            investigation_url = _safe_url(item.get("investigation_url", ""))
+            if investigation_url:
+                detail += f"<br>{_link_cell(investigation_url, 'Exact public search')}"
             html_rows.append(f"<tr><td>{service}</td><td>{status}</td><td>{detail}</td></tr>")
         return "\n".join(html_rows)
 
@@ -335,10 +340,20 @@ def _render_email_section(email_data: dict) -> str:
             </p>
         """
 
+    domain_html = ""
+    if isinstance(domain, dict) and domain:
+        domain_html = (
+            "<p><strong>Mail domain:</strong> "
+            f"{_html(domain.get('domain', ''))} — {_html(domain.get('status', 'UNKNOWN'))}"
+            f" — {_html(domain.get('provider', 'unknown provider'))}"
+            f" — {_html(domain.get('detail', ''))}</p>"
+        )
+
     return f"""
         <section class="section">
-            <h2>E-posta OSINT</h2>
+            <h2>Email OSINT</h2>
             <p><strong>Hedef:</strong> <code>{email}</code></p>
+            {domain_html}
             {zero_message}
             <h3>Verified Accounts</h3>
             <table><tr><th>Service</th><th>Status</th><th>Detail</th></tr>{rows(verified, "No verified accounts.")}</table>
@@ -346,6 +361,9 @@ def _render_email_section(email_data: dict) -> str:
             <table><tr><th>Service</th><th>Status</th><th>Detail</th></tr>{rows(possible, "No possible heuristic matches.")}</table>
             <h3>Checked and Not Found</h3>
             <table><tr><th>Service</th><th>Status</th><th>Detail</th></tr>{rows(not_found, "No reliably absent services.")}</table>
+            <h3>No Public Evidence</h3>
+            <p>These checks completed successfully, but no public email exposure was found. A private account may still exist.</p>
+            <table><tr><th>Service</th><th>Status</th><th>Detail</th></tr>{rows(no_public_evidence, "No privacy-limited checks.")}</table>
             <h3>Unknown / Errors</h3>
             <table><tr><th>Service</th><th>Status</th><th>Detail</th></tr>{rows(unknown, "No unknown account checks.")}</table>
             <h3>Manual Investigation</h3>
@@ -363,9 +381,9 @@ def export_to_json(data: dict, filepath: str) -> None:
         payload = _prepare_report_data(data)
         with open(filepath, "w", encoding="utf-8") as file_obj:
             json.dump(payload, file_obj, ensure_ascii=False, indent=4)
-        print_success(f"JSON raporu kaydedildi: {filepath}")
+        print_success(f"JSON report saved: {filepath}")
     except OSError as exc:
-        print_error(f"JSON raporu kaydedilemedi: {exc}")
+        print_error(f"Could not save JSON report: {exc}")
 
 
 def export_to_html(data: dict, filepath: str) -> None:
@@ -463,7 +481,7 @@ def export_to_html(data: dict, filepath: str) -> None:
         <body>
             <div class="container">
                 <h1>Trackher Raporu</h1>
-                <p class="meta"><strong>Oluşturulma:</strong> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
+                <p class="meta"><strong>Generated:</strong> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
                 <p class="meta"><strong>Scan Profile:</strong> {_html(prepared.get('scan_profile', 'standard'))}</p>
         """
 
@@ -494,13 +512,13 @@ def export_to_html(data: dict, filepath: str) -> None:
 
             html_content += f"""
                 <section class="section">
-                    <h2>Kullanıcı Adı OSINT</h2>
+                    <h2>Username OSINT</h2>
                     <p><strong>Hedef:</strong> <code>{username}</code></p>
                     <p>
-                        <strong>{found_count}</strong> platformda kayıt bulundu.
-                        <strong>{unknown_count}</strong> sonuç doğrulanamadı.
+                        <strong>{found_count}</strong> platform matches found.
+                        <strong>{unknown_count}</strong> results could not be verified.
                     </p>
-                    <p><strong>Doğrulanamayan nedenler:</strong> {unknown_breakdown or 'Yok'}</p>
+                    <p><strong>Unverified reasons:</strong> {unknown_breakdown or 'None'}</p>
                     <table>
                         <tr><th>Platform</th><th>URL</th><th>Durum</th><th>Neden</th></tr>
             """
@@ -515,15 +533,18 @@ def export_to_html(data: dict, filepath: str) -> None:
                 }.get(result_status, "unknown")
                 status_text = {
                     "found": "Bulundu",
-                    "unknown": "Doğrulanamadı",
-                    "not_found": "Bulunamadı",
-                }.get(result_status, "Doğrulanamadı")
+                    "unknown": "Unverified",
+                    "not_found": "Not found",
+                }.get(result_status, "Unverified")
                 platform_name = _html(result.get("platform", "Bilinmiyor"))
                 url = _safe_url(result.get("url", ""))
                 warning = result.get("warning", "")
                 cause = ""
                 if result_status == "unknown":
                     cause = _html(username_unknown_cause_label(result.get("unknown_cause")))
+                elif result.get("fallback_used"):
+                    detector_used = _html(result.get("detector_used", "fallback"))
+                    cause = f"Fallback verification: {detector_used}"
                 warning_html = (
                     f'<br><span class="unknown">{_html(warning)}</span>'
                     if warning
@@ -548,11 +569,11 @@ def export_to_html(data: dict, filepath: str) -> None:
 
             html_content += f"""
                 <section class="section">
-                    <h2>Arama Motoru Dork Sonuçları</h2>
+                    <h2>Search Engine Dork Results</h2>
                     <p><strong>Hedef:</strong> <code>{target}</code></p>
-                    <p>Bağlantılar, tarayıcıda manuel inceleme yapabilmeniz için üretilir.</p>
+                    <p>Links are generated for manual review in a browser.</p>
                     <table>
-                        <tr><th>Arama Motoru</th><th>Tur</th><th>Baglanti</th></tr>
+                        <tr><th>Search Engine</th><th>Type</th><th>Link</th></tr>
             """
             for dork in dorks:
                 engine = _html(dork.get("engine", "Bilinmiyor"))
@@ -562,7 +583,7 @@ def export_to_html(data: dict, filepath: str) -> None:
                     <tr>
                         <td>{engine}</td>
                         <td>{dork_type}</td>
-                        <td>{_link_cell(url, "Aç ve incele")}</td>
+                        <td>{_link_cell(url, "Open and review")}</td>
                     </tr>
                 """
             html_content += """
@@ -578,11 +599,11 @@ def export_to_html(data: dict, filepath: str) -> None:
             mode_text = "Simulasyon" if is_dry_run else "Uygulandi"
             html_content += f"""
                 <section class="section">
-                    <h2>Sistem Temizliği</h2>
+                    <h2>System Cleanup</h2>
                     <p><strong>Mod:</strong> {mode_text}</p>
-                    <p>Toplam <strong>{len(items)}</strong> öğe, <strong>{total_size / (1024 * 1024):.2f} MB</strong> alan.</p>
+                    <p><strong>{len(items)}</strong> items, <strong>{total_size / (1024 * 1024):.2f} MB</strong> total.</p>
                     <table>
-                        <tr><th>Tur</th><th>Yol</th><th>Boyut (Bayt)</th></tr>
+                        <tr><th>Type</th><th>Path</th><th>Size (Bytes)</th></tr>
             """
             for item in items:
                 item_type = _html(item.get("type", "Bilinmiyor"))
@@ -602,7 +623,7 @@ def export_to_html(data: dict, filepath: str) -> None:
 
         html_content += """
                 <div class="footer">
-                    Üreten: Trackher - açık kaynak dijital ayak izi temizleme ve username OSINT aracı
+                    Generated by Trackher - open-source digital footprint cleanup and username OSINT toolkit
                 </div>
             </div>
         </body>
@@ -611,9 +632,9 @@ def export_to_html(data: dict, filepath: str) -> None:
 
         with open(filepath, "w", encoding="utf-8") as file_obj:
             file_obj.write(html_content)
-        print_success(f"HTML raporu kaydedildi: {filepath}")
+        print_success(f"HTML report saved: {filepath}")
     except OSError as exc:
-        print_error(f"HTML raporu kaydedilemedi: {exc}")
+        print_error(f"Could not save HTML report: {exc}")
 
 
 def generate_report(data: dict, output_path: str, format_type: str = "html") -> None:

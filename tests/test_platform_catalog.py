@@ -24,7 +24,7 @@ class PlatformCatalogTests(unittest.TestCase):
 
     def _found_response(self, platform: dict, username: str) -> httpx.Response:
         check = platform.get("check", "html")
-        if check in {"json", "graphql"}:
+        if check in {"json", "json_exists", "graphql"}:
             payload: dict = {}
             self._set_json_value(payload, platform["json_path"], username)
             return httpx.Response(200, json=payload)
@@ -38,7 +38,12 @@ class PlatformCatalogTests(unittest.TestCase):
             payload: dict = {}
             self._set_json_value(payload, platform["json_list_path"], [item])
             return httpx.Response(200, json=payload)
-        body = f"<html><title>{username}</title><body><h1>{username}</h1></body></html>"
+        raw_found_markers = platform.get("raw_found_markers", [])
+        if raw_found_markers:
+            marker = str(raw_found_markers[0]).replace("{username}", username)
+            body = f"<html>{marker}<body><h1>{username}</h1></body></html>"
+        else:
+            body = f"<html><title>{username}</title><body><h1>{username}</h1></body></html>"
         return httpx.Response(200, text=body)
 
     def _missing_response(self, platform: dict, username: str) -> httpx.Response:
@@ -98,7 +103,12 @@ class PlatformCatalogTests(unittest.TestCase):
                     self._found_response(platform, username),
                     username,
                 )
-                if platform.get("disable_html_found"):
+                if platform.get("disabled_reason"):
+                    self.assertEqual(result["status"], "unknown")
+                    self.assertFalse(result["found"])
+                    self.assertEqual(result["unknown_cause"], "service_unavailable")
+                    continue
+                if platform.get("disable_html_found") and not platform.get("raw_found_markers"):
                     self.assertEqual(result["status"], "unknown")
                     self.assertFalse(result["found"])
                     self.assertEqual(result["unknown_cause"], "parser_mismatch")
@@ -115,6 +125,11 @@ class PlatformCatalogTests(unittest.TestCase):
                     self._missing_response(platform, username),
                     username,
                 )
+                if platform.get("disabled_reason"):
+                    self.assertEqual(result["status"], "unknown")
+                    self.assertFalse(result["found"])
+                    self.assertEqual(result["unknown_cause"], "service_unavailable")
+                    continue
                 self.assertEqual(result["status"], "not_found")
                 self.assertFalse(result["found"])
 

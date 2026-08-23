@@ -45,6 +45,8 @@ BANNER = r"""
 HOME_EXAMPLES = (
     "trackher --username <username>",
     "trackher --email <email>",
+    "trackher --profile quick --username <username>",
+    "trackher --profile standard --email <email>",
     "trackher --profile deep --username <username>",
     "trackher --health-check",
     "trackher --gui",
@@ -56,9 +58,13 @@ USERNAME_UNKNOWN_CAUSE_LABELS = {
     "parser_mismatch": "parser mismatch",
     "network_error": "network error",
     "forbidden": "forbidden",
-    "rate_limited": "rate limited",
+    "rate_limited": "site paused / skipped because of rate limiting",
     "timeout": "timeout",
+    "server_error": "server error",
+    "dns_error": "DNS error",
+    "no_decisive_marker": "no decisive marker",
     "unexpected_status": "unexpected response",
+    "service_unavailable": "service unavailable",
     "unknown": "unknown",
 }
 
@@ -130,7 +136,7 @@ def _home_features(username_count: str, email_count: str) -> Text:
 
 
 def _home_examples_text() -> Text:
-    example_lines = [f"[cyan]>[/cyan] {command}" for command in HOME_EXAMPLES]
+    example_lines = [f"[cyan]>[/cyan] [blue]{command}[/blue]" for command in HOME_EXAMPLES]
     return Text.from_markup("\n".join(example_lines))
 
 
@@ -403,20 +409,20 @@ def print_platform_health_summary(health: dict, show_details: bool = False) -> N
 def print_dry_run_table(items: list[dict]) -> None:
     """Render dry-run cleanup results as a table."""
     if not items:
-        print_info("Temizlenecek dosya bulunamadi.")
+        print_info("No files found to clean.")
         return
 
     table = Table(
-        title="Kuru Calistirma (Dry-Run) Raporu",
+        title="Dry-Run Cleanup Report",
         box=box.ROUNDED,
         title_style="bold magenta",
         show_lines=False,
         padding=(0, 1),
     )
-    table.add_column("Durum", style="yellow", width=8, justify="center")
-    table.add_column("Tur", style="dim", width=18)
-    table.add_column("Dosya / Dizin", style="white", ratio=3)
-    table.add_column("Boyut", style="green", justify="right", width=12)
+    table.add_column("Status", style="yellow", width=8, justify="center")
+    table.add_column("Type", style="dim", width=18)
+    table.add_column("File / Directory", style="white", ratio=3)
+    table.add_column("Size", style="green", justify="right", width=12)
 
     from .helpers import format_size
 
@@ -425,15 +431,15 @@ def print_dry_run_table(items: list[dict]) -> None:
         size = item.get("size", 0)
         total_bytes += size
         table.add_row(
-            "SIL",
-            item.get("type", "dosya"),
+            "DELETE",
+            item.get("type", "file"),
             item.get("path", "-"),
             format_size(size),
         )
 
     console.print(table)
     console.print(
-        f"\n  [bold magenta]Toplam kazanilacak alan:[/bold magenta] "
+        f"\n  [bold magenta]Total space to reclaim:[/bold magenta] "
         f"[bold white]{format_size(total_bytes)}[/bold white]\n"
     )
 
@@ -491,13 +497,24 @@ def print_email_results(
     """Render email OSINT results with clear passive/heuristic/manual grouping."""
     accounts = _email_accounts(results)
     breaches = _email_breaches(results)
+    domain = dict(results.get("domain", {})) if isinstance(results, dict) else {}
     verified = [item for item in accounts if item.get("status") == "FOUND"]
     possible = [item for item in accounts if item.get("status") == "POSSIBLE"]
     not_found = [item for item in accounts if item.get("status") == "NOT_FOUND"]
+    no_public_evidence = [item for item in accounts if item.get("status") == "NO_PUBLIC_EVIDENCE"]
     manual = [item for item in accounts if item.get("status") == "MANUAL"]
     unknown = [item for item in accounts if item.get("status") in {"UNKNOWN", "ERROR", "NOT_CONFIGURED"}]
 
-    console.print(f"[bold cyan]E-posta OSINT - {email}[/bold cyan]\n")
+    console.print(f"[bold cyan]Email OSINT - {email}[/bold cyan]\n")
+
+    if domain:
+        domain_status = str(domain.get("status", "UNKNOWN"))
+        provider = f" · {domain.get('provider')}" if domain.get("provider") else ""
+        style = "green" if domain_status == "MX_FOUND" else "yellow"
+        console.print(
+            f"[bold]Mail Domain[/bold]: [{style}]{domain_status}[/{style}]"
+            f"{provider} - {domain.get('detail', '')}\n"
+        )
 
     console.print("[bold green]Verified Accounts[/bold green]")
     if verified:
@@ -522,11 +539,23 @@ def print_email_results(
             detail = f" - {item.get('detail', '')}" if item.get("detail") else ""
             console.print(f"  [dim]-[/dim] {item['service']}{detail}")
 
+    if no_public_evidence:
+        console.print("\n[bold cyan]No Public Evidence[/bold cyan]")
+        console.print("  [dim]These checks completed, but the email was not publicly exposed. This does not rule out a private account.[/dim]")
+        for item in no_public_evidence:
+            console.print(f"  [cyan]·[/cyan] {item['service']} - {item.get('detail', '')}")
+
     if unknown:
         console.print("\n[bold yellow]Unknown / Errors[/bold yellow]")
         for item in unknown:
             detail = f" - {item.get('detail', '')}" if item.get("detail") else ""
-            console.print(f"  [yellow]?[/yellow] {item['service']} ({item.get('status')}){detail}")
+            if item.get("unknown_cause") == "rate_limited":
+                console.print(
+                    f"  [yellow]⏸[/yellow] {item['service']}: "
+                    "SITE PAUSED - skipped because of rate limiting"
+                )
+            else:
+                console.print(f"  [yellow]?[/yellow] {item['service']} ({item.get('status')}){detail}")
 
     console.print("\n[bold cyan]Manual Investigation[/bold cyan]")
     if manual:
@@ -535,6 +564,8 @@ def print_email_results(
             for item in manual:
                 detail = f" - {item.get('detail', '')}" if item.get("detail") else ""
                 console.print(f"  [cyan]>[/cyan] {item['service']}{detail}")
+                if item.get("investigation_url"):
+                    console.print(f"    [dim]{item['investigation_url']}[/dim]")
         else:
             console.print("  [dim]Use --show-manual to display them.[/dim]")
     else:
@@ -560,7 +591,7 @@ def print_email_results(
 def print_username_results(username: str, results: list[dict]) -> None:
     """Render username OSINT results as a table."""
     table = Table(
-        title=f"Kullanici Adi Iz Surucu - {username}",
+        title=f"Username Footprint - {username}",
         box=box.ROUNDED,
         title_style="bold magenta",
         show_lines=False,
@@ -586,33 +617,38 @@ def print_username_results(username: str, results: list[dict]) -> None:
             status = "[bold green]KAYITLI[/bold green]"
             found_count += 1
         elif result_status == "unknown":
-            status = "[yellow]DOĞRULANAMADI[/yellow]"
+            if result.get("unknown_cause") == "rate_limited":
+                status = "[yellow]PAUSED[/yellow]\n[dim]skipped because of rate limiting[/dim]"
+            else:
+                status = "[yellow]UNVERIFIED[/yellow]"
             unknown_count += 1
         else:
-            status = "[dim]bulunamadı[/dim]"
+            status = "[dim]not found[/dim]"
+        if result.get("fallback_used"):
+            status += "\n[dim]fallback verification[/dim]"
         table.add_row(result["platform"], status, result.get("url", ""))
 
     console.print(table)
     breakdown = format_username_unknown_breakdown(results)
     console.print(
-        f"\n  [bold magenta]Toplam:[/bold magenta] "
-        f"[bold white]{found_count}[/bold white] platformda kayıt tespit edildi "
-        f"([dim]{len(results)} servis tarandı, {unknown_count} sonuç doğrulanamadı[/dim]).\n"
+        f"\n  [bold magenta]Total:[/bold magenta] "
+        f"[bold white]{found_count}[/bold white] platform matches found "
+        f"([dim]{len(results)} services scanned, {unknown_count} could not be verified[/dim]).\n"
     )
     if breakdown:
-        console.print(f"  [dim]Doğrulanamayan nedenler: {breakdown}[/dim]\n")
+        console.print(f"  [dim]Verification details: {breakdown}[/dim]\n")
 
 
 def print_dork_results(target: str, dorks: list[dict]) -> None:
     """Render search engine dorks as a table."""
     table = Table(
-        title=f"Arama Motoru Dork Sonuclari - {target}",
+        title=f"Search Dork Results - {target}",
         box=box.ROUNDED,
         title_style="bold yellow",
         show_lines=False,
         padding=(0, 1),
     )
-    table.add_column("Arama Motoru", style="white", ratio=1)
+    table.add_column("Search Engine", style="white", ratio=1)
     table.add_column("Tur", style="cyan", ratio=2)
     table.add_column("Baglanti", style="blue", ratio=4)
 

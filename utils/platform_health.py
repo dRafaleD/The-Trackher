@@ -15,7 +15,7 @@ from urllib.parse import quote
 import httpx
 
 from osint.services import ACCOUNT_DETECTORS, ACCOUNT_PLATFORMS, BREACH_DETECTORS, BREACH_PLATFORMS
-from osint.username_checker import USERNAME_DETECTORS, USERNAME_PLATFORMS
+from osint.username_checker import USERNAME_DETECTORS, USERNAME_PLATFORMS, check_single_username
 from utils import __version__
 from utils.app_logging import get_logger, safe_log
 
@@ -164,6 +164,7 @@ def _schema_health_email_account(platform_def: dict[str, Any]) -> dict[str, Any]
     raw_name = str(platform_def.get("name", "")).strip()
     name = raw_name or "Unknown"
     detector = str(platform_def.get("check", "manual"))
+    raw_detector_chain = platform_def.get("detector_chain", [detector])
     category = str(platform_def.get("category", "")).strip()
     section = str(platform_def.get("section", "account")).strip()
 
@@ -177,8 +178,21 @@ def _schema_health_email_account(platform_def: dict[str, Any]) -> dict[str, Any]
         issues.append(_issue("Missing required field: url"))
     if ACCOUNT_DETECTORS.get(detector) is None:
         issues.append(_issue(f"Unsupported detector type: {detector}"))
-    if detector in {"heuristic", "public_profile_email", "documented_email_lookup"} and not str(platform_def.get("probe_url", "")).strip():
+    if not isinstance(raw_detector_chain, list) or not raw_detector_chain:
+        issues.append(_issue("detector_chain must be a non-empty list"))
+    else:
+        detector_chain = [str(item).strip() for item in raw_detector_chain]
+        if detector not in detector_chain:
+            issues.append(_issue("detector_chain must include the primary detector"))
+        for chained_detector in detector_chain:
+            if not chained_detector:
+                issues.append(_issue("detector_chain contains an empty detector"))
+            elif ACCOUNT_DETECTORS.get(chained_detector) is None:
+                issues.append(_issue(f"Unsupported detector type in chain: {chained_detector}"))
+    if detector in {"heuristic", "public_profile_email", "documented_email_lookup", "public_text_email"} and not str(platform_def.get("probe_url", "")).strip():
         issues.append(_issue("Missing required field: probe_url"))
+    if detector == "public_text_email" and not str(platform_def.get("found_marker", "")).strip():
+        issues.append(_issue("Missing required field: found_marker"))
     if detector == "public_profile_email":
         if not str(platform_def.get("profile_email_field", "")).strip():
             issues.append(_issue("Missing required field: profile_email_field"))
@@ -231,6 +245,7 @@ def _schema_health_username(platform_def: dict[str, Any]) -> dict[str, Any]:
     raw_name = str(platform_def.get("name", "")).strip()
     name = raw_name or "Unknown"
     detector = str(platform_def.get("check", "html"))
+    raw_detector_chain = platform_def.get("detector_chain", [detector])
     reliability = str(platform_def.get("reliability", "")).strip()
     error_type = str(platform_def.get("error_type", "")).strip()
 
@@ -244,9 +259,20 @@ def _schema_health_username(platform_def: dict[str, Any]) -> dict[str, Any]:
         issues.append(_issue(f"Invalid error_type: {error_type or 'missing'}"))
     if USERNAME_DETECTORS.get(detector) is None:
         issues.append(_issue(f"Unsupported detector type: {detector}"))
-    if detector in {"json", "json_list"} and not str(platform_def.get("probe_url", "")).strip():
+    if not isinstance(raw_detector_chain, list) or not raw_detector_chain:
+        issues.append(_issue("detector_chain must be a non-empty list"))
+    else:
+        detector_chain = [str(item).strip() for item in raw_detector_chain]
+        if detector not in detector_chain:
+            issues.append(_issue("detector_chain must include the primary detector"))
+        for chained_detector in detector_chain:
+            if not chained_detector:
+                issues.append(_issue("detector_chain contains an empty detector"))
+            elif USERNAME_DETECTORS.get(chained_detector) is None:
+                issues.append(_issue(f"Unsupported detector type in chain: {chained_detector}"))
+    if detector in {"json", "json_list", "json_exists"} and not str(platform_def.get("probe_url", "")).strip():
         issues.append(_issue("Missing required field: probe_url"))
-    if detector == "json" and not str(platform_def.get("json_path", "")).strip():
+    if detector in {"json", "json_exists"} and not str(platform_def.get("json_path", "")).strip():
         issues.append(_issue("Missing required field: json_path"))
     if detector == "json_list":
         if "json_list_path" not in platform_def:
@@ -398,6 +424,33 @@ async def _live_probe_username(
     platform_def: dict[str, Any],
     client: httpx.AsyncClient,
 ) -> dict[str, Any]:
+    reference_username = str(platform_def.get("reference_username", "")).strip()
+    if reference_username:
+        positive = await check_single_username(reference_username, platform_def, client)
+        negative = await check_single_username(PLACEHOLDER_USERNAME, platform_def, client)
+        positive_status = str(positive.get("status", "unknown"))
+        negative_status = str(negative.get("status", "unknown"))
+        if positive_status == "found" and negative_status == "not_found":
+            return {
+                "state": HEALTHY,
+                "detail": "Reference pair passed (found/not_found)",
+            }
+
+        causes = {
+            str(item.get("unknown_cause", ""))
+            for item in (positive, negative)
+            if item.get("status") == "unknown"
+        }
+        if causes & {"bot_blocked", "forbidden", "rate_limited", "timeout", "network_error"}:
+            return {
+                "state": DEGRADED,
+                "detail": f"Reference pair degraded ({positive_status}/{negative_status})",
+            }
+        return {
+            "state": UNKNOWN,
+            "detail": f"Reference pair mismatch ({positive_status}/{negative_status})",
+        }
+
     template = str(platform_def.get("probe_url") or platform_def.get("url", ""))
     probe_url = template.format(quote(PLACEHOLDER_USERNAME, safe="._-~"))
     headers = {"Accept": str(platform_def.get("accept", "text/html,application/json,*/*"))}

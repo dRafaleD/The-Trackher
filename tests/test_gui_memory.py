@@ -253,7 +253,7 @@ class GuiMemoryTests(unittest.TestCase):
 
         captured = {}
 
-        async def fake_check_username(target, *, profile="standard"):
+        async def fake_check_username(target, *, profile="standard", on_result=None):
             captured["target"] = target
             captured["profile"] = profile
             return []
@@ -262,6 +262,35 @@ class GuiMemoryTests(unittest.TestCase):
             app.do_username_osint("octocat", profile=app.profile_var.get())
 
         self.assertEqual(captured["profile"], "email-only")
+
+    def test_username_scan_streams_found_result_immediately(self):
+        app = self.make_app()
+        app.print_to_terminal = Mock()
+        app.post_ui = Mock()
+        app.btn_user = Mock()
+        result = {
+            "platform": "GitHub",
+            "url": "https://github.com/octocat",
+            "found": True,
+            "status": "found",
+            "detail": "",
+        }
+
+        async def fake_check_username(target, *, profile="standard", on_result=None):
+            self.assertIsNotNone(on_result)
+            on_result(result)
+            return [result]
+
+        with patch("gui.tabs.osint.check_username_async", side_effect=fake_check_username):
+            app.do_username_osint("octocat")
+
+        printed = [args[0] for args, _kwargs in app.print_to_terminal.call_args_list]
+        found_line = "  [+] FOUND: GitHub -> https://github.com/octocat"
+        self.assertEqual(printed.count(found_line), 1)
+        self.assertLess(
+            printed.index(found_line),
+            next(index for index, line in enumerate(printed) if "Total 1 verified matches" in line),
+        )
 
     def test_platform_health_updates_summary_label(self):
         app = self.make_app()

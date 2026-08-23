@@ -4,6 +4,7 @@
     "category": "heuristic",
     "section": "account",
     "check": "public_profile_email",
+    "detector_chain": ["public_profile_email", "github_commit_email"],
     "url": "https://github.com/",
     "probe_url": "https://api.github.com/search/users?q=%22{email}%22%20in:email",
     "items_path": "items",
@@ -11,6 +12,9 @@
     "profile_email_field": "email",
     "label_field": "login",
     "profile_check_limit": 5,
+    "deep_profile_check_limit": 10,
+    "min_request_interval_seconds": 1,
+    "rate_limit_key": "github.com",
     "profile_metadata_fields": {
       "username": "login",
       "display_name": "name",
@@ -51,6 +55,9 @@
     "profile_email_field": "public_email",
     "label_field": "username",
     "profile_check_limit": 5,
+    "deep_profile_check_limit": 10,
+    "min_request_interval_seconds": 1,
+    "rate_limit_key": "gitlab.com",
     "profile_metadata_fields": {
       "username": "username",
       "display_name": "name",
@@ -116,6 +123,8 @@
     "response_format": "xml",
     "api_key_env": "FLICKR_API_KEY",
     "api_key_param": "api_key",
+    "min_request_interval_seconds": 5,
+    "rate_limit_key": "flickr.com",
     "success_path": "user.@nsid",
     "label_path": "user.username",
     "not_found_error_codes": ["1"],
@@ -146,7 +155,7 @@
   {"name": "Dropbox", "category": "manual", "section": "account", "check": "manual", "url": "https://www.dropbox.com/"},
   {"name": "WordPress", "category": "manual", "section": "account", "check": "manual", "url": "https://wordpress.com/"},
   {"name": "Evernote", "category": "manual", "section": "account", "check": "manual", "url": "https://evernote.com/"},
-  {"name": "Gravatar", "category": "verified", "section": "account", "check": "gravatar", "url": "https://gravatar.com/", "actions": [
+  {"name": "Gravatar", "category": "verified", "section": "account", "check": "gravatar", "url": "https://gravatar.com/", "min_request_interval_seconds": 1, "rate_limit_key": "gravatar.com", "actions": [
     {
       "type": "Privacy Settings",
       "label": "Privacy Settings",
@@ -163,10 +172,23 @@
       "url": "https://support.gravatar.com/managing-account-settings/close-account/"
     }
   ]},
+  {
+    "name": "OpenPGP Key Directory",
+    "category": "verified",
+    "section": "account",
+    "check": "public_text_email",
+    "url": "https://keys.openpgp.org/",
+    "probe_url": "https://keys.openpgp.org/vks/v1/by-email/{email_quoted}",
+    "found_marker": "-----BEGIN PGP PUBLIC KEY BLOCK-----",
+    "not_found_statuses": [404, 410],
+    "min_request_interval_seconds": 2,
+    "rate_limit_key": "keys.openpgp.org",
+    "retry_attempts": 2
+  },
   {"name": "Patreon", "category": "manual", "section": "account", "check": "manual", "url": "https://www.patreon.com/"},
   {"name": "Strava", "category": "manual", "section": "account", "check": "manual", "url": "https://www.strava.com/"},
   {"name": "Duolingo", "category": "manual", "section": "account", "check": "manual", "url": "https://www.duolingo.com/"},
-  {"name": "Have I Been Pwned", "category": "verified", "section": "breach", "check": "hibp", "url": "https://haveibeenpwned.com/", "actions": [
+  {"name": "Have I Been Pwned", "category": "verified", "section": "breach", "check": "hibp", "url": "https://haveibeenpwned.com/", "min_request_interval_seconds": 10, "rate_limit_key": "haveibeenpwned.com", "actions": [
     {
       "type": "Help / FAQ",
       "label": "Help / FAQ",
