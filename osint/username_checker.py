@@ -7,7 +7,7 @@ import re
 import unicodedata
 from pathlib import Path
 from typing import Callable
-from urllib.parse import quote, unquote
+from urllib.parse import quote, unquote, urlsplit
 
 import httpx
 from rich.progress import (
@@ -24,6 +24,7 @@ from osint.detector_runtime import (
     safe_execute,
 )
 from osint.request_policy import PoliteAsyncClient
+from osint.profile_evidence import evaluate_profile
 from utils import __version__
 from utils.display import console
 from utils.helpers import is_valid_username_query
@@ -92,6 +93,16 @@ def _load_platform_definitions() -> list[dict]:
             "allow_title_username_match",
             "disable_html_found",
             "reference_username",
+            "strict_api",
+            "api_missing_matches",
+            "api_success_matches",
+            "api_identity_matches",
+            "api_allowed_hosts",
+            "review_batch",
+            "profile_allowed_hosts",
+            "profile_not_found_statuses",
+            "profile_evidence",
+            "profile_format",
         ):
             if key in item:
                 runtime_entry[key] = item[key]
@@ -361,8 +372,14 @@ def _contains_platform_raw_marker(platform: dict, key: str, text: str, username:
 
 def _username_matches(value: object, username: str, platform: dict) -> bool:
     """Compare API usernames, including documented platform-specific aliases."""
-    actual = _normalize_text(value).strip()
-    expected = _normalize_text(username).strip()
+    if platform.get("strict_api"):
+        if not isinstance(value, str):
+            return False
+        actual = unicodedata.normalize("NFC", value).casefold().strip()
+        expected = unicodedata.normalize("NFC", username).casefold().strip()
+    else:
+        actual = _normalize_text(value).strip()
+        expected = _normalize_text(username).strip()
     if platform.get("username_equivalence") == "underscore_space":
         actual = actual.replace("_", " ")
         expected = expected.replace("_", " ")
@@ -393,6 +410,25 @@ def _check_json_response(
     response: httpx.Response,
     result: dict,
 ) -> dict:
+    strict = platform.get("strict_api") is True
+    if strict:
+        host = urlsplit(str(response.url)).hostname
+        allowed = platform.get("api_allowed_hosts", [])
+        if allowed and host not in allowed:
+            return _set_result(result, "unknown", "API redirected outside its configured hosts", "redirect_changed")
+        if _contains_block_marker(_visible_page_text(response.text)) and response.text.lstrip().startswith("<"):
+            return _set_result(result, "unknown", "API returned a browser challenge", "bot_blocked")
+        # Only explicit site errors may make a HTTP 400 a missing profile.
+        if response.status_code in (200, 400, 404, 410):
+            try:
+                payload = response.json()
+            except ValueError:
+                payload = None
+            for rule in platform.get("api_missing_matches", []):
+                value = _json_value(payload, rule["path"])
+                expected = _format_platform_value(rule["equals"], username)
+                if value == expected and type(value) is type(expected):
+                    return _set_result(result, "not_found", "Site-specific API missing-profile error", "soft_404")
     not_found_statuses = _expected_statuses(platform, (404, 410))
     if response.status_code in not_found_statuses:
         return _set_result(result, "not_found", f"HTTP {response.status_code}", "soft_404")
@@ -409,6 +445,19 @@ def _check_json_response(
     except ValueError:
         return _set_result(result, "unknown", "Invalid JSON response", "parser_mismatch")
 
+    if strict:
+        for rule in platform.get("api_success_matches", []):
+            value = _json_value(data, rule["path"])
+            if value != rule["equals"] or type(value) is not type(rule["equals"]):
+                return _set_result(result, "unknown", "API success envelope changed or reported an error", "parser_mismatch")
+        if isinstance(data, dict) and (data.get("errors") or data.get("error")):
+            return _set_result(result, "unknown", "API returned an unrecognized error", "parser_mismatch")
+        for rule in platform.get("api_identity_matches", []):
+            value = _json_value(data, rule["path"])
+            expected = str(_format_platform_value(rule["equals"], username))
+            if not isinstance(value, str) or value.rstrip("/").casefold() != expected.rstrip("/").casefold():
+                return _set_result(result, "unknown", "API profile identity could not be verified", "parser_mismatch")
+
     not_found_path = str(platform.get("json_not_found_path", "")).strip()
     if not_found_path and _json_value(data, not_found_path) is not None:
         return _set_result(result, "not_found", "JSON not-found marker observed", "soft_404")
@@ -421,6 +470,8 @@ def _check_json_response(
 
         for item in items:
             values = _json_username_values(item, platform)
+            if strict and not any(isinstance(v, str) and v.strip() for v in values):
+                return _set_result(result, "unknown", "API list item schema changed", "parser_mismatch")
             if not any(_username_matches(value, username, platform) for value in values):
                 continue
 
@@ -438,6 +489,8 @@ def _check_json_response(
     values = _json_username_values(data, platform)
     value = values[0] if values else None
     if method == "json_exists":
+        if strict and (type(value) is not int or value <= 0):
+            return _set_result(result, "unknown", "Invalid API profile identifier", "parser_mismatch")
         if value is None or (isinstance(value, str) and not value.strip()):
             return _set_result(result, "unknown", "No JSON profile evidence", "parser_mismatch")
         metadata = _extract_metadata(data, platform.get("metadata_fields"))
@@ -451,6 +504,8 @@ def _check_json_response(
         if metadata:
             result["public_metadata"] = metadata
         return _set_result(result, "found", "JSON username matched")
+    if strict:
+        return _set_result(result, "unknown", "API username missing or different from query", "parser_mismatch")
     return _set_result(result, "not_found", "No JSON match", "soft_404")
 
 
@@ -579,6 +634,16 @@ async def _run_profile_html_detector(
     return _check_html_response(username, platform, response, result)
 
 
+async def _run_structured_profile_detector(username, platform, client, result):
+    response = await client.get(
+        platform.get("probe_url", platform["url"]).format(quote(username.strip(), safe="._-~")),
+        follow_redirects=True,
+        headers=_request_headers(platform),
+        timeout=_request_timeout(platform),
+    )
+    return _set_result(result, *evaluate_profile(username, platform, response))
+
+
 def _detector_chain(platform: dict) -> list[str]:
     """Return an ordered, de-duplicated detector chain for a platform."""
     primary = str(platform.get("check", "html")).strip() or "html"
@@ -613,6 +678,7 @@ def _detector_evidence(method: str, result: dict) -> dict[str, str]:
 
 USERNAME_DETECTORS = DetectorRegistry()
 USERNAME_DETECTORS.register("html", _run_html_detector)
+USERNAME_DETECTORS.register("structured_profile", _run_structured_profile_detector)
 USERNAME_DETECTORS.register("content", _run_html_detector)
 USERNAME_DETECTORS.register("404", _run_html_detector)
 USERNAME_DETECTORS.register("profile_html", _run_profile_html_detector)

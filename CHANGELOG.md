@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0-rc8 - 2026-09-08
+
+- hardened 80 username platform checks with site-specific API and profile evidence rules
+- added structured profile validation for HTML and Steam XML responses
+- preserved unknown results for rate limits, challenges, redirects, schema drift, and blocked sites
+- corrected changed endpoints for TopCoder, Brave Community, Ask Fedora, Shikimori, and Lobsters
+- added independent regression coverage and documented both live observations and limitations
+
 ## 1.2.0-rc7 - 2026-08-23
 
 - added profile-aware request pacing for quick, standard, deep, username-only, and email-only scans

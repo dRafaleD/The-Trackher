@@ -11,7 +11,9 @@
     ],
     "probe_url_pattern": "https://api.github.com/users/{username}",
     "check": "json",
-    "detector_chain": ["json", "profile_html"],
+    "detector_chain": [
+      "json"
+    ],
     "json_path": "login",
     "metadata_fields": {
       "username": "login",
@@ -40,6 +42,16 @@
         "type": "Delete Account / Help",
         "label": "Delete Account / Help",
         "url": "https://docs.github.com/en/account-and-profile/how-tos/account-management/deleting-your-personal-account"
+      }
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "api.github.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "message",
+        "equals": "Not Found"
       }
     ]
   },
@@ -133,6 +145,19 @@
         "label": "Delete Account / Help",
         "url": "https://support.reddithelp.com/hc/en-us/articles/204579509-How-do-I-delete-my-account"
       }
+    ],
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "www.reddit.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error",
+        "equals": 404
+      }
     ]
   },
   {
@@ -166,12 +191,28 @@
     "error_type": "message",
     "reliability": "verified",
     "error_msg": "negative_marker",
-    "disable_html_found": true,
-    "raw_found_markers": [
-      "<title>Telegram: View @{username}</title>"
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
     ],
-    "raw_not_found_markers": [
-      "<title>Telegram: Contact @{username}</title>"
+    "profile_allowed_hosts": [
+      "t.me"
+    ],
+    "profile_not_found_statuses": [],
+    "profile_evidence": [
+      {
+        "tag": "title",
+        "text": "Telegram: View @{username}"
+      },
+      {
+        "tag": "div",
+        "class": "tgme_page_title",
+        "nonempty": true
+      }
     ]
   },
   {
@@ -277,17 +318,38 @@
     "error_msg": "negative_marker"
   },
   {
-   "name": "Twitch",
-   "url_pattern": "https://www.twitch.tv/{username}",
+    "name": "Twitch",
+    "url_pattern": "https://www.twitch.tv/{username}",
     "error_type": "message",
     "reliability": "verified",
     "error_msg": "negative_marker",
-    "raw_found_markers": [
-      "\"@type\":\"Person\"",
-      "content=\"https://www.twitch.tv/{username}\""
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
     ],
-    "raw_not_found_markers": [
-      "<title>Twitch</title>"
+    "profile_allowed_hosts": [
+      "www.twitch.tv"
+    ],
+    "profile_not_found_statuses": [],
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://www.twitch.tv/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "video.other"
+        }
+      }
     ]
   },
   {
@@ -334,11 +396,13 @@
     "error_msg": "negative_marker"
   },
   {
-   "name": "Dailymotion",
-   "url_pattern": "https://www.dailymotion.com/{username}",
+    "name": "Dailymotion",
+    "url_pattern": "https://www.dailymotion.com/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://api.dailymotion.com/user/{username}?fields=id,username,screenname",
     "check": "json",
     "json_path": "username",
@@ -346,7 +410,20 @@
       "username": "username",
       "display_name": "screenname",
       "dailymotion_id": "id"
-    }
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "api.dailymotion.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error.type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Bandcamp",
@@ -360,19 +437,67 @@
     "url_pattern": "https://www.last.fm/user/{username}",
     "error_type": "message",
     "reliability": "verified",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_allowed_hosts": [
+      "www.last.fm"
+    ],
+    "profile_not_found_statuses": [
+      404,
+      410
+    ],
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://www.last.fm/user/{username}"
+        }
+      },
+      {
+        "tag": "h1",
+        "class": "header-title",
+        "text": "{username}"
+      }
+    ]
   },
   {
     "name": "Mixcloud",
     "url_pattern": "https://www.mixcloud.com/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "error_msg": "negative_marker",
     "probe_url_pattern": "https://api.mixcloud.com/{username}/",
     "check": "json",
     "json_path": "username",
-    "metadata_fields": {"username": "username", "display_name": "name", "profile_url": "url"}
+    "metadata_fields": {
+      "username": "username",
+      "display_name": "name",
+      "profile_url": "url"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "api.mixcloud.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error.type",
+        "equals": "ResourceNotFoundException"
+      }
+    ]
   },
   {
     "name": "Smule",
@@ -422,6 +547,13 @@
         "label": "Delete Account / Help",
         "url": "https://docs.gitlab.com/user/profile/account/delete_account/"
       }
+    ],
+    "strict_api": true,
+    "detector_chain": [
+      "json_list"
+    ],
+    "api_allowed_hosts": [
+      "gitlab.com"
     ]
   },
   {
@@ -429,7 +561,21 @@
     "url_pattern": "https://bitbucket.org/{username}/",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_allowed_hosts": [
+      "bitbucket.org"
+    ],
+    "profile_not_found_statuses": [],
+    "profile_evidence": [],
+    "profile_evidence_note": "No trustworthy positive profile structure could be verified during this review; return unknown rather than infer from status or echoed username."
   },
   {
     "name": "Gitea",
@@ -437,7 +583,10 @@
     "error_type": "status_code",
     "reliability": "verified",
     "reference_username": "lunny",
-    "expected_status": [404, 410],
+    "expected_status": [
+      404,
+      410
+    ],
     "probe_url_pattern": "https://gitea.com/api/v1/users/{username}",
     "check": "json",
     "json_path": "login",
@@ -446,23 +595,45 @@
       "display_name": "full_name",
       "avatar_url": "avatar_url",
       "profile_url": "html_url"
-    }
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "gitea.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "message",
+        "equals": "user redirect does not exist [name: {username}]"
+      }
+    ]
   },
   {
     "name": "HackerNews",
     "url_pattern": "https://news.ycombinator.com/user?id={username}",
-    "error_type": "message",
+    "error_type": "status_code",
     "reliability": "verified",
     "reference_username": "pg",
     "error_msg": "no_such_user",
-    "check": "html",
-    "timeout_seconds": 20,
-    "retry_attempts": 2,
-    "disable_html_found": true,
-    "raw_found_markers": [
-      "<title>Profile: {username} | Hacker News</title>"
+    "check": "json",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "review_batch": "2026-09-08-2",
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
     ],
-    "raw_not_found_markers": ["No such user."]
+    "strict_api": true,
+    "probe_url_pattern": "https://hacker-news.firebaseio.com/v0/user/{username}.json",
+    "json_path": "id",
+    "expected_status": [
+      404
+    ],
+    "api_allowed_hosts": [
+      "hacker-news.firebaseio.com"
+    ]
   },
   {
     "name": "Kaggle",
@@ -485,7 +656,21 @@
     "url_pattern": "https://www.hackerrank.com/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_allowed_hosts": [
+      "www.hackerrank.com"
+    ],
+    "profile_not_found_statuses": [],
+    "profile_evidence": [],
+    "profile_evidence_note": "No trustworthy positive profile structure could be verified during this review; return unknown rather than infer from status or echoed username."
   },
   {
     "name": "TryHackMe",
@@ -526,13 +711,29 @@
     "probe_url_pattern": "https://hub.docker.com/v2/users/{username}/",
     "check": "json",
     "json_path": "username",
-    "json_paths": ["username", "orgname"],
+    "json_paths": [
+      "username",
+      "orgname"
+    ],
     "metadata_fields": {
       "username": "username",
       "display_name": "full_name",
       "avatar_url": "gravatar_url",
       "profile_url": "profile_url"
-    }
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "hub.docker.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "message",
+        "equals": "User not found"
+      }
+    ]
   },
   {
     "name": "NPM",
@@ -546,7 +747,21 @@
     "url_pattern": "https://pypi.org/user/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_allowed_hosts": [
+      "pypi.org"
+    ],
+    "profile_not_found_statuses": [],
+    "profile_evidence": [],
+    "profile_evidence_note": "No trustworthy positive profile structure could be verified during this review; return unknown rather than infer from status or echoed username."
   },
   {
     "name": "Codepen",
@@ -570,9 +785,20 @@
     "reference_username": "gaben",
     "error_msg": "profile_not_found",
     "probe_url_pattern": "https://steamcommunity.com/id/{username}?xml=1",
-    "disable_html_found": true,
-    "raw_found_markers": ["<steamID64>"],
-    "raw_not_found_markers": ["<error>"]
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_allowed_hosts": [
+      "steamcommunity.com"
+    ],
+    "profile_not_found_statuses": [],
+    "profile_evidence": [],
+    "profile_format": "steam_xml"
   },
   {
     "name": "PSNProfiles",
@@ -594,12 +820,31 @@
     "error_type": "status_code",
     "reliability": "verified",
     "reference_username": "erik",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "error_msg": "negative_marker",
     "probe_url_pattern": "https://api.chess.com/pub/player/{username}",
     "check": "json",
     "json_path": "username",
-    "metadata_fields": {"username": "username", "chess_id": "player_id", "profile_url": "url"}
+    "metadata_fields": {
+      "username": "username",
+      "chess_id": "player_id",
+      "profile_url": "url"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "api.chess.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "message",
+        "equals": "User \"{username}\" not found."
+      }
+    ]
   },
   {
     "name": "Lichess",
@@ -607,12 +852,30 @@
     "error_type": "status_code",
     "reliability": "verified",
     "reference_username": "DrNykterstein",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "error_msg": "negative_marker",
     "probe_url_pattern": "https://lichess.org/api/user/{username}",
     "check": "json",
     "json_path": "username",
-    "metadata_fields": {"username": "username", "lichess_id": "id"}
+    "metadata_fields": {
+      "username": "username",
+      "lichess_id": "id"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "lichess.org"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error",
+        "equals": "Not found"
+      }
+    ]
   },
   {
     "name": "Medium",
@@ -625,8 +888,8 @@
     "error_msg": "negative_marker"
   },
   {
-   "name": "Dev.to",
-   "url_pattern": "https://dev.to/{username}",
+    "name": "Dev.to",
+    "url_pattern": "https://dev.to/{username}",
     "error_type": "status_code",
     "reliability": "verified",
     "reference_username": "ben",
@@ -642,7 +905,20 @@
       "display_name": "name",
       "website": "website_url",
       "avatar_url": "profile_image"
-    }
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "dev.to"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error",
+        "equals": "not found"
+      }
+    ]
   },
   {
     "name": "Tumblr",
@@ -666,14 +942,35 @@
     "url_pattern": "https://{username}.wordpress.com/",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://public-api.wordpress.com/rest/v1.1/sites/{username}.wordpress.com/",
     "check": "json_exists",
     "json_path": "ID",
     "metadata_fields": {
       "site_name": "name",
       "site_url": "URL"
-    }
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json_exists"
+    ],
+    "api_allowed_hosts": [
+      "public-api.wordpress.com"
+    ],
+    "api_identity_matches": [
+      {
+        "path": "URL",
+        "equals": "https://{username}.wordpress.com"
+      }
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error",
+        "equals": "unknown_blog"
+      }
+    ]
   },
   {
     "name": "Substack",
@@ -731,14 +1028,42 @@
     "url_pattern": "https://www.artstation.com/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_allowed_hosts": [
+      "www.artstation.com"
+    ],
+    "profile_not_found_statuses": [],
+    "profile_evidence": [],
+    "profile_evidence_note": "No trustworthy positive profile structure could be verified during this review; return unknown rather than infer from status or echoed username."
   },
   {
     "name": "Sketchfab",
     "url_pattern": "https://sketchfab.com/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_allowed_hosts": [
+      "sketchfab.com"
+    ],
+    "profile_not_found_statuses": [],
+    "profile_evidence": [],
+    "profile_evidence_note": "No trustworthy positive profile structure could be verified during this review; return unknown rather than infer from status or echoed username."
   },
   {
     "name": "MyAnimeList",
@@ -768,7 +1093,14 @@
     "json_path": "data.User.name",
     "metadata_fields": {
       "username": "data.User.name"
-    }
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "graphql"
+    ],
+    "api_allowed_hosts": [
+      "graphql.anilist.co"
+    ]
   },
   {
     "name": "Etsy",
@@ -844,7 +1176,9 @@
     "url_pattern": "https://en.wikipedia.org/wiki/User:{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://en.wikipedia.org/w/api.php?action=query&list=users&ususers={username}&format=json",
     "check": "json",
     "json_path": "query.users.0.name",
@@ -856,12 +1190,19 @@
     "metadata_fields": {
       "username": "query.users.0.name",
       "wikipedia_user_id": "query.users.0.userid"
-    }
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "en.wikipedia.org"
+    ]
   },
   {
     "name": "Gravatar",
     "url_pattern": "https://en.gravatar.com/{username}",
-    "error_type": "message",
+    "error_type": "status_code",
     "reliability": "verified",
     "error_msg": "negative_marker",
     "actions": [
@@ -884,6 +1225,29 @@
         "type": "Delete Account / Help",
         "label": "Delete Account / Help",
         "url": "https://support.gravatar.com/managing-account-settings/close-account/"
+      }
+    ],
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "check": "json",
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "probe_url_pattern": "https://en.gravatar.com/{username}.json",
+    "json_path": "entry.0.preferredUsername",
+    "expected_status": [
+      404
+    ],
+    "api_allowed_hosts": [
+      "en.gravatar.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "",
+        "equals": "User not found"
       }
     ]
   },
@@ -985,7 +1349,20 @@
     ],
     "probe_url_pattern": "https://forum.arduino.cc/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "forum.arduino.cc"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Codeforces",
@@ -993,7 +1370,6 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      400,
       404,
       410
     ],
@@ -1005,14 +1381,50 @@
       "username": "handle",
       "display_name": "firstName",
       "avatar_url": "titlePhoto"
-    }
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json_list"
+    ],
+    "api_allowed_hosts": [
+      "codeforces.com"
+    ],
+    "api_success_matches": [
+      {
+        "path": "status",
+        "equals": "OK"
+      }
+    ],
+    "api_missing_matches": [
+      {
+        "path": "comment",
+        "equals": "handles: User with handle {username} not found"
+      }
+    ]
   },
   {
     "name": "TopCoder",
     "url_pattern": "https://www.topcoder.com/members/{username}",
-    "error_type": "message",
+    "error_type": "status_code",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "check": "json",
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "probe_url_pattern": "https://api.topcoder.com/v6/members/{username}",
+    "json_path": "handle",
+    "expected_status": [
+      404
+    ],
+    "api_allowed_hosts": [
+      "api.topcoder.com"
+    ]
   },
   {
     "name": "CodeChef",
@@ -1168,7 +1580,9 @@
     "url_pattern": "https://www.speedrun.com/users/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://www.speedrun.com/api/v1/users?lookup={username}",
     "check": "json_list",
     "json_list_path": "data",
@@ -1177,7 +1591,14 @@
       "username": "names.international",
       "speedrun_id": "id",
       "profile_url": "weblink"
-    }
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json_list"
+    ],
+    "api_allowed_hosts": [
+      "www.speedrun.com"
+    ]
   },
   {
     "name": "ModDB",
@@ -1471,7 +1892,9 @@
     "url_pattern": "https://www.discogs.com/user/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://api.discogs.com/users/{username}",
     "check": "json",
     "json_path": "username",
@@ -1480,7 +1903,20 @@
       "discogs_id": "id",
       "profile_url": "uri",
       "display_name": "name"
-    }
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "api.discogs.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "message",
+        "equals": "User does not exist or may have been deleted."
+      }
+    ]
   },
   {
     "name": "RateYourMusic",
@@ -1561,15 +1997,27 @@
   },
   {
     "name": "Lobsters",
-    "url_pattern": "https://lobste.rs/u/{username}",
+    "url_pattern": "https://lobste.rs/~{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "error_msg": "negative_marker",
-    "probe_url_pattern": "https://lobste.rs/u/{username}.json",
+    "probe_url_pattern": "https://lobste.rs/~{username}",
     "check": "json",
     "json_path": "username",
-    "metadata_fields": {"username": "username", "profile_url": "url"}
+    "metadata_fields": {
+      "username": "username",
+      "profile_url": "url"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "lobste.rs"
+    ]
   },
   {
     "name": "Flipboard",
@@ -1607,7 +2055,14 @@
     "json_list_path": "data",
     "accept": "application/vnd.api+json",
     "profile_id_path": "id",
-    "profile_url_pattern": "https://kitsu.app/users/{username}"
+    "profile_url_pattern": "https://kitsu.app/users/{username}",
+    "strict_api": true,
+    "detector_chain": [
+      "json_list"
+    ],
+    "api_allowed_hosts": [
+      "kitsu.io"
+    ]
   },
   {
     "name": "Bangumi",
@@ -1620,19 +2075,51 @@
     ],
     "probe_url_pattern": "https://api.bgm.tv/v0/users/{username}",
     "check": "json",
-    "json_path": "username"
+    "json_path": "username",
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "api.bgm.tv"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "description",
+        "equals": "can't find user with username \"{username}\""
+      }
+    ]
   },
   {
     "name": "Shikimori",
-    "url_pattern": "https://shikimori.one/{username}",
+    "url_pattern": "https://shikimori.io/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "error_msg": "negative_marker",
-    "probe_url_pattern": "https://shikimori.one/api/users/{username}",
+    "probe_url_pattern": "https://shikimori.io/api/users/{username}",
     "check": "json",
     "json_path": "nickname",
-    "metadata_fields": {"username": "nickname", "shikimori_id": "id", "profile_url": "url"}
+    "metadata_fields": {
+      "username": "nickname",
+      "shikimori_id": "id",
+      "profile_url": "url"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "shikimori.io"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "code",
+        "equals": 404
+      }
+    ]
   },
   {
     "name": "MyDramaList",
@@ -1673,7 +2160,20 @@
     ],
     "probe_url_pattern": "https://forums.trakt.tv/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "forums.trakt.tv"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Academia.edu",
@@ -1704,8 +2204,37 @@
     "url_pattern": "https://atcoder.jp/users/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_allowed_hosts": [
+      "atcoder.jp"
+    ],
+    "profile_not_found_statuses": [
+      404,
+      410
+    ],
+    "profile_evidence": [
+      {
+        "tag": "title",
+        "text": "{username} - AtCoder"
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://atcoder.jp/users/{username}"
+        }
+      }
+    ]
   },
   {
     "name": "AudioJungle",
@@ -1769,30 +2298,83 @@
     "error_type": "status_code",
     "reliability": "verified",
     "reference_username": "forgejo",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://codeberg.org/api/v1/users/{username}",
     "check": "json",
     "json_path": "login",
-    "metadata_fields": {"username": "login", "display_name": "full_name", "profile_url": "html_url"}
+    "metadata_fields": {
+      "username": "login",
+      "display_name": "full_name",
+      "profile_url": "html_url"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "codeberg.org"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "message",
+        "equals": "user redirect does not exist [name: {username}]"
+      }
+    ]
   },
   {
     "name": "Coderwall",
     "url_pattern": "https://coderwall.com/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "json",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "probe_url_pattern": "https://coderwall.com/{username}.json",
+    "json_path": "username",
+    "api_allowed_hosts": [
+      "coderwall.com"
+    ]
   },
   {
     "name": "Codewars",
     "url_pattern": "https://www.codewars.com/users/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://www.codewars.com/api/v1/users/{username}",
     "check": "json",
     "json_path": "username",
-    "metadata_fields": {"username": "username", "codewars_id": "id", "honor": "honor"}
+    "metadata_fields": {
+      "username": "username",
+      "codewars_id": "id",
+      "honor": "honor"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "www.codewars.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "reason",
+        "equals": "not found"
+      }
+    ]
   },
   {
     "name": "Credly",
@@ -1919,8 +2501,29 @@
     "url_pattern": "https://forum.hackthebox.com/u/{username}/summary",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "json",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "probe_url_pattern": "https://forum.hackthebox.com/u/{username}.json",
+    "json_path": "user.username",
+    "api_allowed_hosts": [
+      "forum.hackthebox.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "HubPages",
@@ -1935,8 +2538,23 @@
     "url_pattern": "https://huggingface.co/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "json",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "probe_url_pattern": "https://huggingface.co/api/users/{username}/overview",
+    "json_path": "user",
+    "api_allowed_hosts": [
+      "huggingface.co"
+    ]
   },
   {
     "name": "IFTTT",
@@ -1984,11 +2602,35 @@
     "error_type": "status_code",
     "reliability": "verified",
     "reference_username": "max",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://keybase.io/_/api/1.0/user/lookup.json?username={username}",
     "check": "json",
     "json_path": "them.basics.username",
-    "metadata_fields": {"username": "them.basics.username", "keybase_id": "them.id"}
+    "metadata_fields": {
+      "username": "them.basics.username",
+      "keybase_id": "them.id"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "keybase.io"
+    ],
+    "api_success_matches": [
+      {
+        "path": "status.code",
+        "equals": 0
+      }
+    ],
+    "api_missing_matches": [
+      {
+        "path": "status.code",
+        "equals": 205
+      }
+    ]
   },
   {
     "name": "LottieFiles",
@@ -2035,19 +2677,47 @@
     "url_pattern": "https://notabug.org/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_allowed_hosts": [
+      "notabug.org"
+    ],
+    "profile_not_found_statuses": [],
+    "profile_evidence": [],
+    "profile_evidence_note": "No trustworthy positive profile structure could be verified during this review; return unknown rather than infer from status or echoed username."
   },
   {
-   "name": "Open Collective",
-   "url_pattern": "https://opencollective.com/{username}",
-   "error_type": "status_code",
+    "name": "Open Collective",
+    "url_pattern": "https://opencollective.com/{username}",
+    "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://opencollective.com/{username}.json",
     "check": "json",
     "json_path": "slug",
-    "metadata_fields": {"username": "slug", "display_name": "name", "profile_url": "website"}
+    "metadata_fields": {
+      "username": "slug",
+      "display_name": "name",
+      "profile_url": "website"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "opencollective.com"
+    ]
   },
   {
     "name": "OpenGameArt",
@@ -2090,15 +2760,27 @@
     "check": "404"
   },
   {
-   "name": "Playstrategy",
-   "url_pattern": "https://playstrategy.org/@/{username}",
-   "error_type": "status_code",
+    "name": "Playstrategy",
+    "url_pattern": "https://playstrategy.org/@/{username}",
+    "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://playstrategy.org/api/user/{username}",
     "check": "json",
     "json_path": "username",
-    "metadata_fields": {"username": "username", "playstrategy_id": "id"}
+    "metadata_fields": {
+      "username": "username",
+      "playstrategy_id": "id"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "playstrategy.org"
+    ]
   },
   {
     "name": "Rarible",
@@ -2109,15 +2791,34 @@
     "check": "404"
   },
   {
-   "name": "RubyGems",
-   "url_pattern": "https://rubygems.org/profiles/{username}",
-   "error_type": "status_code",
+    "name": "RubyGems",
+    "url_pattern": "https://rubygems.org/profiles/{username}",
+    "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://rubygems.org/api/v1/profiles/{username}.json",
     "check": "json",
     "json_path": "handle",
-    "metadata_fields": {"username": "handle", "rubygems_id": "id", "email": "email"}
+    "metadata_fields": {
+      "username": "handle",
+      "rubygems_id": "id",
+      "email": "email"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "rubygems.org"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error",
+        "equals": "Not Found"
+      }
+    ]
   },
   {
     "name": "Speaker Deck",
@@ -2176,15 +2877,33 @@
     "check": "404"
   },
   {
-   "name": "Ask Fedora",
-   "url_pattern": "https://ask.fedoraproject.org/u/{username}",
-   "error_type": "status_code",
+    "name": "Ask Fedora",
+    "url_pattern": "https://discussion.fedoraproject.org/u/{username}/summary",
+    "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "probe_url_pattern": "https://discussion.fedoraproject.org/askfedora/u/{username}.json",
+    "expected_status": [
+      404
+    ],
+    "probe_url_pattern": "https://discussion.fedoraproject.org/u/{username}.json",
     "check": "json",
     "json_path": "user.username",
-    "metadata_fields": {"username": "user.username", "display_name": "user.name"}
+    "metadata_fields": {
+      "username": "user.username",
+      "display_name": "user.name"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "discussion.fedoraproject.org"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "BiggerPockets",
@@ -2203,45 +2922,128 @@
     "check": "404"
   },
   {
-   "name": "Caddy Community",
-   "url_pattern": "https://caddy.community/u/{username}/summary",
-   "error_type": "status_code",
+    "name": "Caddy Community",
+    "url_pattern": "https://caddy.community/u/{username}/summary",
+    "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://caddy.community/u/{username}.json",
     "check": "json",
     "json_path": "user.username",
-    "metadata_fields": {"username": "user.username", "display_name": "user.name", "profile_url": "user.avatar_template"}
+    "metadata_fields": {
+      "username": "user.username",
+      "display_name": "user.name",
+      "profile_url": "user.avatar_template"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "caddy.community"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Car Talk Community",
     "url_pattern": "https://community.cartalk.com/u/{username}/summary",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "json",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "probe_url_pattern": "https://community.cartalk.com/u/{username}.json",
+    "json_path": "user.username",
+    "api_allowed_hosts": [
+      "community.cartalk.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
-   "name": "Cfx.re Forum",
-   "url_pattern": "https://forum.cfx.re/u/{username}/summary",
-   "error_type": "status_code",
+    "name": "Cfx.re Forum",
+    "url_pattern": "https://forum.cfx.re/u/{username}/summary",
+    "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://forum.cfx.re/u/{username}.json",
     "check": "json",
     "json_path": "user.username",
-    "metadata_fields": {"username": "user.username", "display_name": "user.name"}
+    "metadata_fields": {
+      "username": "user.username",
+      "display_name": "user.name"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "forum.cfx.re"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
-   "name": "Chaos.social",
-   "url_pattern": "https://chaos.social/@{username}",
-   "error_type": "status_code",
+    "name": "Chaos.social",
+    "url_pattern": "https://chaos.social/@{username}",
+    "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://chaos.social/api/v1/accounts/lookup?acct={username}",
     "check": "json",
     "json_path": "username",
-    "metadata_fields": {"username": "username", "display_name": "display_name", "profile_url": "url"}
+    "metadata_fields": {
+      "username": "username",
+      "display_name": "display_name",
+      "profile_url": "url"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "chaos.social"
+    ],
+    "api_identity_matches": [
+      {
+        "path": "acct",
+        "equals": "{username}"
+      }
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error",
+        "equals": "Record not found"
+      }
+    ]
   },
   {
     "name": "Chollometro",
@@ -2264,8 +3066,29 @@
     "url_pattern": "https://community.cloudflare.com/u/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "json",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "probe_url_pattern": "https://community.cloudflare.com/u/{username}.json",
+    "json_path": "user.username",
+    "api_allowed_hosts": [
+      "community.cloudflare.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "CNET",
@@ -2328,8 +3151,29 @@
     "url_pattern": "https://forums.envato.com/u/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "json",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "probe_url_pattern": "https://forums.envato.com/u/{username}.json",
+    "json_path": "user.username",
+    "api_allowed_hosts": [
+      "forums.envato.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "F3.cool",
@@ -2356,15 +3200,40 @@
     "check": "404"
   },
   {
-   "name": "Fosstodon",
-   "url_pattern": "https://fosstodon.org/@{username}",
-   "error_type": "status_code",
+    "name": "Fosstodon",
+    "url_pattern": "https://fosstodon.org/@{username}",
+    "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://fosstodon.org/api/v1/accounts/lookup?acct={username}",
     "check": "json",
     "json_path": "username",
-    "metadata_fields": {"username": "username", "display_name": "display_name", "profile_url": "url"}
+    "metadata_fields": {
+      "username": "username",
+      "display_name": "display_name",
+      "profile_url": "url"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "fosstodon.org"
+    ],
+    "api_identity_matches": [
+      {
+        "path": "acct",
+        "equals": "{username}"
+      }
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error",
+        "equals": "Record not found"
+      }
+    ]
   },
   {
     "name": "Genius Artists",
@@ -2419,8 +3288,29 @@
     "url_pattern": "https://community.icons8.com/u/{username}/summary",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "json",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "probe_url_pattern": "https://community.icons8.com/u/{username}.json",
+    "json_path": "user.username",
+    "api_allowed_hosts": [
+      "community.icons8.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Instapaper",
@@ -2431,15 +3321,33 @@
     "check": "404"
   },
   {
-   "name": "Ionic Forum",
-   "url_pattern": "https://forum.ionicframework.com/u/{username}",
-   "error_type": "status_code",
+    "name": "Ionic Forum",
+    "url_pattern": "https://forum.ionicframework.com/u/{username}",
+    "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://forum.ionicframework.com/u/{username}.json",
     "check": "json",
     "json_path": "user.username",
-    "metadata_fields": {"username": "user.username", "display_name": "user.name"}
+    "metadata_fields": {
+      "username": "user.username",
+      "display_name": "user.name"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "forum.ionicframework.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Jellyfin Weblate",
@@ -2458,15 +3366,33 @@
     "check": "404"
   },
   {
-   "name": "Joplin Forum",
-   "url_pattern": "https://discourse.joplinapp.org/u/{username}",
-   "error_type": "status_code",
+    "name": "Joplin Forum",
+    "url_pattern": "https://discourse.joplinapp.org/u/{username}",
+    "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://discourse.joplinapp.org/u/{username}.json",
     "check": "json",
     "json_path": "user.username",
-    "metadata_fields": {"username": "user.username", "display_name": "user.name"}
+    "metadata_fields": {
+      "username": "user.username",
+      "display_name": "user.name"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "discourse.joplinapp.org"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Kaskus",
@@ -2489,8 +3415,29 @@
     "url_pattern": "https://forum.leasehackr.com/u/{username}/summary/",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "json",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "probe_url_pattern": "https://forum.leasehackr.com/u/{username}.json",
+    "json_path": "user.username",
+    "api_allowed_hosts": [
+      "forum.leasehackr.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "LinuxFR.org",
@@ -2501,26 +3448,69 @@
     "check": "404"
   },
   {
-   "name": "Mamot",
-   "url_pattern": "https://mamot.fr/@{username}",
-   "error_type": "status_code",
+    "name": "Mamot",
+    "url_pattern": "https://mamot.fr/@{username}",
+    "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://mamot.fr/api/v1/accounts/lookup?acct={username}",
     "check": "json",
     "json_path": "username",
-    "metadata_fields": {"username": "username", "display_name": "display_name", "profile_url": "url"}
+    "metadata_fields": {
+      "username": "username",
+      "display_name": "display_name",
+      "profile_url": "url"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "mamot.fr"
+    ],
+    "api_identity_matches": [
+      {
+        "path": "acct",
+        "equals": "{username}"
+      }
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error",
+        "equals": "Record not found"
+      }
+    ]
   },
   {
-   "name": "n8n Community",
-   "url_pattern": "https://community.n8n.io/u/{username}/summary",
-   "error_type": "status_code",
+    "name": "n8n Community",
+    "url_pattern": "https://community.n8n.io/u/{username}/summary",
+    "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "probe_url_pattern": "https://community.n8n.io/u/{username}.json",
     "check": "json",
     "json_path": "user.username",
-    "metadata_fields": {"username": "user.username", "display_name": "user.name"}
+    "metadata_fields": {
+      "username": "user.username",
+      "display_name": "user.name"
+    },
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "community.n8n.io"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Nairaland",
@@ -2584,7 +3574,20 @@
     ],
     "probe_url_pattern": "https://forum.kayiprihtim.com/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "forum.kayiprihtim.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Discourse Meta",
@@ -2599,7 +3602,20 @@
     "check": "json",
     "json_path": "user.username",
     "timeout_seconds": 20,
-    "retry_attempts": 2
+    "retry_attempts": 2,
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "meta.discourse.org"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Python Discuss",
@@ -2612,7 +3628,20 @@
     ],
     "probe_url_pattern": "https://discuss.python.org/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "strict_api": true,
+    "detector_chain": [
+      "json"
+    ],
+    "api_allowed_hosts": [
+      "discuss.python.org"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "OpenAI Developer Community",
@@ -2620,12 +3649,28 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://community.openai.com/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "community.openai.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Mozilla Discourse",
@@ -2633,12 +3678,28 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://discourse.mozilla.org/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "discourse.mozilla.org"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Unreal Engine Forums",
@@ -2646,25 +3707,57 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://forums.unrealengine.com/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "forums.unrealengine.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Brave Community",
-    "url_pattern": "https://community.brave.com/u/{username}/summary",
+    "url_pattern": "https://community.brave.app/u/{username}/summary",
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
-    "probe_url_pattern": "https://community.brave.com/u/{username}.json",
+    "probe_url_pattern": "https://community.brave.app/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "community.brave.app"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Elastic Discuss",
@@ -2672,12 +3765,28 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://discuss.elastic.co/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "discuss.elastic.co"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Ubuntu Community Hub",
@@ -2685,12 +3794,28 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://discourse.ubuntu.com/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "discourse.ubuntu.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Signal Community",
@@ -2698,12 +3823,28 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://community.signalusers.org/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "community.signalusers.org"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Obsidian Forum",
@@ -2711,12 +3852,28 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://forum.obsidian.md/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "forum.obsidian.md"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Home Assistant Community",
@@ -2724,12 +3881,28 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://community.home-assistant.io/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "community.home-assistant.io"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Hugging Face Forums",
@@ -2737,12 +3910,28 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://discuss.huggingface.co/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "discuss.huggingface.co"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "PyTorch Forums",
@@ -2750,12 +3939,28 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://discuss.pytorch.org/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "discuss.pytorch.org"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Rust Users Forum",
@@ -2763,12 +3968,28 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://users.rust-lang.org/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "users.rust-lang.org"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Jupyter Community",
@@ -2776,12 +3997,28 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://discourse.jupyter.org/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "discourse.jupyter.org"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Django Forum",
@@ -2789,12 +4026,28 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://forum.djangoproject.com/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "forum.djangoproject.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "KDE Discuss",
@@ -2802,12 +4055,28 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://discuss.kde.org/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "discuss.kde.org"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Godot Forum",
@@ -2815,12 +4084,28 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://forum.godotengine.org/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "forum.godotengine.org"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "YazBel Forum",
@@ -2828,13 +4113,29 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://forum.yazbel.com/u/{username}.json",
     "check": "json",
     "json_path": "user.username",
-    "disabled_reason": "Site TLS sertifikası alan adıyla eşleşmiyor; güvenli doğrulama yapılamıyor"
+    "disabled_reason": "Site TLS sertifikası alan adıyla eşleşmiyor; güvenli doğrulama yapılamıyor",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "forum.yazbel.com"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   },
   {
     "name": "Pardus Forumları",
@@ -2842,11 +4143,27 @@
     "error_type": "status_code",
     "reliability": "verified",
     "expected_status": [
-      404,
-      410
+      404
     ],
     "probe_url_pattern": "https://forum.pardus.org.tr/u/{username}.json",
     "check": "json",
-    "json_path": "user.username"
+    "json_path": "user.username",
+    "review_batch": "2026-09-08-2",
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "detector_chain": [
+      "json"
+    ],
+    "strict_api": true,
+    "api_allowed_hosts": [
+      "forum.pardus.org.tr"
+    ],
+    "api_missing_matches": [
+      {
+        "path": "error_type",
+        "equals": "not_found"
+      }
+    ]
   }
 ]

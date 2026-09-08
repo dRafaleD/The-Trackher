@@ -23,6 +23,14 @@ class PlatformCatalogTests(unittest.TestCase):
         current[parts[-1]] = value
 
     def _found_response(self, platform: dict, username: str) -> httpx.Response:
+        if platform.get('review_batch') == '2026-09-08-2':
+            from test_profile_batch2 import fixture
+            return fixture(platform['name'], username)
+        # Independently pinned API shapes include success envelopes and identity.
+        if platform.get("strict_api"):
+            from test_api_hardening import PAYLOADS
+            payload = json.loads(json.dumps(PAYLOADS[platform["name"]]).replace("sample", username).replace("Sample", username))
+            return httpx.Response(200, json=payload)
         check = platform.get("check", "html")
         if check in {"json", "json_exists", "graphql"}:
             payload: dict = {}
@@ -47,6 +55,9 @@ class PlatformCatalogTests(unittest.TestCase):
         return httpx.Response(200, text=body)
 
     def _missing_response(self, platform: dict, username: str) -> httpx.Response:
+        if platform.get('review_batch') == '2026-09-08-2':
+            from test_profile_batch2 import fixture
+            return fixture(platform['name'], username, missing=True)
         error_type = platform.get("error_type", "message")
         if error_type == "status_code":
             expected = platform.get("expected_status", [404])
@@ -113,6 +124,11 @@ class PlatformCatalogTests(unittest.TestCase):
                     self.assertFalse(result["found"])
                     self.assertEqual(result["unknown_cause"], "parser_mismatch")
                     continue
+                if platform.get('review_batch') == '2026-09-08-2':
+                    from test_profile_batch2 import expected
+                    self.assertEqual(result['status'], expected(platform['name']))
+                    if result['status'] == 'unknown':
+                        continue
                 self.assertEqual(result["status"], "found")
                 self.assertTrue(result["found"])
                 self.assertEqual(result["reliability"], platform["reliability"])
@@ -130,7 +146,11 @@ class PlatformCatalogTests(unittest.TestCase):
                     self.assertFalse(result["found"])
                     self.assertEqual(result["unknown_cause"], "service_unavailable")
                     continue
-                self.assertEqual(result["status"], "not_found")
+                if platform.get('review_batch') == '2026-09-08-2':
+                    from test_profile_batch2 import expected
+                    self.assertEqual(result['status'], expected(platform['name'], missing=True))
+                else:
+                    self.assertEqual(result["status"], "not_found")
                 self.assertFalse(result["found"])
 
 

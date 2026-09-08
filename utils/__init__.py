@@ -1,3 +1,3 @@
 """Shared package metadata and small helpers."""
 
-__version__ = "1.2.0rc7"
+__version__ = "1.2.0rc8"
