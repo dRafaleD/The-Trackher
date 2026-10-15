@@ -9,12 +9,29 @@ from __future__ import annotations
 import json
 import os
 import re
+import stat
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
+from utils.safe_paths import destructive_absolute, pinned_directories, remove_posix
 
 # Global exclusion list
 _EXCLUSIONS: list[Path] = []
+
+
+def has_link_component(path: Path) -> bool:
+    """Reject symlinks and Windows reparse points, including ancestor aliases."""
+    absolute = destructive_absolute(path)
+    for component in (absolute, *absolute.parents):
+        try:
+            info = component.lstat()
+        except FileNotFoundError:
+            continue
+        except OSError:
+            return True
+        if stat.S_ISLNK(info.st_mode) or getattr(info, "st_file_attributes", 0) & 0x400:
+            return True
+    return False
 
 
 def is_critical_path(path: Path, *, allow_temp_root: bool = False) -> bool:
@@ -150,7 +167,7 @@ def get_dir_size(path: Path) -> int:
     Bir dizinin toplam boyutunu (bayt) hesaplar.
     Erişim hatalarını sessizce atlar.
     """
-    if should_exclude(path):
+    if should_exclude(path) or has_link_component(path):
         return 0
 
     total = 0
@@ -159,7 +176,7 @@ def get_dir_size(path: Path) -> int:
             root_path = Path(root)
             dir_names[:] = [
                 name for name in dir_names
-                if not should_exclude(root_path / name)
+                if not should_exclude(root_path / name) and not has_link_component(root_path / name)
             ]
             for name in file_names:
                 entry = root_path / name
@@ -203,18 +220,24 @@ def safe_remove(path: Path, dry_run: bool = False) -> bool:
     dry_run=True ise silmez, sadece True döndürür.
     """
     path = Path(path)
-    if is_critical_path(path) or should_exclude(path):
+    if has_link_component(path) or is_critical_path(path) or should_exclude(path):
         return False
 
     if dry_run:
         return True
 
     try:
-        if path.is_file() or path.is_symlink():
-            path.unlink()
-            return True
-        elif path.is_dir():
-            return _remove_directory(path)
+        with pinned_directories(path):
+            if os.name != "nt":
+                return remove_posix(
+                    path, lambda entry: should_exclude(entry) or is_critical_path(entry),
+                    _contains_exclusion,
+                )
+            if path.is_file() or path.is_symlink():
+                path.unlink()
+                return True
+            elif path.is_dir():
+                return _remove_directory(path)
     except (PermissionError, OSError):
         return False
 
@@ -225,15 +248,31 @@ def _remove_directory(directory: Path) -> bool:
     """Korunan alt yolları atlayarak bir dizindeki silinebilir içeriği kaldırır."""
     removed_any = False
     successful = True
+    if has_link_component(directory) or is_critical_path(directory):
+        return False
 
     try:
+        with pinned_directories(directory, include_leaf=True):
+            removed_any, successful = _remove_directory_contents(directory)
+        if not _contains_exclusion(directory):
+            directory.rmdir()
+            removed_any = True
+        return successful and removed_any
+    except (PermissionError, OSError):
+        return False
+
+
+def _remove_directory_contents(directory: Path) -> tuple[bool, bool]:
+    removed_any = False
+    successful = True
+    try:
         for entry in directory.iterdir():
-            if should_exclude(entry):
+            if should_exclude(entry) or has_link_component(entry) or is_critical_path(entry):
                 continue
 
             try:
                 if entry.is_dir() and not entry.is_symlink():
-                    child_removed = _remove_directory(entry)
+                    child_removed = safe_remove(entry)
                     removed_any = removed_any or child_removed
                     if entry.exists() and not _contains_exclusion(entry):
                         successful = False
@@ -245,14 +284,7 @@ def _remove_directory(directory: Path) -> bool:
     except (PermissionError, OSError):
         successful = False
 
-    if not _contains_exclusion(directory):
-        try:
-            directory.rmdir()
-            removed_any = True
-        except (PermissionError, OSError):
-            successful = False
-
-    return successful and removed_any
+    return removed_any, successful
 
 
 def iter_files(directory: Path, pattern: str = "*") -> Iterator[Path]:
@@ -261,19 +293,19 @@ def iter_files(directory: Path, pattern: str = "*") -> Iterator[Path]:
     Erişim hatalarını sessizce atlar.
     """
     try:
-        if directory.is_dir() and not should_exclude(directory):
+        if directory.is_dir() and not should_exclude(directory) and not has_link_component(directory):
             for root, dir_names, file_names in os.walk(directory, topdown=True, followlinks=False):
                 root_path = Path(root)
                 dir_names[:] = [
                     name for name in dir_names
-                    if not should_exclude(root_path / name)
+                    if not should_exclude(root_path / name) and not has_link_component(root_path / name)
                 ]
                 for name in file_names:
                     entry = root_path / name
                     try:
                         if (
                             not should_exclude(entry)
-                            and not entry.is_symlink()
+                            and not has_link_component(entry)
                             and entry.match(pattern)
                         ):
                             yield entry

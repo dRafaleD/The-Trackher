@@ -20,12 +20,14 @@ from utils.display import print_success, print_warning, print_error, print_info
 from utils.helpers import (
     expand_path,
     get_file_size,
+    has_link_component,
     is_critical_path,
     iter_files,
     safe_remove,
     should_exclude,
 )
 from utils.platform_utils import is_linux, is_macos, is_windows
+from utils.safe_paths import overwrite_file, pinned_directories, parent_descriptor
 
 
 def _python_shred(file_path: Path, passes: int = 3) -> bool:
@@ -37,34 +39,33 @@ def _python_shred(file_path: Path, passes: int = 3) -> bool:
     3. Dosyayı sil
     """
     try:
-        file_size = file_path.stat().st_size
-
-        if file_size == 0:
-            file_path.unlink()
-            return True
-
-        chunk_size = 1024 * 1024
-        for _ in range(passes):
-            with open(file_path, "r+b", buffering=0) as file_obj:
+        with pinned_directories(file_path):
+            with overwrite_file(file_path) as file_obj:
+                file_size = os.fstat(file_obj.fileno()).st_size
+                chunk_size = 1024 * 1024
+                for _ in range(passes):
+                    file_obj.seek(0)
+                    remaining = file_size
+                    while remaining:
+                        write_size = min(chunk_size, remaining)
+                        file_obj.write(os.urandom(write_size))
+                        remaining -= write_size
+                    file_obj.flush()
+                    os.fsync(file_obj.fileno())
+                file_obj.seek(0)
+                zero_chunk = b"\x00" * min(chunk_size, file_size)
                 remaining = file_size
                 while remaining:
-                    write_size = min(chunk_size, remaining)
-                    file_obj.write(os.urandom(write_size))
+                    write_size = min(len(zero_chunk), remaining)
+                    file_obj.write(zero_chunk[:write_size])
                     remaining -= write_size
                 file_obj.flush()
                 os.fsync(file_obj.fileno())
-
-        zero_chunk = b"\x00" * min(chunk_size, file_size)
-        with open(file_path, "r+b", buffering=0) as file_obj:
-            remaining = file_size
-            while remaining:
-                write_size = min(len(zero_chunk), remaining)
-                file_obj.write(zero_chunk[:write_size])
-                remaining -= write_size
-            file_obj.flush()
-            os.fsync(file_obj.fileno())
-
-        file_path.unlink()
+            if os.name == "nt":
+                file_path.unlink()
+            else:
+                with parent_descriptor(file_path) as (parent, name):
+                    os.unlink(name, dir_fd=parent)
         return True
 
     except (PermissionError, OSError) as exc:
@@ -164,7 +165,7 @@ def shred_file(
     """
     target = expand_path(file_path, resolve_symlinks=False)
 
-    if target.is_symlink() or not target.is_file():
+    if target.is_symlink() or has_link_component(target) or not target.is_file():
         print_error(f"File not found or not a regular file: {target}")
         return False
 
@@ -188,17 +189,9 @@ def shred_file(
     success = False
     method = "python"
 
-    if is_windows():
-        method = "SDelete/python"
-        success = _windows_shred(target, passes)
-    elif is_macos():
-        method = "rm -P/python"
-        success = _macos_shred(target, passes)
-    elif is_linux():
-        method = "shred/python"
-        success = _linux_shred(target, passes)
-    else:
-        success = _python_shred(target, passes)
+    # External utilities reopen a mutable pathname. The descriptor-backed
+    # implementation keeps one verified identity through every overwrite pass.
+    success = _python_shred(target, passes)
 
     if success:
         print_success(
@@ -233,7 +226,7 @@ def shred_directory(
     """
     target = expand_path(dir_path, resolve_symlinks=False)
 
-    if target.is_symlink() or not target.is_dir():
+    if target.is_symlink() or has_link_component(target) or not target.is_dir():
         print_error(f"Directory not found: {target}")
         return []
 
