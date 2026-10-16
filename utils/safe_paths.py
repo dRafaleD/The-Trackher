@@ -14,7 +14,7 @@ def destructive_absolute(path: Path) -> Path:
         for name in ("var", "tmp", "etc"):
             alias, target = Path("/") / name, Path("/private") / name
             if (absolute == alias or alias in absolute.parents) and alias.is_symlink():
-                if os.readlink(alias) == str(target):
+                if os.readlink(alias) in (str(target), str(target.relative_to("/"))):
                     return target / absolute.relative_to(alias)
     return absolute
 

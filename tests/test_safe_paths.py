@@ -2,12 +2,23 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from utils.helpers import safe_remove
-from utils.safe_paths import overwrite_file
+from utils.safe_paths import destructive_absolute, overwrite_file
 
 
 class SafePathTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "posix", "POSIX system aliases")
+    def test_macos_standard_alias_accepts_relative_and_absolute_destinations(self):
+        with patch("utils.safe_paths.sys.platform", "darwin"), patch.object(Path, "is_symlink", return_value=True):
+            for name in ("var", "tmp", "etc"):
+                for destination in (f"private/{name}", f"/private/{name}"):
+                    with self.subTest(name=name, destination=destination), patch("utils.safe_paths.os.readlink", return_value=destination):
+                        self.assertEqual(destructive_absolute(Path(f"/{name}/selected")), Path(f"/private/{name}/selected"))
+            with patch("utils.safe_paths.os.readlink", return_value="/untrusted"):
+                self.assertEqual(destructive_absolute(Path("/var/selected")), Path("/var/selected"))
+
     def test_regular_file_can_be_overwritten_and_tree_removed(self):
         with tempfile.TemporaryDirectory() as folder:
             tree = Path(folder) / "selected"
