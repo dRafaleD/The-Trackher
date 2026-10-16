@@ -37,6 +37,15 @@ side-effectful probing.
 
 Trackher is intentionally conservative.
 
+Cleanup refuses symlinks, junctions and other reparse points. Secure deletion
+uses one verified regular-file handle for every overwrite pass, rather than
+handing a mutable pathname to an external deletion utility. Shared hard-linked
+files are refused. SSD/COW physical-erasure limitations still apply.
+
+OSINT HTTP reads have a whole-request deadline and a 2 MiB response budget,
+including redirect bodies. Requests ask for uncompressed data; unexpected
+compressed responses are treated as unknown instead of decoded without a bound.
+
 - Risky account checks that may trigger password resets, OTP messages, sign-in
   notices, or other side effects are skipped.
 - Destructive actions require either `--dry-run`, interactive confirmation, or

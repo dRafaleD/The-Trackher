@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import html
 import json
+import math
 import re
 import unicodedata
 from pathlib import Path
@@ -311,15 +312,18 @@ def _request_headers(platform: dict) -> dict[str, str]:
     }
 
 
-def _request_timeout(platform: dict) -> float | None:
+def _request_timeout(platform: dict):
     """Return a bounded per-platform timeout, when the catalog defines one."""
     raw_timeout = platform.get("timeout_seconds")
     if raw_timeout is None:
-        return None
+        return httpx.USE_CLIENT_DEFAULT
     try:
-        return max(1.0, min(float(raw_timeout), 30.0))
+        seconds = float(raw_timeout)
+        if not math.isfinite(seconds):
+            return httpx.USE_CLIENT_DEFAULT
+        return max(1.0, min(seconds, 30.0))
     except (TypeError, ValueError):
-        return None
+        return httpx.USE_CLIENT_DEFAULT
 
 
 def _retry_attempts(platform: dict) -> int:

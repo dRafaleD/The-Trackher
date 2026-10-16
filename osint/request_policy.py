@@ -80,6 +80,8 @@ class PoliteAsyncClient:
         max_concurrent: int = 4,
         origin_interval_seconds: float = 1.0,
         rate_limit_cooldown_seconds: float = DEFAULT_RATE_LIMIT_COOLDOWN_SECONDS,
+        request_deadline_seconds: float = 60.0,
+        max_response_bytes: int = 2 * 1024 * 1024,
     ) -> None:
         self._client = client
         self._semaphore = asyncio.Semaphore(max(1, max_concurrent))
@@ -87,6 +89,8 @@ class PoliteAsyncClient:
         self._rate_limit_cooldown_seconds = max(1.0, rate_limit_cooldown_seconds)
         self._states: dict[str, _OriginRequestState] = {}
         self._states_lock = asyncio.Lock()
+        self._request_deadline_seconds = max(0.01, float(request_deadline_seconds))
+        self._max_response_bytes = max(1, int(max_response_bytes))
 
     def for_platform(self, platform: dict[str, Any]) -> _ScopedPoliteClient:
         raw_key = str(platform.get("rate_limit_key", "")).strip().casefold()
@@ -108,6 +112,55 @@ class PoliteAsyncClient:
             return self._states.setdefault(key, _OriginRequestState())
 
     async def request(
+        self,
+        method: str,
+        url: str,
+        **kwargs: Any,
+    ) -> httpx.Response:
+        try:
+            return await asyncio.wait_for(
+                self._request(method, url, **kwargs),
+                timeout=self._request_deadline_seconds,
+            )
+        except asyncio.TimeoutError as exc:
+            raise httpx.ReadTimeout(
+                "Whole-request deadline exceeded", request=httpx.Request(method, url)
+            ) from exc
+
+    async def _read_response(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
+        headers = httpx.Headers(kwargs.pop("headers", None))
+        # Avoid decompression bombs before a decoded-byte limit can be applied.
+        headers["Accept-Encoding"] = "identity"
+        follow = kwargs.pop("follow_redirects", self._client.follow_redirects)
+        auth = kwargs.pop("auth", httpx.USE_CLIENT_DEFAULT)
+        request = self._client.build_request(method, url, headers=headers, **kwargs)
+        history = []
+        size = 0
+        while True:
+            # Automatic redirect handling buffers intermediate bodies before
+            # returning. Read each hop ourselves under the same byte budget.
+            response = await self._client.send(request, stream=True, follow_redirects=False, auth=auth)
+            try:
+                if response.headers.get("Content-Encoding", "identity").lower() != "identity":
+                    raise httpx.DecodingError("Unexpected compressed response", request=response.request)
+                chunks = []
+                async for chunk in response.aiter_bytes(chunk_size=65536):
+                    size += len(chunk)
+                    if size > self._max_response_bytes:
+                        raise httpx.DecodingError("Response exceeds byte limit", request=response.request)
+                    chunks.append(chunk)
+                response._content = b"".join(chunks)
+            finally:
+                await response.aclose()
+            response.history = list(history)
+            if not follow or response.next_request is None:
+                return response
+            if len(history) >= self._client.max_redirects:
+                raise httpx.TooManyRedirects("Redirect limit exceeded", request=request)
+            history.append(response)
+            request = response.next_request
+
+    async def _request(
         self,
         method: str,
         url: str,
@@ -137,7 +190,7 @@ class PoliteAsyncClient:
 
             try:
                 async with self._semaphore:
-                    response = await self._client.request(method, url, **kwargs)
+                    response = await self._read_response(method, url, **kwargs)
             except Exception:
                 state.next_allowed_at = loop.time() + interval
                 raise

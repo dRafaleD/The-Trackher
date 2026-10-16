@@ -8,7 +8,7 @@ from utils.app_paths import launcher_arguments
 def setup_windows_context_menu():
     import winreg
     try:
-        command = subprocess.list2cmdline(launcher_arguments("--shred", "%1"))
+        command = subprocess.list2cmdline(launcher_arguments("--shred")) + ' "%1"'
         
         # Klasörler için sağ tık menüsü
         key_path_dir = r"Software\Classes\Directory\shell\FootprintShred"
