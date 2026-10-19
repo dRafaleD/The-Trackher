@@ -22,20 +22,45 @@ class FakeAsyncClient:
     def __init__(self, handler):
         self._handler = handler
         self.requests = []
+        self._client = httpx.AsyncClient(transport=httpx.MockTransport(self._respond))
+
+    def _respond(self, request):
+        self.requests.append(request)
+        result = self._handler(request)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    @property
+    def follow_redirects(self):
+        return self._client.follow_redirects
+
+    @property
+    def max_redirects(self):
+        return self._client.max_redirects
+
+    @property
+    def timeout(self):
+        return self._client.timeout
+
+    def build_request(self, *args, **kwargs):
+        return self._client.build_request(*args, **kwargs)
+
+    async def send(self, *args, **kwargs):
+        return await self._client.send(*args, **kwargs)
 
     async def __aenter__(self):
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
+        await self._client.aclose()
         return False
 
     async def get(self, url, **kwargs):
-        request = httpx.Request("GET", url, headers=kwargs.get("headers"))
-        self.requests.append(request)
-        result = self._handler(request, **kwargs)
-        if isinstance(result, Exception):
-            raise result
-        return result
+        return await self.request('GET', url, **kwargs)
+
+    async def request(self, method, url, **kwargs):
+        return await self._client.request(method, url, **kwargs)
 
 
 class PlatformHealthTests(unittest.TestCase):
@@ -161,7 +186,7 @@ class PlatformHealthTests(unittest.TestCase):
                 return httpx.Response(
                     200,
                     request=request,
-                    text="<html><body><h1>known-user</h1></body></html>",
+                    json={"username": "known-user"},
                 )
             return httpx.Response(404, request=request)
 
@@ -170,10 +195,12 @@ class PlatformHealthTests(unittest.TestCase):
                 {
                     "name": "Reference Example",
                     "url": "https://example.test/users/{}",
+                    "probe_url": "https://example.test/users/{}",
                     "error_type": "status_code",
                     "expected_status": [404],
                     "reliability": "verified",
-                    "check": "html",
+                    "check": "json",
+                    "json_path": "username",
                     "reference_username": "known-user",
                 }
             ],

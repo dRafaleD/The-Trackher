@@ -81,19 +81,11 @@ USERNAME_UNKNOWN_CAUSE_ORDER = (
 
 
 def show_banner() -> None:
-    """Print the ASCII banner and runtime details."""
-    os_name = platform.system()
-    os_ver = platform.release()
-    py_ver = platform.python_version()
-
-    console.print(BANNER, style="bold cyan")
-    console.print("  [bold white]TRACKHER[/bold white]")
-    console.print(
-        "  [dim]Digital Footprint & Privacy Toolkit[/dim]"
-    )
-    console.print(
-        f"  [dim]Trackher | v{__version__} | OS: {os_name} {os_ver} | Python {py_ver}[/dim]\n"
-    )
+    """Compact Trackher identity for explicit CLI commands; no boot animation."""
+    title = Text('TRACKHER', style='bold #68d342')
+    title.append(f'  v{__version__}\n', style='dim')
+    title.append('Digital Footprint & Privacy Toolkit', style='#8b9aaa')
+    console.print(Panel(title, border_style='#3e5d44', box=box.ROUNDED, expand=False))
 
 
 def _catalog_count(path: Path) -> int | None:
@@ -105,83 +97,17 @@ def _catalog_count(path: Path) -> int | None:
 
 
 def _home_catalog_counts() -> tuple[str, str]:
-    project_root = Path(__file__).resolve().parent.parent
-    username_count = _catalog_count(project_root / "osint" / "platforms.json")
-    email_count = _catalog_count(project_root / "osint" / "email_platforms.json")
+    from utils.app_paths import resource_path
+    username_count = _catalog_count(resource_path("osint", "platforms.json"))
+    email_count = _catalog_count(resource_path("osint", "email_platforms.json"))
     return str(username_count or "?"), str(email_count or "?")
 
 
-def _home_wordmark() -> Text:
-    text = Text()
-    text.append(BANNER.strip("\n"), style="bold cyan")
-    text.append("\n")
-    text.append("Digital Footprint & Privacy Toolkit\n", style="white")
-    text.append(f"Trackher v{__version__}\n", style="dim")
-    return text
-
-
-def _home_features(username_count: str, email_count: str) -> Text:
-    lines = [
-        f"[bold cyan][U][/bold cyan] Username Intelligence  [dim]-[/dim] {username_count} platforms",
-        f"[bold cyan][E][/bold cyan] Email Intelligence     [dim]-[/dim] {email_count} services",
-        "[bold cyan][R][/bold cyan] Risk Scoring",
-        "[bold cyan][H][/bold cyan] Scan History & Diff",
-        "[bold cyan][C][/bold cyan] Identity Correlation",
-        "[bold cyan][A][/bold cyan] Remediation Actions",
-        "[bold cyan][P][/bold cyan] Platform Health",
-        "[bold cyan][S][/bold cyan] Cleanup / Secure Shred",
-        "[bold cyan][G][/bold cyan] Optional GUI",
-    ]
-    return Text.from_markup("\n".join(lines))
-
-
-def _home_examples_text() -> Text:
-    example_lines = [f"[cyan]>[/cyan] [blue]{command}[/blue]" for command in HOME_EXAMPLES]
-    return Text.from_markup("\n".join(example_lines))
-
-
-def _home_footer_text() -> Text:
-    os_name = platform.system()
-    return Text.from_markup(
-        "\n".join(
-            [
-                "[dim]Cross-platform CLI-first privacy and OSINT toolkit[/dim]",
-                "[dim]CLI home by default | GUI available with --gui[/dim]",
-                f"[dim]Runtime: {os_name} | Rich terminal output[/dim]",
-                "[bold green]trackher@osint ~ $[/bold green]",
-            ]
-        )
-    )
-
-
-def show_home_screen() -> None:
-    """Render the terminal-native Trackher landing screen."""
+def show_home_screen(*, no_animation=False) -> None:
+    """Responsive terminal home, with a cosmetic boot only on an interactive TTY."""
+    from utils.terminal_home import show_home
     username_count, email_count = _home_catalog_counts()
-    hero_body = Group(
-        Align.left(_home_wordmark()),
-        Rule(style="cyan"),
-        Align.left(_home_features(username_count, email_count)),
-        Rule(style="cyan"),
-        Align.left(_home_footer_text()),
-    )
-    command_panel = Panel(
-        Align.left(_home_examples_text()),
-        border_style="cyan",
-        box=box.SQUARE,
-        title="[bold]Quick Commands[/bold]",
-        padding=(1, 2),
-    )
-
-    shell = Panel(
-        hero_body,
-        border_style="cyan",
-        box=box.SQUARE,
-        title="[bold]TRACKHER[/bold]",
-        padding=(1, 2),
-    )
-    console.print(Align.center(shell))
-    console.print(Align.center(command_panel))
-    console.print()
+    show_home(console, __version__, username_count, email_count, no_animation=no_animation)
 
 
 def print_success(message: str) -> None:

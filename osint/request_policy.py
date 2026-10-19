@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urlsplit
@@ -11,6 +12,7 @@ import httpx
 
 
 DEFAULT_RATE_LIMIT_COOLDOWN_SECONDS = 60.0
+MAX_REQUEST_DURATION_SECONDS = 30.0
 
 
 @dataclass
@@ -111,6 +113,23 @@ class PoliteAsyncClient:
         async with self._states_lock:
             return self._states.setdefault(key, _OriginRequestState())
 
+    def _request_duration(self, options: dict[str, Any]) -> float:
+        """Bound the whole exchange, including redirects and a trickling body.
+
+        HTTPX timeouts constrain individual network operations. They do not
+        limit an entire response that keeps delivering small chunks.
+        """
+        configured = options.get('timeout', httpx.USE_CLIENT_DEFAULT)
+        if configured is httpx.USE_CLIENT_DEFAULT:
+            configured = getattr(self._client, 'timeout', None)
+        if isinstance(configured, httpx.Timeout):
+            values = (configured.connect, configured.read, configured.write)
+        else:
+            values = (configured,)
+        finite = [float(value) for value in values
+                  if isinstance(value, (int, float)) and math.isfinite(value) and value >= 0]
+        return min(max(finite), MAX_REQUEST_DURATION_SECONDS) if finite else MAX_REQUEST_DURATION_SECONDS
+
     async def request(
         self,
         method: str,
@@ -190,7 +209,19 @@ class PoliteAsyncClient:
 
             try:
                 async with self._semaphore:
-                    response = await self._read_response(method, url, **kwargs)
+                    duration = self._request_duration(kwargs)
+                    try:
+                        # Start after the concurrency queue: pending sites must
+                        # not use their network budget while waiting for a slot.
+                        response = await asyncio.wait_for(
+                            self._read_response(method, url, **kwargs),
+                            timeout=duration,
+                        )
+                    except asyncio.TimeoutError as exc:
+                        raise httpx.ReadTimeout(
+                            f'Request exceeded total time limit ({duration:g}s)',
+                            request=httpx.Request(method, url),
+                        ) from exc
             except Exception:
                 state.next_allowed_at = loop.time() + interval
                 raise

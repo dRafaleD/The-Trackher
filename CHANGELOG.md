@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- added a neofetch-style interactive terminal home with numbered navigation and animation/color controls
+- refreshed the desktop OSINT workspace with result filters, evidence cards, status counters, and categorized logs
+- added local investigation cases, finding reviews, relationship maps, timelines, and scan pause/resume controls
+- added bounded public website history, passive brand research, organizational links, and news mentions
+- expanded site-specific profile verification and public Odysee channel resolution
+- stopped generic username echoes and single HTML markers from confirming accounts, including API HTML fallbacks
+- updated the README with current CLI and GUI screenshots
+
 ## 1.2.0-rc8 - 2026-09-08
 
 - hardened 80 username platform checks with site-specific API and profile evidence rules

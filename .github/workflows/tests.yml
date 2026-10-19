@@ -56,7 +56,7 @@ jobs:
         run: python -c "import tkinter, customtkinter, PIL"
 
       - name: Kaynakları derle
-        run: python -m compileall -q footprint osint utils gui.py main.py setup_context_menu.py
+        run: python -m compileall -q footprint osint utils gui main.py setup_context_menu.py
 
       - name: Testleri çalıştır
         run: python -m unittest discover -s tests -v

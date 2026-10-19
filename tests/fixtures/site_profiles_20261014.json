@@ -1,0 +1,212 @@
+{
+  "SoundCloud": {
+    "reference": "soundcloud",
+    "positive_html": "<meta property=\"og:url\" content=\"https://soundcloud.com/sample\">\n<meta property=\"og:type\" content=\"music.musician\">",
+    "negative_status": 404,
+    "negative_html": "<title>SoundCloud - Hear the world’s sounds</title>\n<meta content=\"SoundCloud\" property=\"og:site_name\">",
+    "negative_result": "not_found"
+  },
+  "Dribbble": {
+    "reference": "simplebits",
+    "positive_html": "<link rel=\"canonical\" href=\"https://dribbble.com/sample\">\n<meta property=\"og:type\" content=\"profile\">\n<meta property=\"og:url\" content=\"https://dribbble.com/sample\">",
+    "negative_status": 404,
+    "negative_html": "<title>Sorry, the page you were looking for doesn&#x27;t exist. (404)</title>\n<h1>Whoops, that page is gone.</h1>\n<h1>404</h1>",
+    "negative_result": "not_found"
+  },
+  "Behance": {
+    "reference": "beeple",
+    "positive_html": "<link rel=\"canonical\" href=\"https://www.behance.net/sample\">\n<meta property=\"og:site_name\" content=\"Behance\">\n<h1 class=\"\">beeple (mike winkelmann)</h1>",
+    "negative_status": 404,
+    "negative_html": "<title>Oops! We can’t find that page. :: Behance</title>\n<title id=\"IconBase-title-v-0-0-0-0-0-0-4-12-0-0\">Adobe, Inc.</title>\n<title id=\"IconBase-title-v-0-0-0-0-0-0-4-13-0-0\">Behance</title>\n<title id=\"IconBase-title-v-0-0-0-0-0-0-4-14-0-0\">Behance</title>\n<title id=\"IconBase-title-v-0-0-0-0-0-0-4-19-0-0-0\">search</title>\n<title id=\"IconBase-title-v-0-0-0-0-0-0-4-20-0-0\">search</title>\n<title id=\"IconBase-title-v-0-0-0-0-0-0-4-23-0-0\">search</title>\n<title id=\"IconBase-title-v-0-0-0-0-0-0-4-24-0-0-0-0\">Adobe, Inc.</title>",
+    "negative_result": "not_found"
+  },
+  "DeviantArt": {
+    "reference": "spyed",
+    "positive_html": "<link rel=\"canonical\" href=\"https://www.deviantart.com/sample\">\n<title>sample on DeviantArt</title>",
+    "negative_status": 404,
+    "negative_html": "<title>DeviantArt: 404</title>\n<h1 class=\"headline\">Llama Not Found</h1>",
+    "negative_result": "not_found"
+  },
+  "MyAnimeList": {
+    "reference": "Xinil",
+    "positive_html": "<meta property=\"og:url\" content=\"https://myanimelist.net/profile/sample\">\n<title>sample&#x27;s Profile - MyAnimeList.net</title>",
+    "negative_status": 404,
+    "negative_html": "<title>404 Not Found - MyAnimeList.net\n</title>\n<meta property=\"og:site_name\" content=\"MyAnimeList.net\">\n<h1 class=\"h1\">404 Not Found</h1>",
+    "negative_result": "not_found"
+  },
+  "About.me": {
+    "reference": "tony",
+    "positive_html": "<meta property=\"og:url\" content=\"https://about.me/sample\">\n<meta property=\"og:type\" content=\"aboutme_prod:page\">\n<h1 class=\"name\">Tony Conrad</h1>",
+    "negative_status": 404,
+    "negative_html": "<title>about.me</title>\n<h1>Meet your Virtual Twin</h1>",
+    "negative_result": "not_found"
+  },
+  "CodeChef": {
+    "reference": "gennady.korotkevich",
+    "positive_html": "<link rel=\"canonical\" href=\"https://www.codechef.com/users/sample\">\n<meta property=\"og:url\" content=\"https://www.codechef.com/users/sample\">\n<h1 class=\"h2-style\">Gennady Korotkevich</h1>",
+    "negative_status": 200,
+    "negative_html": "<title>\n        CodeChef - Learn and Practice Coding with Problems    </title>",
+    "negative_result": "unknown"
+  },
+  "Hashnode": {
+    "reference": "sandeep",
+    "positive_html": "<link rel=\"canonical\" href=\"https://hashnode.com/@sample\">\n<meta property=\"og:url\" content=\"https://hashnode.com/@sample\">\n<title>Sandeep Panda (@sample) | Hashnode</title>",
+    "negative_status": 200,
+    "negative_html": "<title>User not found | Hashnode</title>\n<meta property=\"og:site_name\" content=\"Hashnode\">",
+    "negative_result": "not_found"
+  },
+  "SourceHut": {
+    "reference": "sircmpwn",
+    "positive_html": "<title>~sample</title>\n<a class=\"nav-link active\" href=\"https://sr.ht/~sample\"></a>",
+    "negative_status": 404,
+    "negative_html": "<title>sr.ht</title>",
+    "negative_result": "not_found"
+  },
+  "TradingView": {
+    "reference": "TradingView",
+    "positive_html": "<link rel=\"canonical\" href=\"https://www.tradingview.com/u/sample/\">\n<meta property=\"og:type\" content=\"profile\">\n<meta property=\"og:url\" content=\"https://www.tradingview.com/u/sample/\">",
+    "negative_status": 404,
+    "negative_html": "<title>Page not found — TradingView</title>\n<meta property=\"og:site_name\" content=\"TradingView\">",
+    "negative_result": "not_found"
+  },
+  "Hearthis.at": {
+    "reference": "hearthis-alh",
+    "positive_html": "<link rel=\"canonical\" href=\"https://hearthis.at/sample/\">\n<a class=\"hidden\" itemprop=\"url\" href=\"/sample/\"></a>\n<h1 itemprop=\"name\">Profile of Hearthis</h1>",
+    "negative_status": 404,
+    "negative_html": "<title> hearthis.at</title>\n<meta property=\"og:site_name\" content=\"hearthis.at\">\n<h1>404</h1>",
+    "negative_result": "not_found"
+  },
+  "Flipboard": {
+    "reference": "Flipboard",
+    "positive_html": "<link rel=\"canonical\" href=\"https://flipboard.com/@sample\">\n<meta property=\"og:url\" content=\"https://flipboard.com/@sample\">\n<title>Flipboard (@sample) on Flipboard</title>",
+    "negative_status": 404,
+    "negative_html": "<meta property=\"og:site_name\" content=\"Flipboard\">\n<title>Flipboard: Your Social Magazine</title>\n<title id=\"logo-landscape-title\">Flipboard Home</title>\n<title id=\"search-icon-title\">Search</title>\n<h1 class=\"css-ju4df1 e1be7i7r2\">This page does not exist</h1>",
+    "negative_result": "not_found"
+  },
+  "Asciinema": {
+    "reference": "asciinema",
+    "positive_html": "<title>sample&#x27;s profile - asciinema.org</title>\n<h1>\n\n          asciinema\n\n        Joined on March 9, 2011\n      </h1>",
+    "negative_status": 404,
+    "negative_html": "<title>Record and share your terminal sessions, the simple way - asciinema.org</title>\n<h1>404 Not Found</h1>",
+    "negative_result": "not_found"
+  },
+  "Disqus": {
+    "reference": "disqus",
+    "positive_html": "<meta property=\"og:url\" content=\"https://disqus.com/by/sample/\">\n<meta property=\"og:type\" content=\"profile\">\n<title>Disqus Profile - sample</title>",
+    "negative_status": 404,
+    "negative_html": "<title>\n        Page not found (404) - Disqus\n    </title>\n<h1>Oops! This page could not be found!</h1>",
+    "negative_result": "not_found"
+  },
+  "Freesound": {
+    "reference": "freesound",
+    "positive_html": "<title>Freesound - sample</title>\n<h1>sample</h1>\n<a class=\"no-hover text-center btn-inverse h-spacing-left-2 btn-profile-adapt v-spacing-2\" href=\"/home/messages/new/sample/\"></a>",
+    "negative_status": 404,
+    "negative_html": "<title>Freesound - Page not found</title>\n<h1>Page not found</h1>",
+    "negative_result": "not_found"
+  },
+  "Geocaching": {
+    "reference": "Signal",
+    "positive_html": "<span id=\"ctl00_ProfileHead_ProfileHeader_lblMemberName\">sample</span>\n<h1>sample</h1>",
+    "negative_status": 404,
+    "negative_html": "<title>DNF</title>\n<h1 class=\"http-error-title\">Error 404: DNF</h1>",
+    "negative_result": "not_found"
+  },
+  "Hackaday": {
+    "reference": "svofski",
+    "positive_html": "<link rel=\"canonical\" href=\"https://hackaday.io/sample\">\n<title>sample&#x27;s Profile | Hackaday.io</title>\n<h1>sample</h1>",
+    "negative_status": 404,
+    "negative_html": "<title>Not Found | Hackaday.io</title>\n<h1>Page Not Found</h1>",
+    "negative_result": "not_found"
+  },
+  "HackerEarth": {
+    "reference": "tourist",
+    "positive_html": "<meta property=\"og:image\" content=\"https://www.hackerearth.com/community/profile/sample/opengraph-image/\">\n<meta property=\"og:type\" content=\"profile\">\n<title>sonal malhotra | Developer Profile on HackerEarth</title>",
+    "negative_status": 404,
+    "negative_html": "<title>Community Dashboard | HackerEarth</title>",
+    "negative_result": "not_found"
+  },
+  "Hackster.io": {
+    "reference": "machinaut",
+    "positive_html": "<title>Alex Ray - Hackster.io</title>\n<h1 class=\"user_card__name__mKxBk\">Alex Ray</h1>\n<a class=\"navbar__link__hX_xC\" href=\"/sample/projects\"></a>",
+    "negative_status": 404,
+    "negative_html": "<title>Hackster.io - The community dedicated to learning hardware.</title>\n<title>Hackster.io</title>",
+    "negative_result": "not_found"
+  },
+  "HubPages": {
+    "reference": "hubpages",
+    "positive_html": "<title>sample on HubPages</title>\n<span class=\"author_primary_name\">HubPages</span>",
+    "negative_status": 404,
+    "negative_html": "<title>Page Not Found</title>\n<title>HubPages</title>\n<h1>404.  Page does not exist</h1>\n<title></title>",
+    "negative_result": "not_found"
+  },
+  "Instructables": {
+    "reference": "randofo",
+    "positive_html": "<link rel=\"canonical\" href=\"https://www.instructables.com/member/sample\">\n<meta property=\"og:title\" content=\"sample\">\n<meta property=\"og:site_name\" content=\"Instructables\">",
+    "negative_status": 404,
+    "negative_html": "<title>Page Not Found - Instructables</title>\n<meta property=\"og:site_name\" content=\"Instructables\">",
+    "negative_result": "not_found"
+  },
+  "Issuu": {
+    "reference": "issuu",
+    "positive_html": "<meta property=\"og:url\" content=\"https://issuu.com/sample\">\n<title>sample Publisher Publications - Issuu</title>\n<a id=\"documents\" href=\"/sample\" aria-current=\"page\" class=\"TabList__tab__woT-o__0-0-3384 TabList__tab--active__uzxrn__0-0-3384\"></a>",
+    "negative_status": 404,
+    "negative_html": "<title>Issuu</title>",
+    "negative_result": "not_found"
+  },
+  "LottieFiles": {
+    "reference": "lottiefiles",
+    "positive_html": "<link rel=\"canonical\" href=\"https://lottiefiles.com/sample\">\n<meta property=\"og:url\" content=\"https://lottiefiles.com/sample\">\n<title>LottieFiles | LottieFiles Animator</title>\n<h1 class=\"heading4 font-dm break-words line-clamp-3\">LottieFiles</h1>",
+    "negative_status": 404,
+    "negative_html": "<title>404 - Page Not Found | LottieFiles</title>\n<h1 class=\"mb-4 lg:mb-6 heading4 lg:heading2 font-dm\">Oh snap! We couldn&#x27;t find the page you&#x27;re looking for.</h1>",
+    "negative_result": "not_found"
+  },
+  "OpenGameArt": {
+    "reference": "bart",
+    "positive_html": "<meta property=\"og:url\" content=\"https://opengameart.org/users/sample\">\n<meta property=\"og:type\" content=\"profile\">\n<meta property=\"profile:username\" content=\"sample\">",
+    "negative_status": 404,
+    "negative_html": "<meta property=\"og:site_name\" content=\"OpenGameArt.org\">\n<title>Page not found | OpenGameArt.org</title>",
+    "negative_result": "not_found"
+  },
+  "OpenStreetMap": {
+    "reference": "woodpeck",
+    "positive_html": "<meta property=\"og:url\" content=\"https://www.openstreetmap.org/user/sample\">\n<meta property=\"og:title\" content=\"sample\">\n<meta property=\"og:site_name\" content=\"OpenStreetMap\">",
+    "negative_status": 404,
+    "negative_html": "<meta property=\"og:site_name\" content=\"OpenStreetMap\">\n<title>No such user | OpenStreetMap</title>\n<h1 class=\"d-flex m-0 align-items-center fw-semibold\">\n    \n      \n      OpenStreetMap\n    \n    \n\n\n    \n      \n    \n  </h1>\n<h1 class=\"modal-title fs-5\" id=\"select_language_dialog_label\">Select Language</h1>\n<h1 class=\"modal-title fs-5\" id=\"osm_alert_title\"></h1>\n<h1>The user thnega143c52a93af4c0a does not exist</h1>",
+    "negative_result": "not_found"
+  },
+  "Speaker Deck": {
+    "reference": "simon",
+    "positive_html": "<link rel=\"canonical\" href=\"https://speakerdeck.com/sample\">\n<title>Simon Willison (@sample) on Speaker Deck</title>",
+    "negative_status": 404,
+    "negative_html": "<title>User Not Found - Speaker Deck</title>",
+    "negative_result": "not_found"
+  },
+  "CTAN": {
+    "reference": "knuth",
+    "positive_html": "<title>CTAN: Contributor Donald E. Knuth </title>\n<a href=\"/author/sample\"></a>\n<h1 lang=\"none\">Donald E. Knuth\n    </h1>",
+    "negative_status": 404,
+    "negative_html": "<title>CTAN: Not Found</title>\n<h1>Not Found</h1>",
+    "negative_result": "not_found"
+  },
+  "Gradle": {
+    "reference": "gradle",
+    "positive_html": "<div id=\"username\" class=\"text-muted\">sample</div>\n<div id=\"joined\">Joined on June 05, 2026</div>",
+    "negative_status": 404,
+    "negative_html": "<title>Gradle - Error</title>\n<h1 id=\"heading\">User not found</h1>",
+    "negative_result": "not_found"
+  },
+  "Habr": {
+    "reference": "deniskin",
+    "positive_html": "<link href=\"https://habr.com/ru/users/sample/\" rel=\"canonical\" data-hid=\"e3fa780\">\n<a aria-current=\"page\" href=\"/ru/users/sample/\" class=\"router-link-active router-link-exact-active nickname\"></a>",
+    "negative_status": 404,
+    "negative_html": "<title>Хабр</title>\n<meta property=\"og:site_name\" content=\"Хабр\">\n<title>Хабр</title>\n<title>Поиск</title>\n<title>Редактировать</title>\n<title>Настройки</title>\n<title>Обновить</title>\n<h1 class=\"tm-error-message__title\"></h1>",
+    "negative_result": "not_found"
+  },
+  "LinuxFR.org": {
+    "reference": "patrick_g",
+    "positive_html": "<h1>sample</h1>\n<a rel=\"author\" href=\"/users/sample\"></a>",
+    "negative_status": 404,
+    "negative_html": "<title>LinuxFr.org &gt;&gt; Erreur 404</title>\n<h1 title=\"Le logo de LinuxFr.org\">LinuxFr.org</h1>\n<h1>Erreur 404</h1>",
+    "negative_result": "not_found"
+  }
+}

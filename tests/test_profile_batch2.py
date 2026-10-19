@@ -16,8 +16,9 @@ FORUMS = (
 API = {'HackerNews': {'id':'sample'}, 'Hugging Face': {'user':'sample'},
        'TopCoder': {'handle':'sample'}, 'Gravatar': {'entry':[{'preferredUsername':'sample'}]},
        'Coderwall': {'username':'sample'}}
-UNVERIFIED = ('Bitbucket', 'HackerRank', 'ArtStation', 'Sketchfab', 'NotABug.org', 'PyPi')
+UNVERIFIED = ('Bitbucket', 'ArtStation', 'Sketchfab', 'NotABug.org', 'PyPi')
 HTML = {
+ 'HackerRank': '<meta property="og:url" content="http://www.hackerrank.com/profile/sample"><meta property="og:type" content="hackerrank:hacker"><h1 class="profile-title">Public display name</h1>',
  'Telegram': '<title>Telegram: View @sample</title><div class="tgme_page_title"><span>Channel</span></div>',
  'AtCoder': '<title>sample - AtCoder</title><meta content="https://atcoder.jp/users/sample" property="og:url">',
  'Twitch': '<meta content="https://www.twitch.tv/sample" property="og:url"><meta content="video.other" property="og:type">',
@@ -53,7 +54,7 @@ def fixture(name, username='sample', missing=False):
 def expected(name, missing=False):
     if name=='YazBel Forum' or name in UNVERIFIED:
         return 'unknown'
-    if missing and name in ('HackerNews','Telegram','Twitch'):
+    if missing and name in ('HackerNews','Telegram','Twitch','HackerRank'):
         return 'unknown'
     return 'not_found' if missing else 'found'
 
@@ -69,7 +70,9 @@ class ProfileBatchTwoTests(unittest.TestCase):
             async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
                 return await check_single_username(user,platform,client)
         result=asyncio.run(run())
-        self.assertLessEqual(len(calls),1)
+        # HN may independently verify its public profile; all other sites retain
+        # their single-probe contract. Generic HTML echoes must still fail below.
+        self.assertLessEqual(len(calls), 2 if name == 'HackerNews' else 1)
         return result
 
     def test_exactly_40_additional_sites_no_overlap(self):
@@ -99,7 +102,7 @@ class ProfileBatchTwoTests(unittest.TestCase):
                     self.assertEqual(self.run_case(name,response)['status'],'unknown')
 
     def test_profile_evidence_in_script_or_comment_is_ignored(self):
-        for name in ('Telegram','AtCoder','Twitch','Last.fm'):
+        for name in ('Telegram','AtCoder','Twitch','Last.fm','HackerRank'):
             for body in ('<script>'+HTML[name]+'</script>', '<!--'+HTML[name]+'-->'):
                 with self.subTest(site=name):
                     self.assertEqual(self.run_case(name,httpx.Response(200,text=body))['status'],'unknown')
@@ -126,3 +129,30 @@ class ProfileBatchTwoTests(unittest.TestCase):
 
     def test_hackernews_null_is_not_absence_proof(self):
         self.assertEqual(self.run_case('HackerNews',httpx.Response(200,content=b'null'))['status'],'unknown')
+
+    def test_hackerrank_requires_all_identity_evidence(self):
+        body = HTML['HackerRank']
+        for protocol in ('http', 'https'):
+            self.assertEqual(self.run_case('HackerRank', httpx.Response(200, text=body.replace('http:', protocol+':')))['status'], 'found')
+        for invalid in (
+            body.replace('/profile/sample', '/profile/another_user'),
+            body.replace('hackerrank:hacker', 'website'),
+            body.replace('profile-title', 'generic-title'),
+            body.replace('Public display name', ''),
+            body.replace('http://', 'ftp://'),
+            body.replace('www.hackerrank.com', 'www.hackerrank.com.evil.test'),
+        ):
+            self.assertEqual(self.run_case('HackerRank', httpx.Response(200, text=invalid))['status'], 'unknown')
+        self.assertEqual(self.run_case('HackerRank', httpx.Response(404, text='Profile not found'))['status'], 'unknown')
+
+    def test_generic_html_challenges_are_not_missing_profiles(self):
+        platform = {'name': 'Fixture', 'url': 'https://example.test/{}', 'check': 'html'}
+        async def run(code):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(
+                lambda req: httpx.Response(code, text='<title>Just a moment...</title>')
+            )) as client:
+                return await check_single_username('sample', platform, client)
+        for code in (200, 403, 404, 410, 429):
+            result = asyncio.run(run(code))
+            self.assertEqual(result['status'], 'unknown')
+            self.assertEqual(result['diagnostic_cause'], 'rate_limited' if code == 429 else 'bot_blocked')

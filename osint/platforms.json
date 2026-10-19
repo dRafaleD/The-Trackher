@@ -20,7 +20,9 @@
       "display_name": "name",
       "website": "blog",
       "avatar_url": "avatar_url",
-      "profile_url": "html_url"
+      "profile_url": "html_url",
+      "bio": "bio",
+      "created_at": "created_at"
     },
     "actions": [
       {
@@ -75,7 +77,37 @@
     "scan_tier": "deep",
     "min_request_interval_seconds": 10,
     "rate_limit_key": "instagram.com",
-    "check": "content"
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "review_batch": "2026-10-16",
+    "profile_allowed_hosts": [
+      "www.instagram.com"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://www.instagram.com/{username}/"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "profile"
+        }
+      },
+      {
+        "tag": "title",
+        "text_suffix": "(@{username}) • Instagram photos and videos"
+      }
+    ],
+    "profile_not_found_statuses": [],
+    "validation_username": "instagram",
+    "profile_format": "instagram_state"
   },
   {
     "name": "TikTok",
@@ -99,7 +131,37 @@
     "raw_not_found_markers": [
       "User not found."
     ],
-    "check": "404"
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "review_batch": "2026-10-16",
+    "profile_allowed_hosts": [
+      "www.pinterest.com"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://www.pinterest.com/{username}/"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "profile"
+        }
+      },
+      {
+        "tag": "title",
+        "text_suffix": "({username}) - Profile | Pinterest"
+      }
+    ],
+    "profile_not_found_statuses": [],
+    "validation_username": "pinterest",
+    "profile_format": "pinterest_state"
   },
   {
     "name": "Reddit",
@@ -161,8 +223,8 @@
     ]
   },
   {
-   "name": "Facebook",
-   "url_pattern": "https://www.facebook.com/{username}",
+    "name": "Facebook",
+    "url_pattern": "https://www.facebook.com/{username}",
     "error_type": "message",
     "reliability": "verified",
     "error_msg": "negative_marker",
@@ -176,14 +238,48 @@
   },
   {
     "name": "Snapchat",
-    "url_pattern": "https://www.snapchat.com/add/{username}",
+    "url_pattern": "https://www.snapchat.com/@{username}",
     "error_type": "message",
     "reliability": "unreliable",
     "error_msg": "negative_marker",
     "scan_tier": "deep",
     "min_request_interval_seconds": 10,
     "rate_limit_key": "snapchat.com",
-    "check": "content"
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "review_batch": "2026-10-16",
+    "profile_allowed_hosts": [
+      "www.snapchat.com"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://www.snapchat.com/@{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://www.snapchat.com/@{username}"
+        }
+      },
+      {
+        "tag": "title",
+        "text_suffix_any": [
+          "(@{username}) | Snapchat Stories, Spotlight & Lenses",
+          "(@{username}) | Snapchat Hikayeleri, Sahne Işığı ve Lensler"
+        ]
+      }
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "validation_username": "teamsnapchat"
   },
   {
     "name": "Telegram",
@@ -315,7 +411,44 @@
     "scan_tier": "deep",
     "min_request_interval_seconds": 10,
     "rate_limit_key": "youtube.com",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "review_batch": "2026-10-16",
+    "profile_allowed_hosts": [
+      "www.youtube.com"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "alternate",
+          "media": "handheld",
+          "href": "https://m.youtube.com/@{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "profile"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:site_name",
+          "content": "YouTube"
+        }
+      }
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "profile_format": "youtube_channel",
+    "validation_username": "youtube"
   },
   {
     "name": "Twitch",
@@ -353,15 +486,43 @@
     ]
   },
   {
-  "name": "SoundCloud",
-  "url_pattern": "https://soundcloud.com/{username}",
+    "name": "SoundCloud",
+    "url_pattern": "https://soundcloud.com/{username}",
     "error_type": "message",
     "reliability": "verified",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://soundcloud.com/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "music.musician"
+        }
+      }
+    ],
+    "profile_allowed_hosts": [
+      "soundcloud.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "soundcloud"
   },
   {
-   "name": "Spotify",
-   "url_pattern": "https://open.spotify.com/user/{username}",
+    "name": "Spotify",
+    "url_pattern": "https://open.spotify.com/user/{username}",
     "error_type": "message",
     "reliability": "verified",
     "error_msg": "negative_marker",
@@ -386,7 +547,42 @@
         "label": "Delete Account / Help",
         "url": "https://support.spotify.com/us/article/how-can-i-close-my-spotify-account/"
       }
-    ]
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "review_batch": "2026-10-16",
+    "profile_allowed_hosts": [
+      "open.spotify.com"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://open.spotify.com/user/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://open.spotify.com/user/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "profile"
+        }
+      }
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "validation_username": "spotify"
   },
   {
     "name": "Vimeo",
@@ -524,7 +720,9 @@
       "username": "username",
       "display_name": "name",
       "avatar_url": "avatar_url",
-      "profile_url": "web_url"
+      "profile_url": "web_url",
+      "bio": "bio",
+      "website": "website_url"
     },
     "actions": [
       {
@@ -623,7 +821,8 @@
     "review_batch": "2026-09-08-2",
     "min_request_interval_seconds": 1,
     "detector_chain": [
-      "json"
+      "json",
+      "hackernews_profile"
     ],
     "strict_api": true,
     "probe_url_pattern": "https://hacker-news.firebaseio.com/v0/user/{username}.json",
@@ -633,6 +832,12 @@
     ],
     "api_allowed_hosts": [
       "hacker-news.firebaseio.com"
+    ],
+    "username_case_sensitive": true,
+    "fallback_on_causes": [
+      "parser_mismatch",
+      "network_error",
+      "timeout"
     ]
   },
   {
@@ -640,9 +845,50 @@
     "url_pattern": "https://www.kaggle.com/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404",
-    "error_msg": "negative_marker"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "error_msg": "negative_marker",
+    "profile_allowed_hosts": [
+      "www.kaggle.com"
+    ],
+    "validation_username": "headsortails",
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "profile"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:username",
+          "content": "{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url"
+        },
+        "attrs_any": {
+          "content": [
+            "https://www.kaggle.com/{username}",
+            "https://www.kaggle.com/{username}/competitions"
+          ]
+        }
+      }
+    ],
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-17-remaining"
   },
   {
     "name": "LeetCode",
@@ -653,7 +899,7 @@
   },
   {
     "name": "HackerRank",
-    "url_pattern": "https://www.hackerrank.com/{username}",
+    "url_pattern": "https://www.hackerrank.com/profile/{username}",
     "error_type": "message",
     "reliability": "unreliable",
     "error_msg": "negative_marker",
@@ -669,8 +915,33 @@
       "www.hackerrank.com"
     ],
     "profile_not_found_statuses": [],
-    "profile_evidence": [],
-    "profile_evidence_note": "No trustworthy positive profile structure could be verified during this review; return unknown rather than infer from status or echoed username."
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url"
+        },
+        "attrs_any": {
+          "content": [
+            "http://www.hackerrank.com/profile/{username}",
+            "https://www.hackerrank.com/profile/{username}"
+          ]
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "hackerrank:hacker"
+        }
+      },
+      {
+        "tag": "h1",
+        "class": "profile-title",
+        "nonempty": true
+      }
+    ],
+    "profile_evidence_note": "Public profile identity verified on 2026-10-10. HTTP 404 remains unknown: accounts without public activity can also return 404."
   },
   {
     "name": "TryHackMe",
@@ -692,7 +963,10 @@
     "error_type": "status_code",
     "reliability": "verified",
     "reference_username": "admin",
-    "expected_status": [404, 410],
+    "expected_status": [
+      404,
+      410
+    ],
     "disable_html_found": true,
     "raw_found_markers": [
       "<title>{username}&#039;s Pastebin - Pastebin.com</title>"
@@ -744,7 +1018,7 @@
   },
   {
     "name": "PyPi",
-    "url_pattern": "https://pypi.org/user/{username}",
+    "url_pattern": "https://pypi.org/user/{username}/",
     "error_type": "message",
     "reliability": "unreliable",
     "error_msg": "negative_marker",
@@ -904,7 +1178,8 @@
       "username": "username",
       "display_name": "name",
       "website": "website_url",
-      "avatar_url": "profile_image"
+      "avatar_url": "profile_image",
+      "bio": "summary"
     },
     "strict_api": true,
     "detector_chain": [
@@ -925,7 +1200,9 @@
     "url_pattern": "https://www.tumblr.com/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404",
     "timeout_seconds": 20,
     "retry_attempts": 2
@@ -977,14 +1254,86 @@
     "url_pattern": "https://{username}.substack.com/",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "profile_allowed_hosts": [
+      "{username}.substack.com"
+    ],
+    "validation_username": "platformer",
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://{username}.substack.com/"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://{username}.substack.com/"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "article"
+        }
+      },
+      {
+        "tag": "title",
+        "text_suffix": "| Substack"
+      }
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-17-remaining"
   },
   {
-  "name": "Wattpad",
-  "url_pattern": "https://www.wattpad.com/user/{username}",
+    "name": "Wattpad",
+    "url_pattern": "https://www.wattpad.com/user/{username}",
     "error_type": "message",
     "reliability": "verified",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-19-false-positive",
+    "profile_allowed_hosts": [
+      "www.wattpad.com"
+    ],
+    "validation_username": "wattpad",
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://www.wattpad.com/user/{username}"
+        }
+      },
+      {
+        "tag": "title",
+        "text_suffix": " - Wattpad"
+      },
+      {
+        "tag": "h1",
+        "class": "profile-name",
+        "attrs": {
+          "aria-label": "{username}'s profile"
+        },
+        "text": "{username}"
+      }
+    ]
   },
   {
     "name": "Fandom",
@@ -1005,23 +1354,117 @@
     "url_pattern": "https://dribbble.com/{username}",
     "error_type": "message",
     "reliability": "verified",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://dribbble.com/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "profile"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://dribbble.com/{username}"
+        }
+      }
+    ],
+    "profile_allowed_hosts": [
+      "dribbble.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "simplebits"
   },
   {
     "name": "Behance",
     "url_pattern": "https://www.behance.net/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://www.behance.net/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:site_name",
+          "content": "Behance"
+        }
+      },
+      {
+        "tag": "h1",
+        "nonempty": true
+      }
+    ],
+    "profile_allowed_hosts": [
+      "www.behance.net"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "beeple"
   },
   {
     "name": "DeviantArt",
     "url_pattern": "https://www.deviantart.com/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://www.deviantart.com/{username}"
+        }
+      },
+      {
+        "tag": "title",
+        "text": "{username} on DeviantArt"
+      }
+    ],
+    "profile_allowed_hosts": [
+      "www.deviantart.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "spyed"
   },
   {
     "name": "ArtStation",
@@ -1070,7 +1513,32 @@
     "url_pattern": "https://myanimelist.net/profile/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://myanimelist.net/profile/{username}"
+        }
+      },
+      {
+        "tag": "title",
+        "text": "{username}'s Profile - MyAnimeList.net"
+      }
+    ],
+    "profile_allowed_hosts": [
+      "myanimelist.net"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "Xinil"
   },
   {
     "name": "AniList",
@@ -1117,28 +1585,179 @@
     "scan_tier": "deep",
     "min_request_interval_seconds": 5,
     "rate_limit_key": "linktr.ee",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "review_batch": "2026-10-10-additional",
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "profile_allowed_hosts": [
+      "linktr.ee"
+    ],
+    "profile_not_found_statuses": [],
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://linktr.ee/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "profile"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "profile:username",
+          "content": "{username}"
+        }
+      }
+    ]
   },
   {
     "name": "About.me",
     "url_pattern": "https://about.me/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://about.me/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type"
+        },
+        "attrs_any": {
+          "content": [
+            "aboutme_prod:page",
+            "profile"
+          ]
+        }
+      },
+      {
+        "tag": "h1",
+        "class": "name",
+        "nonempty": true
+      }
+    ],
+    "profile_allowed_hosts": [
+      "about.me"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "tony"
   },
   {
     "name": "Patreon",
     "url_pattern": "https://www.patreon.com/{username}",
     "error_type": "message",
     "reliability": "verified",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "profile_allowed_hosts": [
+      "www.patreon.com"
+    ],
+    "profile_format": "patreon_profile",
+    "validation_username": "patreon",
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "profile:username",
+          "content": "{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "profile"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:site_name",
+          "content": "Patreon"
+        }
+      }
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-17-remaining"
   },
   {
     "name": "BuyMeACoffee",
-    "url_pattern": "https://www.buymeacoffee.com/{username}",
+    "url_pattern": "https://buymeacoffee.com/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "profile_allowed_hosts": [
+      "buymeacoffee.com",
+      "www.buymeacoffee.com"
+    ],
+    "validation_username": "supporthub",
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://buymeacoffee.com/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://buymeacoffee.com/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:site_name",
+          "content": "Buy Me a Coffee"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "website"
+        }
+      }
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-17-remaining"
   },
   {
     "name": "Ko-fi",
@@ -1280,7 +1899,40 @@
     "error_msg": "negative_marker",
     "not_found_url_contains": [
       "giphy.com/explore/"
-    ]
+    ],
+    "profile_allowed_hosts": [
+      "giphy.com",
+      "www.giphy.com"
+    ],
+    "validation_username": "giphystudios",
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://giphy.com/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://giphy.com/{username}"
+        }
+      },
+      {
+        "tag": "title",
+        "text_suffix": "GIFs on GIPHY - Be Animated"
+      }
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-17-remaining"
   },
   {
     "name": "ForumTR",
@@ -1431,14 +2083,90 @@
     "url_pattern": "https://www.codechef.com/users/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://www.codechef.com/users/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://www.codechef.com/users/{username}"
+        }
+      },
+      {
+        "tag": "h1",
+        "class": "h2-style",
+        "nonempty": true
+      }
+    ],
+    "profile_allowed_hosts": [
+      "www.codechef.com"
+    ],
+    "profile_not_found_statuses": [],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "gennady.korotkevich"
   },
   {
     "name": "Hashnode",
     "url_pattern": "https://hashnode.com/@{username}",
     "error_type": "message",
     "reliability": "verified",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://hashnode.com/@{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://hashnode.com/@{username}"
+        }
+      },
+      {
+        "tag": "title",
+        "text_suffix": "(@{username}) | Hashnode"
+      }
+    ],
+    "profile_allowed_hosts": [
+      "hashnode.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "profile_missing_evidence": [
+      {
+        "tag": "title",
+        "text": "User not found | Hashnode"
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:site_name",
+          "content": "Hashnode"
+        }
+      }
+    ],
+    "validation_username": "sandeep"
   },
   {
     "name": "SourceHut",
@@ -1446,15 +2174,76 @@
     "error_type": "status_code",
     "reliability": "verified",
     "reference_username": "sircmpwn",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "title",
+        "text": "~{username}"
+      },
+      {
+        "tag": "a",
+        "attrs": {
+          "href": "https://sr.ht/~{username}"
+        },
+        "class": "active"
+      }
+    ],
+    "profile_allowed_hosts": [
+      "sr.ht"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "sircmpwn"
   },
   {
     "name": "TradingView",
     "url_pattern": "https://www.tradingview.com/u/{username}/",
     "error_type": "message",
     "reliability": "verified",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://www.tradingview.com/u/{username}/"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "profile"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://www.tradingview.com/u/{username}/"
+        }
+      }
+    ],
+    "profile_allowed_hosts": [
+      "www.tradingview.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "TradingView"
   },
   {
     "name": "StockTwits",
@@ -1545,7 +2334,8 @@
     "url_pattern": "https://society6.com/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "redirects_are_unknown": true
   },
   {
     "name": "Faceit",
@@ -1616,10 +2406,39 @@
   },
   {
     "name": "Kongregate",
-    "url_pattern": "https://www.kongregate.com/accounts/{username}",
+    "url_pattern": "https://www.kongregate.com/en/accounts/{username}",
     "error_type": "message",
     "reliability": "verified",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-19-false-positive",
+    "profile_allowed_hosts": [
+      "www.kongregate.com"
+    ],
+    "validation_username": "kongregate",
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://www.kongregate.com/en/accounts/{username}"
+        }
+      },
+      {
+        "tag": "title",
+        "text": "{username}'s profile on Kongregate"
+      },
+      {
+        "tag": "h1",
+        "text": "{username}"
+      }
+    ]
   },
   {
     "name": "Newgrounds",
@@ -1697,7 +2516,36 @@
     "url_pattern": "https://osu.ppy.sh/users/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "review_batch": "2026-10-16",
+    "profile_allowed_hosts": [
+      "osu.ppy.sh"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:title",
+          "content": "{username} · player info"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:site_name",
+          "content": "osu!"
+        }
+      }
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "profile_format": "osu_profile",
+    "validation_username": "peppy"
   },
   {
     "name": "TrueAchievements (Xbox)",
@@ -1790,12 +2638,13 @@
     "reliability": "verified",
     "error_msg": "negative_marker",
     "probe_url_pattern": "https://odysee.com/$/oembed?url=https%3A%2F%2Fodysee.com%2F%40{username}&format=json",
-    "raw_found_markers": [
-      "The URL is not associated with a video claim."
+    "check": "odysee_channel",
+    "detector_chain": [
+      "odysee_channel"
     ],
-    "raw_not_found_markers": [
-      "The URL is invalid or is not associated with any claim."
-    ]
+    "probe_url": "https://api.na-backend.odysee.com/api/v1/proxy?m=resolve",
+    "validation_username": "Odysee",
+    "review_batch": "2026-10-19"
   },
   {
     "name": "Bitchute",
@@ -1822,21 +2671,104 @@
     "url_pattern": "https://audiomack.com/{username}",
     "error_type": "message",
     "reliability": "verified",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "review_batch": "2026-10-16",
+    "profile_allowed_hosts": [
+      "audiomack.com"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://audiomack.com/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "profile:username",
+          "content": "{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "profile"
+        }
+      }
+    ],
+    "profile_not_found_statuses": [],
+    "profile_missing_evidence": [
+      {
+        "tag": "h1",
+        "class": "NotFoundPage-title",
+        "text": "Page Not Found"
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://audiomack.com/"
+        }
+      }
+    ],
+    "validation_username": "audiomack"
   },
   {
     "name": "ReverbNation",
     "url_pattern": "https://www.reverbnation.com/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "redirects_are_unknown": true
   },
   {
     "name": "Hearthis.at",
     "url_pattern": "https://hearthis.at/{username}/",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://hearthis.at/{username}/"
+        }
+      },
+      {
+        "tag": "a",
+        "attrs": {
+          "href": "/{username}/",
+          "itemprop": "url"
+        }
+      },
+      {
+        "tag": "h1",
+        "attrs": {
+          "itemprop": "name"
+        },
+        "nonempty": true
+      }
+    ],
+    "profile_allowed_hosts": [
+      "hearthis.at"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "hearthis-alh"
   },
   {
     "name": "Quora",
@@ -1875,10 +2807,11 @@
   },
   {
     "name": "Trakt",
-    "url_pattern": "https://trakt.tv/users/{username}",
+    "url_pattern": "https://app.trakt.tv/profile/{username}",
     "error_type": "message",
     "reliability": "unreliable",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "disable_html_found": true
   },
   {
     "name": "BoardGameGeek",
@@ -2024,7 +2957,39 @@
     "url_pattern": "https://flipboard.com/@{username}",
     "error_type": "message",
     "reliability": "verified",
-    "error_msg": "negative_marker"
+    "error_msg": "negative_marker",
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://flipboard.com/@{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://flipboard.com/@{username}"
+        }
+      },
+      {
+        "tag": "title",
+        "text_suffix": "(@{username}) on Flipboard"
+      }
+    ],
+    "profile_allowed_hosts": [
+      "flipboard.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "Flipboard"
   },
   {
     "name": "ProductHunt",
@@ -2180,7 +3145,9 @@
     "url_pattern": "https://independent.academia.edu/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2188,7 +3155,9 @@
     "url_pattern": "https://developer.apple.com/forums/profile/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2196,8 +3165,31 @@
     "url_pattern": "https://asciinema.org/~{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "title",
+        "text": "{username}'s profile - asciinema.org"
+      },
+      {
+        "tag": "h1",
+        "nonempty": true
+      }
+    ],
+    "profile_allowed_hosts": [
+      "asciinema.org"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "asciinema"
   },
   {
     "name": "AtCoder",
@@ -2241,7 +3233,9 @@
     "url_pattern": "https://audiojungle.net/user/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2249,7 +3243,9 @@
     "url_pattern": "https://bugcrowd.com/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2257,7 +3253,9 @@
     "url_pattern": "https://buzzfeed.com/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2265,7 +3263,9 @@
     "url_pattern": "https://{username}.carrd.co/",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2273,7 +3273,9 @@
     "url_pattern": "https://cash.app/${username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2281,7 +3283,9 @@
     "url_pattern": "https://www.cgtrader.com/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2289,7 +3293,9 @@
     "url_pattern": "https://www.clubhouse.com/@{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2381,7 +3387,9 @@
     "url_pattern": "https://www.credly.com/users/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2389,7 +3397,9 @@
     "url_pattern": "https://{username}.crevado.com/",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2397,15 +3407,46 @@
     "url_pattern": "https://crowdin.com/profile/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "review_batch": "2026-10-10-additional",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "timeout_seconds": 18,
+    "retry_attempts": 1,
+    "min_request_interval_seconds": 1,
+    "profile_allowed_hosts": [
+      "crowdin.com"
+    ],
+    "profile_not_found_statuses": [
+      404,
+      410
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://crowdin.com/profile/{username}"
+        }
+      },
+      {
+        "tag": "title",
+        "text_suffix": "({username}) – Crowdin"
+      }
+    ]
   },
   {
     "name": "CSSBattle",
     "url_pattern": "https://cssbattle.dev/player/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2413,23 +3454,60 @@
     "url_pattern": "https://www.curseforge.com/members/{username}/projects",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
     "name": "Disqus",
-    "url_pattern": "https://disqus.com/{username}",
+    "url_pattern": "https://disqus.com/by/{username}/",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://disqus.com/by/{username}/"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "profile"
+        }
+      },
+      {
+        "tag": "title",
+        "text": "Disqus Profile - {username}"
+      }
+    ],
+    "profile_allowed_hosts": [
+      "disqus.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "disqus"
   },
   {
     "name": "Exposure",
     "url_pattern": "https://{username}.exposure.co/",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2437,7 +3515,9 @@
     "url_pattern": "https://my.flightradar24.com/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2445,7 +3525,9 @@
     "url_pattern": "https://www.freecodecamp.org/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2453,39 +3535,159 @@
     "url_pattern": "https://freesound.org/people/{username}/",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "title",
+        "text": "Freesound - {username}"
+      },
+      {
+        "tag": "h1",
+        "text": "{username}"
+      },
+      {
+        "tag": "a",
+        "attrs": {
+          "href": "/home/messages/new/{username}/"
+        }
+      }
+    ],
+    "profile_allowed_hosts": [
+      "freesound.org"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "freesound"
   },
   {
     "name": "Geocaching",
     "url_pattern": "https://www.geocaching.com/p/default.aspx?u={username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "span",
+        "attrs": {
+          "id": "ctl00_ProfileHead_ProfileHeader_lblMemberName"
+        },
+        "text": "{username}"
+      },
+      {
+        "tag": "h1",
+        "text": "{username}"
+      }
+    ],
+    "profile_allowed_hosts": [
+      "www.geocaching.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "Signal"
   },
   {
     "name": "Hackaday",
     "url_pattern": "https://hackaday.io/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://hackaday.io/{username}"
+        }
+      },
+      {
+        "tag": "title",
+        "text": "{username}'s Profile | Hackaday.io"
+      },
+      {
+        "tag": "h1",
+        "text": "{username}"
+      }
+    ],
+    "profile_allowed_hosts": [
+      "hackaday.io"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "svofski"
   },
   {
     "name": "HackerEarth",
-    "url_pattern": "https://hackerearth.com/@{username}",
+    "url_pattern": "https://www.hackerearth.com/@{username}/",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:image",
+          "content": "https://www.hackerearth.com/community/profile/{username}/opengraph-image/"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "profile"
+        }
+      },
+      {
+        "tag": "title",
+        "text_suffix": " | Developer Profile on HackerEarth"
+      }
+    ],
+    "profile_allowed_hosts": [
+      "www.hackerearth.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "tourist"
   },
   {
     "name": "HackMD",
     "url_pattern": "https://hackmd.io/@{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2493,8 +3695,37 @@
     "url_pattern": "https://www.hackster.io/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "title",
+        "text_suffix": " - Hackster.io"
+      },
+      {
+        "tag": "h1",
+        "nonempty": true
+      },
+      {
+        "tag": "a",
+        "attrs": {
+          "href": "/{username}/projects"
+        }
+      }
+    ],
+    "profile_allowed_hosts": [
+      "www.hackster.io"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "machinaut"
   },
   {
     "name": "Hack The Box Forum",
@@ -2530,8 +3761,32 @@
     "url_pattern": "https://hubpages.com/@{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "title",
+        "text": "{username} on HubPages"
+      },
+      {
+        "tag": "span",
+        "class": "author_primary_name",
+        "nonempty": true
+      }
+    ],
+    "profile_allowed_hosts": [
+      "hubpages.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "hubpages"
   },
   {
     "name": "Hugging Face",
@@ -2558,26 +3813,108 @@
   },
   {
     "name": "IFTTT",
-    "url_pattern": "https://www.ifttt.com/p/{username}",
+    "url_pattern": "https://ifttt.com/p/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "profile_allowed_hosts": [
+      "ifttt.com",
+      "www.ifttt.com"
+    ],
+    "validation_username": "google",
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://ifttt.com/p/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://ifttt.com/p/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:site_name",
+          "content": "IFTTT"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:title",
+          "content": "{username}'s Applets - IFTTT"
+        }
+      }
+    ],
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-17-remaining"
   },
   {
     "name": "Instructables",
     "url_pattern": "https://www.instructables.com/member/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://www.instructables.com/member/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:title",
+          "content": "{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:site_name",
+          "content": "Instructables"
+        }
+      }
+    ],
+    "profile_allowed_hosts": [
+      "www.instructables.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "randofo"
   },
   {
     "name": "Intigriti",
     "url_pattern": "https://app.intigriti.com/profile/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2585,15 +3922,51 @@
     "url_pattern": "https://issuu.com/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://issuu.com/{username}"
+        }
+      },
+      {
+        "tag": "title",
+        "text": "{username} Publisher Publications - Issuu"
+      },
+      {
+        "tag": "a",
+        "attrs": {
+          "href": "/{username}",
+          "id": "documents",
+          "aria-current": "page"
+        }
+      }
+    ],
+    "profile_allowed_hosts": [
+      "issuu.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "issuu"
   },
   {
     "name": "Jimdo",
     "url_pattern": "https://{username}.jimdosite.com/",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2637,15 +4010,54 @@
     "url_pattern": "https://lottiefiles.com/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://lottiefiles.com/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://lottiefiles.com/{username}"
+        }
+      },
+      {
+        "tag": "title",
+        "text_suffix": " | LottieFiles Animator"
+      },
+      {
+        "tag": "h1",
+        "nonempty": true
+      }
+    ],
+    "profile_allowed_hosts": [
+      "lottiefiles.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "lottiefiles"
   },
   {
     "name": "Monkeytype",
     "url_pattern": "https://monkeytype.com/profile/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2653,7 +4065,9 @@
     "url_pattern": "https://musescore.com/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2661,7 +4075,9 @@
     "url_pattern": "https://www.myminifactory.com/users/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2669,7 +4085,9 @@
     "url_pattern": "https://nightbot.tv/t/{username}/commands",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2724,23 +4142,97 @@
     "url_pattern": "https://opengameart.org/users/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://opengameart.org/users/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "profile"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "profile:username",
+          "content": "{username}"
+        }
+      }
+    ],
+    "profile_allowed_hosts": [
+      "opengameart.org"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "bart"
   },
   {
     "name": "OpenStreetMap",
     "url_pattern": "https://www.openstreetmap.org/user/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://www.openstreetmap.org/user/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:title",
+          "content": "{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:site_name",
+          "content": "OpenStreetMap"
+        }
+      }
+    ],
+    "profile_allowed_hosts": [
+      "www.openstreetmap.org"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "woodpeck"
   },
   {
     "name": "PentesterLab",
     "url_pattern": "https://pentesterlab.com/profile/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2748,7 +4240,9 @@
     "url_pattern": "https://www.pinkbike.com/u/{username}/",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2756,7 +4250,9 @@
     "url_pattern": "https://platzi.com/p/{username}/",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2787,7 +4283,9 @@
     "url_pattern": "https://rarible.com/marketplace/api/v4/urls/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2825,15 +4323,43 @@
     "url_pattern": "https://speakerdeck.com/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://speakerdeck.com/{username}"
+        }
+      },
+      {
+        "tag": "title",
+        "text_suffix": "(@{username}) on Speaker Deck"
+      }
+    ],
+    "profile_allowed_hosts": [
+      "speakerdeck.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "simon"
   },
   {
     "name": "Sporcle",
     "url_pattern": "https://www.sporcle.com/user/{username}/people",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2841,7 +4367,9 @@
     "url_pattern": "https://2dimensions.com/a/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2849,7 +4377,9 @@
     "url_pattern": "https://www.7cups.com/@{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2857,7 +4387,9 @@
     "url_pattern": "https://airbit.com/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2865,7 +4397,9 @@
     "url_pattern": "https://www.airliners.net/user/{username}/profile/photos",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2873,7 +4407,9 @@
     "url_pattern": "https://www.aparat.com/{username}/",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2910,7 +4446,9 @@
     "url_pattern": "https://www.biggerpockets.com/users/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -2918,7 +4456,9 @@
     "url_pattern": "https://www.bookcrossing.com/mybookshelf/{username}/",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3050,7 +4590,10 @@
     "url_pattern": "https://www.chollometro.com/profile/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404, 410],
+    "expected_status": [
+      404,
+      410
+    ],
     "check": "404"
   },
   {
@@ -3058,7 +4601,9 @@
     "url_pattern": "https://clapperapp.com/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3095,7 +4640,9 @@
     "url_pattern": "https://www.cnet.com/profiles/{username}/",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3103,7 +4650,9 @@
     "url_pattern": "https://www.colourlovers.com/lover/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3111,7 +4660,9 @@
     "url_pattern": "https://www.couchsurfing.com/people/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3119,15 +4670,49 @@
     "url_pattern": "https://ctan.org/author/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "title",
+        "text_prefix": "CTAN: Contributor "
+      },
+      {
+        "tag": "a",
+        "attrs": {
+          "href": "/author/{username}"
+        }
+      },
+      {
+        "tag": "h1",
+        "attrs": {
+          "lang": "none"
+        },
+        "nonempty": true
+      }
+    ],
+    "profile_allowed_hosts": [
+      "ctan.org"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "knuth"
   },
   {
     "name": "CyberDefenders",
     "url_pattern": "https://cyberdefenders.org/p/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3135,7 +4720,9 @@
     "url_pattern": "https://gallog.dcinside.com/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3143,7 +4730,9 @@
     "url_pattern": "https://www.drive2.ru/users/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3180,7 +4769,9 @@
     "url_pattern": "https://f3.cool/{username}/",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3188,7 +4779,9 @@
     "url_pattern": "https://fameswap.com/user/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3196,7 +4789,9 @@
     "url_pattern": "https://www.fixya.com/users/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3240,23 +4835,74 @@
     "url_pattern": "https://genius.com/artists/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_allowed_hosts": [
+      "genius.com",
+      "www.genius.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "validation_username": "taylor-swift",
+    "review_batch": "2026-10-19",
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://genius.com/artists/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://genius.com/artists/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:site_name",
+          "content": "Genius"
+        }
+      },
+      {
+        "tag": "title",
+        "text_suffix": " Lyrics, Songs, and Albums | Genius"
+      },
+      {
+        "tag": "h1",
+        "class": "profile_identity-name_iq_and_role_icon",
+        "nonempty": true
+      }
+    ]
   },
   {
     "name": "Genius Users",
     "url_pattern": "https://genius.com/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "404",
+    "redirects_are_unknown": true
   },
   {
     "name": "GitBook",
     "url_pattern": "https://{username}.gitbook.io/",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3264,23 +4910,85 @@
     "url_pattern": "https://plugins.gradle.org/u/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "div",
+        "attrs": {
+          "id": "username"
+        },
+        "text": "{username}"
+      },
+      {
+        "tag": "div",
+        "attrs": {
+          "id": "joined"
+        },
+        "text_prefix": "Joined on "
+      }
+    ],
+    "profile_allowed_hosts": [
+      "plugins.gradle.org"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "gradle"
   },
   {
     "name": "Habr",
-    "url_pattern": "https://habr.com/ru/users/{username}",
+    "url_pattern": "https://habr.com/ru/users/{username}/",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://habr.com/ru/users/{username}/"
+        }
+      },
+      {
+        "tag": "a",
+        "attrs": {
+          "href": "/ru/users/{username}/",
+          "aria-current": "page"
+        },
+        "class": "nickname"
+      }
+    ],
+    "profile_allowed_hosts": [
+      "habr.com"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "deniskin"
   },
   {
     "name": "HotUKdeals",
     "url_pattern": "https://www.hotukdeals.com/profile/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404, 410],
+    "expected_status": [
+      404,
+      410
+    ],
     "check": "404"
   },
   {
@@ -3317,7 +5025,9 @@
     "url_pattern": "https://www.instapaper.com/p/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3354,15 +5064,49 @@
     "url_pattern": "https://translate.jellyfin.org/user/{username}/",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "review_batch": "2026-10-16",
+    "profile_allowed_hosts": [
+      "translate.jellyfin.org"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "h1",
+        "text_suffix": "Users {username}"
+      },
+      {
+        "tag": "a",
+        "attrs": {
+          "href": "/user/{username}/"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:site_name",
+          "content": "Weblate"
+        }
+      }
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "validation_username": "joshuaboniface"
   },
   {
     "name": "Jeuxvideo.com",
     "url_pattern": "https://www.jeuxvideo.com/profil/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3399,7 +5143,9 @@
     "url_pattern": "https://www.kaskus.co.id/@{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3407,8 +5153,41 @@
     "url_pattern": "https://laracasts.com/@{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "review_batch": "2026-10-16",
+    "profile_allowed_hosts": [
+      "laracasts.com"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://laracasts.com/@{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:type",
+          "content": "profile"
+        }
+      },
+      {
+        "tag": "title",
+        "text": "Laracasts Profile: {username}"
+      }
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "validation_username": "jeffreyway"
   },
   {
     "name": "Leasehackr",
@@ -3444,8 +5223,33 @@
     "url_pattern": "https://linuxfr.org/users/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
-    "check": "404"
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "h1",
+        "text": "{username}"
+      },
+      {
+        "tag": "a",
+        "attrs": {
+          "href": "/users/{username}"
+        }
+      }
+    ],
+    "profile_allowed_hosts": [
+      "linuxfr.org"
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "review_batch": "2026-10-14-30",
+    "validation_username": "patrick_g"
   },
   {
     "name": "Mamot",
@@ -3517,7 +5321,9 @@
     "url_pattern": "https://www.nairaland.com/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3525,7 +5331,9 @@
     "url_pattern": "https://blog.naver.com/{username}",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3533,7 +5341,9 @@
     "url_pattern": "https://www.needrom.com/author/{username}/",
     "error_type": "status_code",
     "reliability": "unreliable",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404"
   },
   {
@@ -3541,27 +5351,71 @@
     "url_pattern": "https://onedio.com/profil/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404",
-    "raw_not_found_markers": ["Kullanıcı Bulunamadı"]
+    "raw_not_found_markers": [
+      "Kullanıcı Bulunamadı"
+    ]
   },
   {
     "name": "TeknoSeyir",
     "url_pattern": "https://teknoseyir.com/u/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
-    "check": "404",
-    "raw_not_found_markers": ["Sayfa bulunamadı"]
+    "expected_status": [
+      404
+    ],
+    "check": "structured_profile",
+    "raw_not_found_markers": [
+      "Sayfa bulunamadı"
+    ],
+    "detector_chain": [
+      "structured_profile"
+    ],
+    "review_batch": "2026-10-16",
+    "profile_allowed_hosts": [
+      "teknoseyir.com"
+    ],
+    "profile_evidence": [
+      {
+        "tag": "link",
+        "attrs": {
+          "rel": "canonical",
+          "href": "https://teknoseyir.com/u/{username}"
+        }
+      },
+      {
+        "tag": "meta",
+        "attrs": {
+          "property": "og:url",
+          "content": "https://teknoseyir.com/u/{username}"
+        }
+      },
+      {
+        "tag": "span",
+        "class": "username",
+        "text": "@{username}"
+      }
+    ],
+    "profile_not_found_statuses": [
+      404
+    ],
+    "validation_username": "gamsizm"
   },
   {
     "name": "WM Aracı",
     "url_pattern": "https://wmaraci.com/{username}",
     "error_type": "status_code",
     "reliability": "verified",
-    "expected_status": [404],
+    "expected_status": [
+      404
+    ],
     "check": "404",
-    "not_found_url_contains": ["wmaraci.com/404"]
+    "not_found_url_contains": [
+      "wmaraci.com/404"
+    ]
   },
   {
     "name": "Kayıp Rıhtım Forum",

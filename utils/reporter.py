@@ -42,6 +42,56 @@ def _link_cell(url: str, label: str | None = None) -> str:
 UNRELIABLE_WARNING = "Bu platform heuristik olarak taranir; sonucu manuel dogrulayin."
 
 
+def _render_evidence_cards(data):
+    records = []
+    username = data.get('osint_username')
+    if isinstance(username, dict):
+        records.extend(username.get('results', []))
+    email_section = data.get('osint_email')
+    email = email_section.get('results', {}) if isinstance(email_section, dict) else {}
+    if isinstance(email, dict):
+        records.extend(email.get('accounts', []))
+        records.extend(email.get('breaches', []))
+    parts = []
+    for result in records:
+        if not isinstance(result, dict):
+            continue
+        card = result.get('evidence_card')
+        if not isinstance(card, dict):
+            continue
+        source = _link_cell(_safe_url(card.get('source_url', '')))
+        fields = ''.join(f"<li>{_html(f.get('field', ''))}: {_html(f.get('value', ''))} — {_html(f.get('source', ''))}</li>" for f in card.get('fields', []))
+        parts.append(f"<details><summary>{_html(result.get('platform') or result.get('service', ''))} · {_html(result.get('status', ''))}</summary>"
+                     f"<p>Checked: {_html(card.get('checked_at', ''))}<br>Source: {source}<br>Detector: {_html(card.get('detector', ''))}<br>Reason: {_html(card.get('reason', ''))}</p>"
+                     f"<ul>{fields}</ul><pre>{_html(json.dumps(card.get('rules', []), ensure_ascii=False, indent=2))}</pre>"
+                     f"<p>{_html(card.get('limitations', ''))}</p></details>")
+    return '<section class="section"><h2>Evidence cards</h2>' + ''.join(parts) + '</section>' if parts else ''
+
+
+def _render_domain_research(data):
+    rows = []
+    for name, record in list(data.get('dns', {}).items()) + [('RDAP', data.get('rdap', {}))] + list(data.get('security', {}).items()):
+        if not record:
+            continue
+        rows.append(f"<tr><td>{_html(name)}</td><td>{_html(record.get('status', 'UNKNOWN'))}</td>"
+                    f"<td><pre>{_html(json.dumps(record, ensure_ascii=False, indent=2))}</pre></td></tr>")
+    return f'<section class="section"><h2>Domain research: {_html(data.get("domain", ""))}</h2><p>{_html(data.get("limitations", ""))}</p><table>' + ''.join(rows) + '</table></section>'
+
+
+def _render_public_research(scans):
+    from osint.intelligence import RESEARCH_MODES
+    parts = []
+    for scan in scans:
+        parts.append('<section class="section"><h2>' + _html(RESEARCH_MODES.get(scan['kind'], scan['kind'])) + ': ' + _html(scan['target']) + '</h2>')
+        parts.append('<p>Adaylar ve yayımlanan bağlantılar sahiplik veya taklit kanıtı değildir. Kaynak kapsamı sınırlıdır.</p>')
+        for row in scan.get('rows', []):
+            parts.append('<details><summary>' + _html(row.get('platform', 'Kaynak')) + ' · ' + _html(row.get('status', 'unknown')) + '</summary>')
+            parts.append(_link_cell(_safe_url(row.get('url', ''))))
+            parts.append('<pre>' + _html(json.dumps(row, ensure_ascii=False, indent=2)) + '</pre></details>')
+        parts.append('</section>')
+    return ''.join(parts)
+
+
 def _prepare_report_data(data: dict) -> dict:
     prepared = deepcopy(data)
 
@@ -265,7 +315,7 @@ def _render_platform_health_section(health: dict) -> str:
 
     counts = dict(health.get("counts", {}))
     rows = []
-    for item in health.get("items", [])[:40]:
+    for item in health.get("items", []):
         rows.append(
             "<tr>"
             f"<td>{_html(item.get('scope', 'platform'))}</td>"
@@ -273,6 +323,7 @@ def _render_platform_health_section(health: dict) -> str:
             f"<td>{_html(item.get('detector', 'unknown'))}</td>"
             f"<td>{_html(item.get('state', 'UNKNOWN'))}</td>"
             f"<td>{_html(item.get('detail', ''))}</td>"
+            f"<td>{_html(item.get('last_reference_success_at') or 'Not yet validated')}</td>"
             "</tr>"
         )
 
@@ -284,7 +335,7 @@ def _render_platform_health_section(health: dict) -> str:
             <p><strong>Summary:</strong> Healthy: {counts.get('HEALTHY', 0)} | Degraded: {counts.get('DEGRADED', 0)} | Broken: {counts.get('BROKEN', 0)} | Unknown: {counts.get('UNKNOWN', 0)}</p>
             <p><strong>Cache Hits:</strong> {_html(health.get('cache_hits', 0))}</p>
             <table>
-                <tr><th>Scope</th><th>Platform</th><th>Detector</th><th>State</th><th>Detail</th></tr>
+                <tr><th>Scope</th><th>Platform</th><th>Detector</th><th>State</th><th>Detail</th><th>Last reference success</th></tr>
                 {''.join(rows)}
             </table>
         </section>
@@ -502,6 +553,11 @@ def export_to_html(data: dict, filepath: str) -> None:
 
         if "osint_email" in prepared:
             html_content += _render_email_section(prepared["osint_email"])
+        html_content += _render_evidence_cards(prepared)
+        if 'domain_research' in prepared:
+            html_content += _render_domain_research(prepared['domain_research'])
+        if 'public_research' in prepared:
+            html_content += _render_public_research(prepared['public_research'])
 
         if "osint_username" in prepared:
             username = _html(prepared["osint_username"]["target"])

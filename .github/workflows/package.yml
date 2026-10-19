@@ -30,7 +30,7 @@ jobs:
         run: python -m utils.release_checks --check-secrets --root .
 
       - name: Compile checks
-        run: python -m compileall -q footprint osint utils gui.py main.py setup_context_menu.py tests
+        run: python -m compileall -q footprint osint utils gui main.py setup_context_menu.py tests
 
       - name: Run test suite
         run: python -m unittest discover -s tests -v

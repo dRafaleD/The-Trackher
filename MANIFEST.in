@@ -1,5 +1,14 @@
 include README.md
 include LICENSE
 include CHANGELOG.md
+include OSINT_MODULES_2026-10-17.md
+include OSINT_REVIEW_2026-10-17.md
+include SITE_RECHECK_2026-10-17.md
+include REMAINING_SITES_2026-10-17.md
+include REMAINING_SITES_2026-10-19.md
+include FALSE_POSITIVE_GUARD_2026-10-19.md
+include TERMINAL_HOME_2026-10-17.md
 recursive-include assets *.jpg
+recursive-include assets *.png
 recursive-include osint *.json
+recursive-include tests/fixtures *.json *.html

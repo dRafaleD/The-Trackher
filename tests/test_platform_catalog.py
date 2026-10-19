@@ -23,6 +23,24 @@ class PlatformCatalogTests(unittest.TestCase):
         current[parts[-1]] = value
 
     def _found_response(self, platform: dict, username: str) -> httpx.Response:
+        if platform.get('review_batch') == '2026-10-19-false-positive':
+            from test_false_positive_guard import fixture
+            return fixture(platform['name'], username)
+        if platform.get('review_batch') == '2026-10-19':
+            from test_site_profiles_20261019 import fixture
+            return fixture(platform['name'], username)
+        if platform.get('review_batch') == '2026-10-17-remaining':
+            from test_remaining_sites import fixture
+            return fixture(platform['name'], username)
+        if platform.get('review_batch') == '2026-10-16':
+            from test_site_profiles_20261016 import fixture
+            return fixture(platform['name'], username)
+        if platform.get('review_batch') == '2026-10-14-30':
+            from test_site_profiles_20261014 import fixture
+            return fixture(platform['name'], username)
+        if platform.get('review_batch') == '2026-10-10-additional':
+            from test_site_settings_refresh import fixture
+            return fixture(platform['name'], username)
         if platform.get('review_batch') == '2026-09-08-2':
             from test_profile_batch2 import fixture
             return fixture(platform['name'], username)
@@ -55,6 +73,23 @@ class PlatformCatalogTests(unittest.TestCase):
         return httpx.Response(200, text=body)
 
     def _missing_response(self, platform: dict, username: str) -> httpx.Response:
+        if platform.get('review_batch') == '2026-10-19-false-positive':
+            return httpx.Response(404)
+        if platform.get('review_batch') == '2026-10-19':
+            from test_site_profiles_20261019 import fixture
+            return fixture(platform['name'], username, missing=True)
+        if platform.get('review_batch') == '2026-10-17-remaining':
+            from test_remaining_sites import fixture
+            return fixture(platform['name'], username, missing=True)
+        if platform.get('review_batch') == '2026-10-16':
+            from test_site_profiles_20261016 import fixture
+            return fixture(platform['name'], username, missing=True)
+        if platform.get('review_batch') == '2026-10-14-30':
+            from test_site_profiles_20261014 import fixture
+            return fixture(platform['name'], username, missing=True)
+        if platform.get('review_batch') == '2026-10-10-additional':
+            from test_site_settings_refresh import fixture
+            return fixture(platform['name'], username, missing=True)
         if platform.get('review_batch') == '2026-09-08-2':
             from test_profile_batch2 import fixture
             return fixture(platform['name'], username, missing=True)
@@ -79,7 +114,11 @@ class PlatformCatalogTests(unittest.TestCase):
 
     def _run_platform(self, platform: dict, response: httpx.Response, username: str) -> dict:
         async def execute() -> dict:
-            transport = httpx.MockTransport(lambda request: response)
+            def handler(request):
+                if platform.get('profile_format') == 'osu_profile' and response.status_code == 200 and request.url.path != '/users/2':
+                    return httpx.Response(302, headers={'Location': 'https://osu.ppy.sh/users/2'})
+                return response
+            transport = httpx.MockTransport(handler)
             async with httpx.AsyncClient(transport=transport) as client:
                 return await check_single_username(username, platform, client)
 
@@ -119,6 +158,12 @@ class PlatformCatalogTests(unittest.TestCase):
                     self.assertFalse(result["found"])
                     self.assertEqual(result["unknown_cause"], "service_unavailable")
                     continue
+                if platform.get('check', 'html') in ('html', '404', 'content', 'profile_html'):
+                    # Synthetic echoes cannot establish real profile identity.
+                    self.assertEqual(result['status'], 'unknown')
+                    self.assertFalse(result['found'])
+                    self.assertEqual(result['unknown_cause'], 'parser_mismatch')
+                    continue
                 if platform.get("disable_html_found") and not platform.get("raw_found_markers"):
                     self.assertEqual(result["status"], "unknown")
                     self.assertFalse(result["found"])
@@ -146,9 +191,17 @@ class PlatformCatalogTests(unittest.TestCase):
                     self.assertFalse(result["found"])
                     self.assertEqual(result["unknown_cause"], "service_unavailable")
                     continue
-                if platform.get('review_batch') == '2026-09-08-2':
+                if platform.get('review_batch') == '2026-10-16':
+                    from test_site_profiles_20261016 import FIXTURES
+                    self.assertEqual(result['status'], FIXTURES[platform['name']]['negative_result'])
+                elif platform.get('review_batch') == '2026-10-14-30':
+                    from test_site_profiles_20261014 import FIXTURES
+                    self.assertEqual(result['status'], FIXTURES[platform['name']]['negative_result'])
+                elif platform.get('review_batch') == '2026-09-08-2':
                     from test_profile_batch2 import expected
                     self.assertEqual(result['status'], expected(platform['name'], missing=True))
+                elif platform['name'] == 'Linktree':
+                    self.assertEqual(result['status'], 'unknown')
                 else:
                     self.assertEqual(result["status"], "not_found")
                 self.assertFalse(result["found"])

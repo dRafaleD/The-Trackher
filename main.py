@@ -113,6 +113,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Generate search-engine links for an email or username",
     )
+    osint_group.add_argument('--discover-linked', action='store_true', help='Check up to 10 declared catalog profile links, one hop only')
+    osint_group.add_argument('--domain', metavar='DOMAIN', help='Research a public domain through DNS and authoritative RDAP')
+    osint_group.add_argument('--web-history', metavar='DOMAIN', help='List archived website captures with dates and source links')
+    osint_group.add_argument('--brand-research', metavar='DOMAIN', help='Find passive certificate-based lookalike candidates; not verified impersonation')
+    osint_group.add_argument('--organization', metavar='DOMAIN', help='Extract public references from the organization homepage')
+    osint_group.add_argument('--mentions', metavar='QUERY', help='Find public news mentions; relevance requires review')
+    osint_group.add_argument('--passive-subdomains', action='store_true', help='Include certificate-log subdomain candidates with --domain')
+    osint_group.add_argument('--validate-sites', action='store_true', help='Validate configured public reference/negative pairs; cache lasts 24 hours')
     osint_group.add_argument(
         "--show-manual",
         action="store_true",
@@ -186,6 +194,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     general_group = parser.add_argument_group("General Options")
+    general_group.add_argument('--menu', action='store_true', help='Open the interactive terminal menu (TTY only)')
+    general_group.add_argument('--no-animation', action='store_true', help='Disable the cosmetic terminal boot')
+    general_group.add_argument('--no-color', action='store_true', help='Disable terminal colors')
     general_group.add_argument(
         "--version",
         action="version",
@@ -315,7 +326,7 @@ def handle_email(email: str, *, show_manual: bool = False, profile: str = DEFAUL
     return {"target": email, "results": results}
 
 
-def handle_username(username: str, *, profile: str = DEFAULT_SCAN_PROFILE) -> dict:
+def handle_username(username: str, *, profile: str = DEFAULT_SCAN_PROFILE, discover_links: bool = False) -> dict:
     """Run a username OSINT scan."""
     if is_valid_email(username):
         print_error("This input looks like an email address. Use --email instead.")
@@ -340,7 +351,7 @@ def handle_username(username: str, *, profile: str = DEFAULT_SCAN_PROFILE) -> di
         f"[bold]{len(USERNAME_PLATFORMS) - len(selected_platforms)}[/bold] platforms excluded."
     )
 
-    results = run_username_check(username, profile=profile)
+    results = run_username_check(username, profile=profile, **({'discover_links': True} if discover_links else {}))
     print_username_results(username, results)
     return {"target": username, "results": results}
 
@@ -455,30 +466,52 @@ def launch_gui(logger: logging.Logger, parser: argparse.ArgumentParser) -> None:
         sys.exit(1)
 
 
-def main() -> None:
+def main(argv=None) -> None:
     """Main entry point."""
     configure_logging()
     logger = get_logger("cli")
     parser = build_parser()
-    args = parser.parse_args()
+    arguments = sys.argv[1:] if argv is None else list(argv)
+    if hasattr(parser, 'color') and ('--no-color' in arguments or console.no_color):
+        parser.color = False
+    args = parser.parse_args(arguments)
+    if args.menu and any(flag not in ('--menu', '--no-animation', '--no-color', '--no-banner') for flag in arguments):
+        parser.error('--menu cannot be combined with a scan or another action')
+    if args.no_color:
+        console.no_color = True
 
     if args.email:
         args.email = args.email.strip()
     if args.username:
         args.username = args.username.strip()
 
-    if len(sys.argv) == 1:
-        show_home_screen()
+    if not arguments or args.menu or all(flag in ('--no-animation', '--no-color', '--no-banner') for flag in arguments):
+        from utils.terminal_home import run_menu
+        try:
+            if not arguments:
+                show_home_screen()
+            else:
+                show_home_screen(no_animation=args.no_animation or args.no_banner)
+            run_menu(console, main, redraw=lambda: show_home_screen(no_animation=True))
+        except KeyboardInterrupt:
+            sys.exit(130)
         sys.exit(0)
 
     if args.gui:
         launch_gui(logger, parser)
         sys.exit(0)
 
+    intelligence_inputs = {'history': args.web_history, 'brand': args.brand_research,
+                           'organization': args.organization, 'mentions': args.mentions}
+    has_intelligence = any(intelligence_inputs.values())
+
     has_action = any(
         [
             args.email,
             args.username,
+            args.domain,
+            has_intelligence,
+            args.validate_sites,
             args.search_dork,
             args.health_check,
             args.health_check_live,
@@ -494,7 +527,7 @@ def main() -> None:
     )
 
     if not has_action:
-        if not args.no_banner:
+        if not args.no_banner and args.report != 'json':
             show_banner()
         parser.print_help()
         print_error("Specify an operation, for example --email, --username, or --clean-all.")
@@ -507,7 +540,7 @@ def main() -> None:
     if runtime_state.get("warnings"):
         safe_log(logger, logging.WARNING, "Runtime validation warnings: %s", runtime_state.get("warnings"))
 
-    if not args.no_banner:
+    if not args.no_banner and args.report != 'json':
         show_banner()
         print_info(
             f"Scan profile selected: [bold]{scan_profile}[/bold] - "
@@ -540,18 +573,49 @@ def main() -> None:
         print_success(
             f"Local scan history cleared: {cleared['removed_files']} items removed."
         )
-        if not any([args.email, args.username, args.search_dork, args.clean_shell, args.clean_browser, args.clean_system, args.clean_all, args.shred, args.schedule, args.setup_context]):
+        if not any([args.email, args.username, args.domain, has_intelligence, args.validate_sites, args.search_dork, args.clean_shell, args.clean_browser, args.clean_system, args.clean_all, args.shred, args.schedule, args.setup_context]):
             console.print()
             print_info("Operation complete.\n")
             sys.exit(0)
 
     report_data: dict[str, Any] = {}
     report_data["scan_profile"] = scan_profile
+    if has_intelligence:
+        import asyncio
+        import json
+        from osint.intelligence import RESEARCH_MODES, research_public, normalize_target
+        # Validate every input before contacting a provider.
+        try:
+            targets = {kind: normalize_target(kind, value) for kind, value in intelligence_inputs.items() if value}
+        except ValueError as exc:
+            parser.error(str(exc))
+        report_data['public_research'] = []
+        for kind, target in targets.items():
+            rows = asyncio.run(research_public(kind, target))
+            report_data['public_research'].append({'kind': kind, 'target': target, 'rows': rows})
+            print_section(RESEARCH_MODES[kind])
+            console.print(json.dumps(rows, ensure_ascii=False, indent=2), markup=False)
+    if args.passive_subdomains and not args.domain:
+        parser.error('--passive-subdomains requires --domain')
+
+    if args.domain:
+        import asyncio
+        import json
+        from osint.domain_research import research_domain
+        try:
+            report_data['domain_research'] = asyncio.run(research_domain(args.domain, enhanced=True, certificates=args.passive_subdomains))
+        except ValueError as exc:
+            parser.error(str(exc))
+        print_section('Domain research')
+        console.print(json.dumps(report_data['domain_research'], ensure_ascii=False, indent=2), markup=False)
 
     if args.health_check or args.health_check_live:
         print_section("Platform Health")
         report_data["platform_health"] = run_platform_health_check(live=args.health_check_live)
         print_platform_health_summary(report_data["platform_health"])
+    if args.validate_sites:
+        report_data['platform_health'] = run_platform_health_check(live=True, reference_only=True)
+        print_platform_health_summary(report_data['platform_health'])
 
     run_email_scan = bool(args.email) and profile_allows_email(scan_profile)
     run_username_scan = bool(args.username) and profile_allows_username(scan_profile)
@@ -567,6 +631,9 @@ def main() -> None:
         and not any(
             [
                 args.search_dork,
+                args.domain,
+                has_intelligence,
+                args.validate_sites,
                 args.health_check,
                 args.health_check_live,
                 args.clean_shell,
@@ -591,7 +658,8 @@ def main() -> None:
         )
 
     if run_username_scan:
-        report_data["osint_username"] = handle_username(args.username, profile=scan_profile)
+        report_data["osint_username"] = handle_username(args.username, profile=scan_profile,
+            **({'discover_links': True} if args.discover_linked else {}))
 
     if args.search_dork:
         target = args.email or args.username
@@ -641,7 +709,7 @@ def main() -> None:
 
     if args.report and any(
         key in report_data
-        for key in ("osint_email", "osint_username", "osint_dork", "cleaning", "platform_health")
+        for key in ("osint_email", "osint_username", "osint_dork", "cleaning", "platform_health", 'domain_research', 'public_research')
     ):
         from utils.reporter import generate_report
 

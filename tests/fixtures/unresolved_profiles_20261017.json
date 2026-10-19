@@ -1,0 +1,98 @@
+{
+  "Instagram": {
+    "scripts": [
+      {
+        "attrs": {
+          "type": "application/json",
+          "data-sjs": ""
+        },
+        "payload": {
+          "initialRouteInfo": {
+            "route": {
+              "url": "/sample/",
+              "canonicalRouteName": "comet.igweb.PolarisErrorRoute",
+              "tracePolicy": "polaris.httpErrorPage",
+              "polarisRouteConfig": {
+                "pageID": "httpErrorPage"
+              },
+              "rootView": {
+                "resource": {
+                  "__dr": "PolarisErrorRoot.react"
+                },
+                "props": {
+                  "page_logging": {
+                    "name": "httpErrorPage",
+                    "params": {}
+                  },
+                  "failure_reason": null,
+                  "restricted_age": null,
+                  "page_type": "PROFILE",
+                  "show_lox_redesigned_404_page": true
+                }
+              },
+              "hostableView": {
+                "resource": {
+                  "__dr": "PolarisErrorRoot.react"
+                },
+                "props": {
+                  "page_logging": {
+                    "name": "httpErrorPage",
+                    "params": {}
+                  },
+                  "failure_reason": null,
+                  "restricted_age": null,
+                  "page_type": "PROFILE",
+                  "show_lox_redesigned_404_page": true
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "Pinterest": {
+    "scripts": [
+      {
+        "attrs": {
+          "id": "__PWS_DATA__",
+          "type": "application/json"
+        },
+        "payload": {
+          "context": {
+            "current_url": "https://www.pinterest.com/sample/",
+            "path": "/sample/",
+            "is_authenticated": false
+          },
+          "initialHandlerId": "www/[username].js"
+        }
+      },
+      {
+        "attrs": {
+          "id": "__PWS_INITIAL_PROPS__",
+          "type": "application/json"
+        },
+        "payload": {
+          "initialReduxState": {
+            "resources": {
+              "UserResource": {
+                "[[\"field_set_key\",\"unauth_profile\"],[\"is_mobile_fork\",true],[\"username\",\"sample\"]]": {
+                  "fetching": false,
+                  "error": {
+                    "message": "404 - \"{\\\"status\\\":\\\"failure\\\",\\\"code\\\":30,\\\"message\\\":\\\"User not found.\\\",\\\"endpoint_name\\\":\\\"v3_get_user_handler\\\",\\\"data\\\":null,\\\"error\\\":{\\\"message\\\":\\\"None\\\"}}\"",
+                    "httpStatus": 404
+                  },
+                  "data": null
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "HackerNews": {
+    "positive_html": "<link rel=\"canonical\" href=\"https://news.ycombinator.com/user?id=sample\"><title>Profile: sample | Hacker News</title><a class=\"hnuser\" href=\"user?id=sample\">sample</a>",
+    "negative_html": "No such user."
+  }
+}

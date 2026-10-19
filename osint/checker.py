@@ -24,6 +24,7 @@ from osint.services import (
     check_email_domain,
 )
 from osint.request_policy import PoliteAsyncClient
+from osint.evidence import email_evidence_view, evidence_card
 from utils import __version__
 from utils.display import console
 from utils.profiles import profile_request_policy, select_email_platforms
@@ -56,6 +57,7 @@ async def _run_account_check(
             "url": platform.get("url", ""),
         }
 
+    result['evidence_card'] = evidence_card(result)
     description = (
         f"[yellow]BEKLEMEDE: {platform.get('name')} (rate-limit)[/yellow]"
         if result.get("unknown_cause") == "rate_limited"
@@ -89,6 +91,7 @@ async def _run_breach_check(
             "breaches": [],
         }
 
+    result['evidence_card'] = evidence_card(result)
     description = (
         f"[yellow]BEKLEMEDE: {platform.get('name')} (rate-limit)[/yellow]"
         if result.get("unknown_cause") == "rate_limited"
@@ -128,6 +131,9 @@ async def check_email(
     email: str,
     *,
     profile: str = "standard",
+    control=None,
+    on_result=None,
+    only_platforms: set[str] | None = None,
 ) -> dict[str, Any]:
     """Check an email address without triggering side-effectful account flows."""
     timeout = httpx.Timeout(15.0, connect=10.0)
@@ -176,19 +182,32 @@ async def check_email(
                 "Baslatiliyor...",
                 total=len(account_platforms) + len(breach_platforms) + 1,
             )
-            account_tasks = [
-                _run_account_check(platform, email, client, progress, task_id)
-                for platform in account_platforms
-            ]
-            breach_tasks = [
-                _run_breach_check(platform, email, client, progress, task_id)
-                for platform in breach_platforms
-            ]
-            domain_task = _run_domain_check(email, client, progress, task_id)
+            if only_platforms is not None:
+                account_platforms = [p for p in account_platforms if p['name'] in only_platforms]
+                breach_platforms = [p for p in breach_platforms if p['name'] in only_platforms]
+            if control is not None:
+                control.register([p['name'] for p in account_platforms + breach_platforms] + ['Email domain'])
+            semaphore = asyncio.Semaphore(max_concurrent)
+
+            async def controlled(platform, factory, section):
+                from osint.scan_control import ScanStopped, interrupted_result
+                try:
+                    result = await control.run(platform['name'], factory, semaphore) if control is not None else await factory()
+                except ScanStopped:
+                    result = interrupted_result(platform, email=True)
+                    result['section'] = section
+                result.setdefault('section', section)
+                if on_result is not None:
+                    try:
+                        on_result(dict(result))
+                    except Exception:
+                        pass
+                return result
+
             accounts, breaches, domain = await asyncio.gather(
-                asyncio.gather(*account_tasks),
-                asyncio.gather(*breach_tasks),
-                domain_task,
+                asyncio.gather(*(controlled(p, lambda p=p: _run_account_check(p, email, client, progress, task_id), 'account') for p in account_platforms)),
+                asyncio.gather(*(controlled(p, lambda p=p: _run_breach_check(p, email, client, progress, task_id), 'breach') for p in breach_platforms)),
+                controlled({'name': 'Email domain'}, lambda: _run_domain_check(email, client, progress, task_id), 'domain'),
             )
 
     console.print()
@@ -197,6 +216,7 @@ async def check_email(
         "accounts": list(accounts),
         "breaches": list(breaches),
         "request_policy": dict(request_policy),
+        "evidence_summary": email_evidence_view(accounts, breaches, domain),
     }
 
 

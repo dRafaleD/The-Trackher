@@ -16,6 +16,8 @@ import httpx
 
 from osint.services import ACCOUNT_DETECTORS, ACCOUNT_PLATFORMS, BREACH_DETECTORS, BREACH_PLATFORMS
 from osint.username_checker import USERNAME_DETECTORS, USERNAME_PLATFORMS, check_single_username
+from osint.request_policy import PoliteAsyncClient
+from utils.public_data import configuration_fingerprint
 from utils import __version__
 from utils.app_logging import get_logger, safe_log
 
@@ -30,7 +32,7 @@ CACHE_TTL_SECONDS = 24 * 60 * 60
 LATEST_SUMMARY_FILE = "latest_health_summary.json"
 LIVE_CACHE_FILE = "live_health_cache.json"
 PLACEHOLDER_EMAIL = "trackher-healthcheck@example.invalid"
-PLACEHOLDER_USERNAME = "trackher_healthcheck_user_404"
+PLACEHOLDER_USERNAME = "thneg404q7x9z2"
 
 _EMAIL_CATEGORIES = {"verified", "heuristic", "manual"}
 _EMAIL_SECTIONS = {"account", "breach"}
@@ -315,7 +317,7 @@ def _eligible_for_live_probe(entry: dict[str, Any], platform_def: dict[str, Any]
 
 
 def _cache_key(entry: dict[str, Any]) -> str:
-    return entry["id"]
+    return entry['id'] + ':' + str(entry.get('rule_fingerprint', ''))
 
 
 def _read_live_cache(cache_dir: Path | None = None) -> dict[str, Any]:
@@ -424,7 +426,7 @@ async def _live_probe_username(
     platform_def: dict[str, Any],
     client: httpx.AsyncClient,
 ) -> dict[str, Any]:
-    reference_username = str(platform_def.get("reference_username", "")).strip()
+    reference_username = str(platform_def.get("reference_username") or platform_def.get('validation_username') or '').strip()
     if reference_username:
         positive = await check_single_username(reference_username, platform_def, client)
         negative = await check_single_username(PLACEHOLDER_USERNAME, platform_def, client)
@@ -434,6 +436,7 @@ async def _live_probe_username(
             return {
                 "state": HEALTHY,
                 "detail": "Reference pair passed (found/not_found)",
+                "reference_pair_passed": True,
             }
 
         causes = {
@@ -507,7 +510,8 @@ async def _run_live_health(
         headers=headers,
         follow_redirects=True,
         http2=False,
-    ) as client:
+    ) as raw_client:
+        client = PoliteAsyncClient(raw_client, max_concurrent=2, origin_interval_seconds=1)
         updated: list[tuple[dict[str, Any], dict[str, Any]]] = []
         for entry, platform_def in entries:
             live_supported, live_reason = _eligible_for_live_probe(entry, platform_def)
@@ -525,6 +529,8 @@ async def _run_live_health(
                 entry["live_detail"] = str(cached.get("detail", "Cached live result"))
                 entry["live_checked_at"] = str(cached.get("checked_at", ""))
                 entry["cache_hit"] = True
+                entry['last_success_at'] = cached.get('last_success_at')
+                entry['last_reference_success_at'] = cached.get('last_reference_success_at')
                 updated.append((entry, platform_def))
                 continue
 
@@ -533,10 +539,17 @@ async def _run_live_health(
             entry["live_detail"] = str(live_result.get("detail", "Live probe completed"))
             entry["live_checked_at"] = _iso_now()
             entry["cache_hit"] = False
+            previous = cache_payload.get(_cache_key(entry), {})
+            if not isinstance(previous, dict):
+                previous = {}
+            entry['last_success_at'] = entry['live_checked_at'] if entry['live_state'] == HEALTHY else previous.get('last_success_at')
+            entry['last_reference_success_at'] = entry['live_checked_at'] if live_result.get('reference_pair_passed') else previous.get('last_reference_success_at')
             cache_payload[_cache_key(entry)] = {
                 "state": entry["live_state"],
                 "detail": entry["live_detail"],
                 "checked_at": entry["live_checked_at"],
+                'last_success_at': entry['last_success_at'],
+                'last_reference_success_at': entry['last_reference_success_at'],
             }
             updated.append((entry, platform_def))
 
@@ -587,10 +600,16 @@ def run_platform_health_check(
     use_cache: bool = True,
     cache_dir: Path | None = None,
     ttl_seconds: int = CACHE_TTL_SECONDS,
+    reference_only: bool = False,
 ) -> dict[str, Any]:
     """Run schema-only or optional live platform health checks."""
 
     entries = _platform_items()
+    for entry, definition in entries:
+        entry['rule_fingerprint'] = configuration_fingerprint(definition)
+    if reference_only:
+        entries = [(entry, definition) for entry, definition in entries
+                   if entry['scope'] == 'username' and (definition.get('reference_username') or definition.get('validation_username'))]
     cache_hits = 0
     if live:
         entries, cache_hits = asyncio.run(
@@ -603,7 +622,14 @@ def run_platform_health_check(
         )
 
     items: list[dict[str, Any]] = []
+    prior_health = _read_live_cache(cache_dir) if not live else {}
     for entry, _platform_def in entries:
+        if not live:
+            prior = prior_health.get(_cache_key(entry), {})
+            if not isinstance(prior, dict):
+                prior = {}
+            entry['last_success_at'] = prior.get('last_success_at')
+            entry['last_reference_success_at'] = prior.get('last_reference_success_at')
         _combine_state(entry, live_enabled=live)
         items.append(entry)
 
@@ -612,6 +638,7 @@ def run_platform_health_check(
     payload = {
         "available": True,
         "live_enabled": live,
+        'reference_only': reference_only,
         "checked_at": _iso_now(),
         "cache_enabled": use_cache,
         "cache_hits": cache_hits,

@@ -74,7 +74,7 @@ class UsernameDetectionTests(unittest.TestCase):
         self.assertFalse(result["found"])
         self.assertEqual(result["status"], "not_found")
 
-    def test_visible_exact_username_is_reported_as_found(self):
+    def test_visible_exact_username_echo_is_not_profile_proof(self):
         result = self.run_check(
             lambda request: httpx.Response(
                 200,
@@ -82,8 +82,8 @@ class UsernameDetectionTests(unittest.TestCase):
             )
         )
 
-        self.assertTrue(result["found"])
-        self.assertEqual(result["status"], "found")
+        self.assertFalse(result["found"])
+        self.assertEqual(result["status"], "unknown")
 
     def test_non_success_response_is_unknown(self):
         result = self.run_check(
@@ -260,7 +260,7 @@ class UsernameDetectionTests(unittest.TestCase):
             donanimhaber,
             username="fixture_user",
         )
-        self.assertEqual(found["status"], "found")
+        self.assertEqual(found["status"], "unknown")
         self.assertEqual(found["reliability"], "verified")
         self.assertEqual(missing["status"], "not_found")
 
@@ -277,8 +277,10 @@ class UsernameDetectionTests(unittest.TestCase):
                     ),
                     platforms[name],
                 )
-                self.assertEqual(result["status"], "not_found")
-                self.assertEqual(result["diagnostic_cause"], "soft_404")
+                # TeknoSeyir now requires its own profile/missing-page evidence;
+                # a generic phrase on an otherwise unverified HTTP 200 is ambiguous.
+                self.assertEqual(result["status"], "unknown" if name == "TeknoSeyir" else "not_found")
+                self.assertEqual(result["diagnostic_cause"], "parser_mismatch" if name == "TeknoSeyir" else "soft_404")
 
         def wmaraci_redirect(request: httpx.Request) -> httpx.Response:
             if request.url.path != "/404":
@@ -409,7 +411,7 @@ class UsernameDetectionTests(unittest.TestCase):
         self.assertEqual(result["status"], "unknown")
         self.assertEqual(result["unknown_cause"], "parser_mismatch")
 
-    def test_api_unknown_falls_back_to_public_profile_html(self):
+    def test_api_unknown_fallback_cannot_confirm_a_reflected_username(self):
         platform = {
             "name": "GitHub Example",
             "url": "https://example.test/users/{}",
@@ -429,10 +431,10 @@ class UsernameDetectionTests(unittest.TestCase):
 
         result = self.run_check(handler, platform)
 
-        self.assertEqual(result["status"], "found")
+        self.assertEqual(result["status"], "unknown")
         self.assertEqual(result["detector_used"], "profile_html")
         self.assertTrue(result["fallback_used"])
-        self.assertEqual([item["status"] for item in result["evidence"]], ["unknown", "found"])
+        self.assertEqual([item["status"] for item in result["evidence"]], ["unknown", "unknown"])
         self.assertEqual(result["evidence"][0]["cause"], "forbidden")
 
     def test_api_terminal_result_does_not_run_fallback(self):
@@ -514,7 +516,7 @@ class UsernameDetectionTests(unittest.TestCase):
         self.assertEqual(result["status"], "not_found")
         self.assertEqual(result["diagnostic_cause"], "soft_404")
 
-    def test_raw_found_marker_can_confirm_profile(self):
+    def test_raw_canonical_marker_alone_cannot_confirm_profile(self):
         result = self.run_check(
             lambda request: httpx.Response(
                 200,
@@ -527,8 +529,8 @@ class UsernameDetectionTests(unittest.TestCase):
             },
         )
 
-        self.assertEqual(result["status"], "found")
-        self.assertTrue(result["found"])
+        self.assertEqual(result["status"], "unknown")
+        self.assertFalse(result["found"])
 
     def test_graphql_detector_supports_existing_and_missing_user(self):
         platform = {

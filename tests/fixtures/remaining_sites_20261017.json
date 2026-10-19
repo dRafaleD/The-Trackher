@@ -1,0 +1,32 @@
+{
+  "BuyMeACoffee": {
+    "url": "https://buymeacoffee.com/sample",
+    "body": "<meta property=\"og:site_name\" content=\"Buy Me a Coffee\">\n<meta property=\"og:url\" content=\"https://buymeacoffee.com/sample\">\n<meta property=\"og:type\" content=\"website\">\n<link rel=\"canonical\" href=\"https://buymeacoffee.com/sample\">\n<title>Support Hub</title>",
+    "captured_source_url": "public profile HTML, 2026-10-17"
+  },
+  "Kaggle": {
+    "url": "https://www.kaggle.com/sample",
+    "body": "<title>Heads or Tails | Kaggle</title>\n<meta property=\"og:url\" content=\"https://www.kaggle.com/sample/competitions\">\n<meta property=\"og:type\" content=\"profile\">\n<meta property=\"og:username\" content=\"sample\">",
+    "captured_source_url": "public profile HTML, 2026-10-17"
+  },
+  "Giphy": {
+    "url": "https://giphy.com/sample",
+    "body": "<title>GIPHY Studios GIFs on GIPHY - Be Animated</title>\n<link rel=\"canonical\" href=\"https://giphy.com/sample\">\n<meta property=\"og:url\" content=\"https://giphy.com/sample\">",
+    "captured_source_url": "public profile HTML, 2026-10-17"
+  },
+  "Patreon": {
+    "url": "https://www.patreon.com/cw/sample",
+    "body": "<title>Patreon on Patreon | Patreon</title>\n<link rel=\"canonical\" href=\"https://www.patreon.com/cw/sample\">\n<meta property=\"og:url\" content=\"https://www.patreon.com/cw/sample\">\n<meta property=\"og:site_name\" content=\"Patreon\">\n<meta property=\"og:type\" content=\"profile\">\n<meta property=\"profile:username\" content=\"sample\">\n<title>Patreon logo</title>\n<title>Patreon logo</title>\n<title>Patreon wordmark</title>",
+    "captured_source_url": "public profile HTML, 2026-10-17"
+  },
+  "IFTTT": {
+    "url": "https://ifttt.com/p/sample",
+    "body": "<link rel=\"canonical\" href=\"https://ifttt.com/p/sample\">\n<title>sample&#x27;s Applets - IFTTT</title>\n<meta property=\"og:title\" content=\"sample&#x27;s Applets - IFTTT\">\n<meta property=\"og:site_name\" content=\"IFTTT\">\n<meta property=\"og:url\" content=\"https://ifttt.com/p/sample\">\n<meta property=\"og:type\" content=\"website\">\n<title>IFTTT</title>\n<title>Close menu</title>\n<title>Mobile menu</title>\n<title>Close menu</title>\n<title>IFTTT</title>\n<title>IFTTT</title>",
+    "captured_source_url": "public profile HTML, 2026-10-17"
+  },
+  "Substack": {
+    "url": "https://sample.substack.com/",
+    "body": "<title>Platformer | Casey Newton | Substack</title>\n<meta property=\"og:type\" content=\"article\">\n<meta property=\"og:url\" content=\"https://sample.substack.com/\">\n<link rel=\"canonical\" href=\"https://sample.substack.com/\">",
+    "captured_source_url": "public profile HTML, 2026-10-17"
+  }
+}

@@ -423,6 +423,7 @@ async def check_github_commit_email(
     )
     metadata["public_email"] = public_email.strip()
     result["public_metadata"] = metadata
+    result['response_evidence'] = {'source_url': str(response.url), 'http_status': response.status_code}
     return result
 
 
@@ -572,6 +573,7 @@ async def check_email_domain(email: str, client: httpx.AsyncClient) -> dict[str,
     domain = email.strip().rsplit("@", 1)[-1].strip().casefold()
     result: dict[str, Any] = {
         "domain": domain,
+        'source_url': 'https://dns.google/resolve?name=' + quote(domain, safe='.-') + '&type=MX',
         "status": UNKNOWN,
         "mail_routable": None,
         "detail": "",
@@ -679,7 +681,7 @@ async def check_haveibeenpwned(email: str, client: httpx.AsyncClient, platform: 
     try:
         response = await client.get(
             f"https://haveibeenpwned.com/api/v3/breachedaccount/{encoded_email}",
-            params={"truncateResponse": "true"},
+            params={"truncateResponse": "false"},
             headers={
                 "hibp-api-key": api_key,
                 "User-Agent": f"Trackher/{__version__}",
@@ -731,6 +733,17 @@ async def check_haveibeenpwned(email: str, client: httpx.AsyncClient, platform: 
                 detail = f"{len(breaches)} breaches" if breaches else "No known breaches"
 
     extra: dict[str, Any] = {"breaches": breaches}
+    if status == FOUND:
+        extra['breach_details'] = [
+            {'name': str(item.get('Name', ''))[:200], 'title': str(item.get('Title', ''))[:200],
+             'domain': str(item.get('Domain', ''))[:253], 'breach_date': str(item.get('BreachDate', ''))[:40],
+             'added_date': str(item.get('AddedDate', ''))[:40],
+             'data_classes': [str(v)[:100] for v in item.get('DataClasses', [])[:50]] if isinstance(item.get('DataClasses'), list) else [],
+             'verified': item.get('IsVerified') is True,
+             'source_url': 'https://haveibeenpwned.com/PwnedWebsites#' + quote(str(item.get('Name', '')), safe='')}
+            for item in data[:200] if isinstance(item, dict) and item.get('Name')]
+        extra['public_metadata'] = {'breach_details': extra['breach_details']}
+        extra['field_sources'] = {'breach_details': 'HIBP full breach model'}
     if cause:
         extra["diagnostic_cause"] = cause
         if status in {UNKNOWN, ERROR, NOT_CONFIGURED}:

@@ -53,6 +53,10 @@ class UiWorkerMixin:
                 return
 
     def _on_close(self):
+        if self._closing.is_set():
+            return
+        if self.__dict__.get('_case') is not None and not self._close_case_can_exit():
+            return
         with self._ui_state_lock:
             if self._closing.is_set():
                 return
@@ -66,6 +70,9 @@ class UiWorkerMixin:
                 self.after_cancel(after_id)
             except tk.TclError:
                 pass
+        control = self.__dict__.get("_scan_control")
+        if control is not None:
+            control.stopped.set()
         self.destroy()
 
     def run_in_thread(self, func, *args):

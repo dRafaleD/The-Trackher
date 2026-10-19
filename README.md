@@ -2,10 +2,6 @@
   <img src="assets/trackher-banner.png" alt="Trackher - Digital Footprint & Privacy Toolkit" width="920">
 </p>
 
-<p align="center">
-  <img src="assets/trackher-terminal.png" alt="Trackher terminal interface" width="760">
-</p>
-
 # Trackher
 
 Trackher is an open-source Python Digital Footprint & Privacy Toolkit for
@@ -25,6 +21,8 @@ side-effectful probing.
 - Email account intelligence with verified, possible, unknown, and manual separation
 - Breach exposure checks through Have I Been Pwned
 - Search engine dorks for manual investigation
+- Public website history, passive brand research, organizational links, and news mentions
+- Local investigation cases, evidence cards, analyst notes, and relationship maps
 - Local cleanup tools for shell history, browser traces, and system caches
 - Best-effort secure deletion for files and directories
 - HTML and JSON reporting
@@ -32,6 +30,34 @@ side-effectful probing.
 - Dry-run support before any destructive action
 - Windows, macOS, and Linux support
 - Scheduled cleanup support for Windows Task Scheduler, macOS `launchd`, and Linux `cron`
+
+## CLI and GUI preview
+
+### Terminal home
+
+The interactive CLI opens with a neofetch-style radar, runtime information,
+and a numbered menu. Run `trackher --menu`; use `--no-animation` for a static
+entrance. Piped output remains noninteractive.
+
+![Trackher CLI: radar, runtime details, and numbered main menu](assets/screenshots/cli-home.png)
+
+### OSINT workspace
+
+The desktop interface groups search controls, live progress, status counters,
+and filterable results. Select a result to inspect its evidence. Public-source
+research is available from the selector beside **Kaynakları araştır**.
+
+![Trackher GUI: username and email search, public-source research, status counters, and result filters](assets/screenshots/gui-osint.jpg)
+
+### Investigation workspace
+
+The **Araştırma** tab keeps local cases, finding reviews, notes, relationship
+maps, comparisons, timelines, and scan controls together.
+
+![Trackher GUI: local investigation cases and finding-review workspace](assets/screenshots/gui-research.jpg)
+
+GUI screenshots show the application before a scan; they contain no sample
+findings. The CLI image renders the application's terminal menu.
 
 ## Safety Model
 
@@ -57,13 +83,34 @@ compressed responses are treated as unknown instead of decoded without a bound.
 
 ## Features
 
+### Terminal home
+
+Run `trackher` or `trackher --menu` in an interactive terminal to open the
+numbered Turkish menu. Its built-in neofetch-style layout places a radar emblem
+beside system/runtime/catalog information, with a short scan/decode entrance.
+It does not require the external neofetch command. Select 1–9, enter the target,
+and return to the menu after the operation; use `?` for help and `0` to exit.
+Existing CLI flags and cleanup commands remain available through `--help`.
+
+Use `--no-animation` or `TRACKHER_NO_ANIMATION=1` for a static entrance;
+`--no-color` / `NO_COLOR` suppress colors and the entrance animation.
+Redirected output, noninteractive stdin and dumb terminals never animate or
+wait for menu input. `--version`, `--help` and GUI startup do not play the boot.
+
+Details: [TERMINAL_HOME_2026-10-17.md](TERMINAL_HOME_2026-10-17.md).
+
 ### OSINT
 
-- Username scan across 197 platforms
-- Email OSINT with a catalog of 110 services
+- Username scan across 303 platforms
+- Email OSINT with a catalog of 111 services
 - Only a small side-effect-free subset is automatically checkable today
 - Automatic email checks currently include Gravatar, GitLab, and GitHub
 - Search engine dork generation for manual investigation
+
+Username results require site-specific profile or API evidence. A username
+echoed by a search page, a generic HTTP 200 response, or a single page marker
+does not confirm an account. Older HTML checks without enough evidence remain
+`UNKNOWN`; a catalog entry does not guarantee automatic verification.
 
 Email results are separated as:
 
@@ -142,6 +189,122 @@ pages. It never automates those actions.
 - Symlink and critical-path protections
 - Secure deletion is still best-effort on SSD, copy-on-write, journaled, or
   network-backed file systems
+
+## Public evidence and linked discovery
+
+Verified username checks now retain public metadata where the response exposes it:
+profile name, description, avatar URL, website, declared links and supported API
+fields. Each result includes an evidence card with its time, source, detector,
+matching rules and field provenance. Cards are available in the GUI and HTML/JSON
+reports; email candidates, manual checks and inconclusive results remain distinct.
+
+Enable **Bağlantılardan keşfet** in the GUI, or use:
+
+```powershell
+trackher --username YOUR_USERNAME --discover-linked --report html
+```
+
+Linked discovery checks only profile URLs matching the selected platform catalog,
+from verified seed profiles. It follows one hop, deduplicates candidates, caps the
+work at ten additional checks, and uses a 35-second total discovery budget.
+Arbitrary personal websites are listed as evidence rather than fetched. The
+feature is off by default; enabling it does not make ownership claims.
+
+**Alan adı** in the GUI accepts a domain (or takes the domain from an email).
+The CLI equivalent is:
+
+```powershell
+trackher --domain example.com --report json
+```
+
+Domain research retrieves A, AAAA, MX and NS records plus authoritative HTTPS RDAP
+data selected using IANA's bootstrap registry. It reports registration events,
+registrar handles and nameservers when available. Missing or blocked sources stay
+inconclusive; this does not verify a mailbox or identify a real-world owner.
+
+Use **Kuralları doğrula** or this command to check configured positive/negative
+reference pairs and see the last successful validation:
+
+```powershell
+trackher --validate-sites --report html
+```
+
+Recent checks are cached for 24 hours; a later failure preserves the earlier
+success timestamp while showing the current failure. This runs when requested;
+it does not install an unattended scheduled task. Existing scan history and
+identity correlation also remain available. Reciprocal declared profile links
+add explainable signals; shared usernames alone do not establish identity.
+
+## Research workspace and scan controls
+
+The **Araştırma** tab keeps multiple scans in a portable `.trackher.json` case
+file, with notes, tags, analyst relationship decisions and an HTML export.
+Choose **Kaydet** to store the file locally and **Aç** to reopen it later.
+Case files contain the collected public evidence and your notes; they are not
+uploaded. Scans are added to the open case in memory regardless of the separate
+local-history checkbox. Save the case before closing the application.
+
+Use **Beklet** to stop scheduling new checks while current checks finish,
+**Devam et** to release waiting checks, and **Durdur** to cancel pending work.
+The **Tarama kontrolü** view shows elapsed time, pending/running jobs and failure
+reasons. Interrupted checks remain inconclusive. After stopping, save the case;
+**Kalanı sürdür** can resume its interrupted username/email checks after reopening.
+**Başarısızları dene** retries unknown/error/unconfigured checks. Other results
+retain their original evidence timestamps and are marked as retained, rather
+than appearing freshly checked. Interrupted scans and subset retries do not enter
+legacy risk history; their evidence remains in the open research case.
+
+The **İlişki haritası** view includes query identifiers, profile candidates and
+declared website domains. Select a focus node to inspect its neighbors; click a
+node for source evidence or a line for supporting signals and conflicts. Mark
+relationships as related, unrelated or uncertain. These are analyst notes and
+never change account detection status or establish real-world ownership. The
+graph processes the first 200 profiles and displays up to 24 neighbors per focus;
+the source result list and case file keep all results.
+
+**Değişiklikler** compares matching targets, including biography edits, removed
+or added links, status changes and temporarily unavailable profiles. Missing
+coverage or a field no longer extracted is shown separately from deletion.
+
+Domain research now also checks SPF/DMARC policy records and resolver DNSSEC
+authentication. These are bounded record checks, not a complete SPF evaluator.
+The GUI additionally queries certificate logs for up to 200 deduplicated subdomain
+candidates without visiting them; the CLI enables this with:
+
+```powershell
+trackher --domain example.com --passive-subdomains --report html
+```
+
+Certificates can be historical; a candidate does not establish a currently live
+host or service. Source failures stay unknown. HIBP email checks now request full
+breach metadata (dates, data classes and verification flags) when `HIBP_API_KEY`
+is configured. No password or raw credential contents are collected. Protocol
+references: [Google DNS JSON](https://developers.google.com/speed/public-dns/docs/doh/json),
+[HIBP full breach response](https://haveibeenpwned.com/API/v3#AllBreachesForAnAccount).
+
+## Finding review queue
+
+Open **Araştırma → Bulgu inceleme** to search each scan's findings by site,
+handle, analyst notes or tags. Filter by review state and priority, or select
+multiple rows to mark them together. Double-click a row to edit its note, tags,
+priority and analyst state: pending, reviewed, irrelevant or uncertain.
+
+Analyst annotations never change the machine's detection result. Notes follow
+the same target/platform/handle across rescans. If source evidence, detector rules
+or public fields differ from the annotated version, the finding appears under
+**Kanıt değişti**; the earlier note and decision remain available. A new check
+timestamp alone does not invalidate a review. Search supports Turkish dotted and
+dotless I and unaccented input.
+
+Use **Görünenleri CSV** to export the currently filtered queue. CSV cells that
+could be interpreted as spreadsheet formulas are escaped. The case HTML report
+also includes analyst notes, tags, priority and evidence-change indicators.
+
+Apply a note with **Uygula**, then use the case's **Kaydet** button to persist it.
+Existing version-1 case files remain compatible. When opening another case or
+closing the app with unsaved changes, Trackher offers save/discard/cancel. Saving
+on exit during a scan first stops the scan and waits for its results before
+writing the case. No automatic background upload or autosave is enabled.
 
 ## Requirements
 
@@ -365,7 +528,7 @@ export HIBP_API_KEY="<key>"
 
 ```bash
 python -m pip check
-python -m compileall -q footprint osint utils gui.py main.py setup_context_menu.py
+python -m compileall -q footprint osint utils gui main.py setup_context_menu.py
 python -m unittest discover -s tests -v
 ```
 
@@ -386,6 +549,47 @@ The project includes automated tests for:
 - [ETHICS.md](ETHICS.md): acceptable use policy
 - [CHANGELOG.md](CHANGELOG.md): release history
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md): community expectations
+
+## Public-source research workspace
+
+The OSINT tab now includes a research selector beside **Kaynakları araştır**.
+Enter a domain such as `python.org` for website history, brand candidates, or
+organizational footprint; enter a brand/organization name for public mentions.
+Results use the existing source cards, finding notes, case files, relationship
+map, comparisons, and **Araştırma → Zaman çizelgesi** view.
+
+```powershell
+python main.py --web-history python.org --report html
+python main.py --brand-research python.org --report json
+python main.py --organization python.org
+python main.py --mentions "Python Software Foundation" --report html
+```
+
+- History: up to 30 Wayback CDX records and up to two sampled captures of the
+  same page, with titles, public links and text/link differences when accessible.
+  Samples do not represent the full history or necessarily the latest capture.
+- Brand: up to 30 passive certificate names containing the brand label/token.
+  These are **unverified candidates**, not confirmed impersonators; this is not
+  exhaustive typo/homoglyph detection. Candidate sites are not visited.
+- Organization: at most 30 public outgoing homepage references, including
+  catalog profile links. HTTPS root/www redirects are bounded and validated.
+  References do not establish ownership, subsidiaries or endorsement.
+- Mentions: up to 30 Google News RSS records, with duplicate grouping and
+  unverified relevance. This experimental public feed does not cover all blogs,
+  forums or news sources. Articles are not crawled.
+
+Each operation has a finite deadline and download limits. Provider blocks,
+timeouts and invalid responses remain **unknown**, never evidence of absence.
+Timeline entries distinguish publication/archive/certificate dates from the
+time Trackher collected them. No API key or new dependency is required.
+
+Implementation and live-test limits: [OSINT_MODULES_2026-10-17.md](OSINT_MODULES_2026-10-17.md).
+Follow-up fixes and rechecks: [OSINT_REVIEW_2026-10-17.md](OSINT_REVIEW_2026-10-17.md).
+Additional 30-site investigation: [REMAINING_SITES_2026-10-17.md](REMAINING_SITES_2026-10-17.md).
+
+Next 30-site investigation and public channel verification: [REMAINING_SITES_2026-10-19.md](REMAINING_SITES_2026-10-19.md).
+
+Reflected usernames and generic page markers no longer confirm accounts; see [FALSE_POSITIVE_GUARD_2026-10-19.md](FALSE_POSITIVE_GUARD_2026-10-19.md) for live checks and coverage limits.
 
 ## Limitations
 

@@ -45,8 +45,8 @@ class TerminalDisplayTests(unittest.TestCase):
         self.assertIn(f"{username_count} platforms", output)
         self.assertIn(f"{email_count} services", output)
         self.assertIn("trackher --gui", output)
-        self.assertIn("Quick Commands", output)
-        self.assertIn("Trackher v", output)
+        self.assertIn("ANA MENÜ", output)
+        self.assertIn("trackher@local", output)
         self.assertIn("trackher@osint ~ $", output)
         self.assertNotIn("Project Identity", output)
         self.assertNotIn("Investigation", output)
@@ -75,9 +75,9 @@ class TerminalDisplayTests(unittest.TestCase):
         output = self.capture(display.show_home_screen)
 
         self.assertEqual(output.count("TRACKHER"), 1)
-        self.assertIn("[A] Remediation Actions", output)
-        self.assertIn("[G] Optional GUI", output)
-        self.assertEqual(output.count("[G]"), 1)
+        self.assertIn("[7] Bahsedilme", output)
+        self.assertIn("[9] Grafik arayüz", output)
+        self.assertEqual(output.count("[9]"), 1)
         self.assertNotIn("[G] Remediation Guidance", output)
         self.assertNotIn("[O] Reporting", output)
 
@@ -85,7 +85,7 @@ class TerminalDisplayTests(unittest.TestCase):
         output = self.capture(display.show_home_screen, width=72)
 
         self.assertIn("TRACKHER", output)
-        self.assertIn("trackher --username <username>", output)
+        self.assertIn("[1] Kullanıcı adı", output)
         self.assertIn("trackher --help", output)
         self.assertIn("trackher@osint ~ $", output)
         self.assertNotIn("Investigation", output)

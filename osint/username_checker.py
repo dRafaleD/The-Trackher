@@ -26,6 +26,8 @@ from osint.detector_runtime import (
 )
 from osint.request_policy import PoliteAsyncClient
 from osint.profile_evidence import evaluate_profile
+from osint.channel_profiles import detect_odysee_channel
+from osint.evidence import enrich_profile, finalize_username
 from utils import __version__
 from utils.display import console
 from utils.helpers import is_valid_username_query
@@ -75,11 +77,13 @@ def _load_platform_definitions() -> list[dict]:
             "scan_tier",
             "disabled_reason",
             "detector_chain",
+            "fallback_on_causes",
             "json_path",
             "json_paths",
             "json_not_found_path",
             "json_list_path",
             "username_equivalence",
+            "username_case_sensitive",
             "query_body",
             "profile_id_path",
             "error_msg",
@@ -93,7 +97,9 @@ def _load_platform_definitions() -> list[dict]:
             "empty_body_not_found",
             "allow_title_username_match",
             "disable_html_found",
+            "redirects_are_unknown",
             "reference_username",
+            "validation_username",
             "strict_api",
             "api_missing_matches",
             "api_success_matches",
@@ -103,6 +109,7 @@ def _load_platform_definitions() -> list[dict]:
             "profile_allowed_hosts",
             "profile_not_found_statuses",
             "profile_evidence",
+            "profile_missing_evidence",
             "profile_format",
         ):
             if key in item:
@@ -312,8 +319,8 @@ def _request_headers(platform: dict) -> dict[str, str]:
     }
 
 
-def _request_timeout(platform: dict):
-    """Return a bounded per-platform timeout, when the catalog defines one."""
+def _request_timeout(platform: dict) -> object:
+    """Keep the client's finite timeout unless a site overrides it."""
     raw_timeout = platform.get("timeout_seconds")
     if raw_timeout is None:
         return httpx.USE_CLIENT_DEFAULT
@@ -381,6 +388,9 @@ def _username_matches(value: object, username: str, platform: dict) -> bool:
             return False
         actual = unicodedata.normalize("NFC", value).casefold().strip()
         expected = unicodedata.normalize("NFC", username).casefold().strip()
+        if platform.get('username_case_sensitive') is True:
+            actual = unicodedata.normalize('NFC', value).strip()
+            expected = unicodedata.normalize('NFC', username).strip()
     else:
         actual = _normalize_text(value).strip()
         expected = _normalize_text(username).strip()
@@ -520,6 +530,17 @@ def _check_html_response(
     result: dict,
 ) -> dict:
     not_found_statuses = _expected_statuses(platform, (404, 410))
+    visible_text = _visible_page_text(response.text)
+    # Access challenges can themselves return 404/410; they are not absence proof.
+    if response.status_code != 429 and _contains_block_marker(visible_text):
+        return _set_result(result, "unknown", "Site blocked automated scanning", "bot_blocked")
+    if platform.get('redirects_are_unknown') and response.history:
+        expected = urlsplit(platform.get('probe_url', platform['url']).format(quote(username.strip(), safe='._-~')))
+        actual = urlsplit(str(response.url))
+        def identity(url):
+            return (url.scheme.casefold(), url.netloc.casefold(), unquote(url.path).rstrip('/').casefold())
+        if identity(expected) != identity(actual):
+            return _set_result(result, 'unknown', 'Redirected away from the requested profile type', 'redirect_changed')
     if response.status_code in not_found_statuses:
         return _set_result(result, "not_found", f"HTTP {response.status_code}", "soft_404")
     if response.status_code != 200:
@@ -530,11 +551,7 @@ def _check_html_response(
             _http_unknown_cause(response.status_code, response.text),
         )
 
-    visible_text = _visible_page_text(response.text)
-    visible_body = _visible_body_text(response.text)
     raw_text = response.text
-    if _contains_block_marker(visible_text):
-        return _set_result(result, "unknown", "Site blocked automated scanning", "bot_blocked")
 
     if platform.get("empty_body_not_found") is True and not raw_text.strip():
         return _set_result(result, "not_found", "Site returned an empty profile response", "soft_404")
@@ -557,18 +574,10 @@ def _check_html_response(
     if response.history and not _contains_exact_username(unquote(str(response.url)), username):
         return _set_result(result, "not_found", "Redirected to a general page", "redirect_changed")
 
-    if _contains_platform_raw_marker(platform, "raw_found_markers", raw_text, username):
-        return _set_result(result, "found", "Raw response markers verified the username")
-
-    if platform.get("disable_html_found") is True:
-        return _set_result(result, "unknown", "No profile evidence", "parser_mismatch")
-
-    if _contains_exact_username(visible_body, username) or (
-        platform.get("allow_title_username_match") is True and _contains_exact_username(visible_text, username)
-    ):
-        return _set_result(result, "found", "Username verified on page")
-
-    return _set_result(result, "unknown", "No profile evidence", "parser_mismatch")
+    # A reflected handle, canonical URL or channel-shell marker is not proof
+    # that an account exists. Positive HTML results require structured_profile
+    # (or another dedicated identity detector), including on API fallbacks.
+    return _set_result(result, "unknown", "No verified site-specific profile evidence", "parser_mismatch")
 
 
 async def _run_json_detector(
@@ -585,7 +594,7 @@ async def _run_json_detector(
         headers=request_headers,
         timeout=_request_timeout(platform),
     )
-    return _check_json_response(username, platform, response, result)
+    return enrich_profile(_check_json_response(username, platform, response, result), username, platform, response)
 
 
 async def _run_graphql_detector(
@@ -604,7 +613,7 @@ async def _run_graphql_detector(
         json=body,
         timeout=_request_timeout(platform),
     )
-    return _check_json_response(username, platform, response, result)
+    return enrich_profile(_check_json_response(username, platform, response, result), username, platform, response)
 
 
 async def _run_html_detector(
@@ -619,7 +628,7 @@ async def _run_html_detector(
         headers=_request_headers(platform),
         timeout=_request_timeout(platform),
     )
-    return _check_html_response(username, platform, response, result)
+    return enrich_profile(_check_html_response(username, platform, response, result), username, platform, response)
 
 
 async def _run_profile_html_detector(
@@ -635,7 +644,7 @@ async def _run_profile_html_detector(
         headers=_request_headers(platform),
         timeout=_request_timeout(platform),
     )
-    return _check_html_response(username, platform, response, result)
+    return enrich_profile(_check_html_response(username, platform, response, result), username, platform, response)
 
 
 async def _run_structured_profile_detector(username, platform, client, result):
@@ -645,7 +654,14 @@ async def _run_structured_profile_detector(username, platform, client, result):
         headers=_request_headers(platform),
         timeout=_request_timeout(platform),
     )
-    return _set_result(result, *evaluate_profile(username, platform, response))
+    return enrich_profile(_set_result(result, *evaluate_profile(username, platform, response)), username, platform, response)
+
+
+async def _run_hackernews_profile_detector(username, platform, client, result):
+    from osint.embedded_profiles import evaluate_hackernews
+    response = await client.get(platform['url'].format(quote(username.strip(), safe='._-~')),
+                                follow_redirects=True, timeout=_request_timeout(platform))
+    return enrich_profile(_set_result(result, *evaluate_hackernews(username.strip(), response)), username, platform, response)
 
 
 def _detector_chain(platform: dict) -> list[str]:
@@ -681,8 +697,10 @@ def _detector_evidence(method: str, result: dict) -> dict[str, str]:
 
 
 USERNAME_DETECTORS = DetectorRegistry()
+USERNAME_DETECTORS.register("odysee_channel", detect_odysee_channel)
 USERNAME_DETECTORS.register("html", _run_html_detector)
 USERNAME_DETECTORS.register("structured_profile", _run_structured_profile_detector)
+USERNAME_DETECTORS.register('hackernews_profile', _run_hackernews_profile_detector)
 USERNAME_DETECTORS.register("content", _run_html_detector)
 USERNAME_DETECTORS.register("404", _run_html_detector)
 USERNAME_DETECTORS.register("profile_html", _run_profile_html_detector)
@@ -698,7 +716,7 @@ async def check_single_username(username: str, platform: dict, client: httpx.Asy
 
     disabled_reason = str(platform.get("disabled_reason", "")).strip()
     if disabled_reason:
-        return _set_result(result, "unknown", disabled_reason, "service_unavailable")
+        return finalize_username(_set_result(result, "unknown", disabled_reason, "service_unavailable"), username, platform)
 
     try:
         encoded_username = quote(username.strip(), safe="._-~")
@@ -747,28 +765,30 @@ async def check_single_username(username: str, platform: dict, client: httpx.Asy
                 stage_result["fallback_used"] = method_index > 0
                 if len(methods) > 1:
                     stage_result["evidence"] = evidence
-                return stage_result
-            if stage_result.get("diagnostic_cause") == "rate_limited":
+                return finalize_username(stage_result, username, platform)
+            allowed_fallback = platform.get('fallback_on_causes')
+            if (stage_result.get("diagnostic_cause") == "rate_limited"
+                    or (isinstance(allowed_fallback, list) and stage_result.get('diagnostic_cause') not in allowed_fallback)):
                 stage_result["detector_used"] = method
                 stage_result["fallback_used"] = method_index > 0
                 if len(methods) > 1:
                     stage_result["evidence"] = evidence
-                return stage_result
+                return finalize_username(stage_result, username, platform)
 
         last_result["detector_used"] = methods[-1]
         last_result["fallback_used"] = len(methods) > 1
         if len(methods) > 1:
             last_result["evidence"] = evidence
-        return last_result
+        return finalize_username(last_result, username, platform)
     except httpx.HTTPError as exc:
-        return _set_result(result, "unknown", type(exc).__name__, _exception_cause(exc))
+        return finalize_username(_set_result(result, "unknown", type(exc).__name__, _exception_cause(exc)), username, platform)
     except (KeyError, IndexError, TypeError, ValueError) as exc:
-        return _set_result(
+        return finalize_username(_set_result(
             result,
             "unknown",
             f"Platform configuration error: {type(exc).__name__}",
             _exception_cause(exc),
-        )
+        ), username, platform)
 
 
 async def check_username_async(
@@ -776,6 +796,10 @@ async def check_username_async(
     *,
     profile: str = "standard",
     on_result: Callable[[dict], None] | None = None,
+    discover_links: bool = False,
+    control=None,
+    only_platforms: set[str] | None = None,
+    only_queries: list[tuple[str, str]] | None = None,
 ) -> list[dict]:
     """Kullanıcı adını platformlara özel, kanıta dayalı yöntemlerle tarar."""
     username = username.strip()
@@ -796,6 +820,12 @@ async def check_username_async(
     )
 
     platforms = select_username_platforms(profile, USERNAME_PLATFORMS)
+    if only_platforms is not None:
+        platforms = [p for p in platforms if p["name"] in only_platforms]
+    if only_queries is not None:
+        catalog = {p['name']: p for p in platforms}
+        platforms = [dict(catalog[name], _query_username=handle) for name, handle in dict.fromkeys(only_queries)
+                     if name in catalog and is_valid_username_query(handle)]
     reference_platforms = [item for item in platforms if item.get("reference_username")]
     other_platforms = [item for item in platforms if not item.get("reference_username")]
     results = []
@@ -824,8 +854,24 @@ async def check_username_async(
                 max_concurrent=max_concurrent,
                 origin_interval_seconds=float(request_policy["request_interval_seconds"]),
             )
+            if control is not None:
+                control.register([p['name'] + (' · ' + p['_query_username'] if p.get('_query_username') else '') for p in platforms])
+            semaphore = asyncio.Semaphore(max_concurrent)
+
+            async def controlled(plat):
+                handle = plat.get('_query_username', username)
+                key = plat['name'] + (' · ' + plat['_query_username'] if plat.get('_query_username') else '')
+                plat = {k: v for k, v in plat.items() if k != '_query_username'}
+                if control is None:
+                    return await check_single_username(handle, plat, client)
+                from osint.scan_control import ScanStopped, interrupted_result
+                try:
+                    return await control.run(key, lambda: check_single_username(handle, plat, client), semaphore)
+                except ScanStopped:
+                    return finalize_username(interrupted_result(plat), handle, plat)
+
             for batch in (reference_platforms, other_platforms):
-                tasks = [check_single_username(username, plat, client) for plat in batch]
+                tasks = [controlled(plat) for plat in batch]
                 for coro in asyncio.as_completed(tasks):
                     res = await coro
                     results.append(res)
@@ -843,9 +889,26 @@ async def check_username_async(
                     else:
                         status = "[dim]---[/dim]"
                     progress.update(task_id, advance=1, description=f"{status} {res['platform']}")
+            if discover_links and not (control is not None and control.stopped.is_set()):
+                from osint.discovery import discover_linked_profiles
+                if control is None:
+                    discovered = await discover_linked_profiles(results, platforms, client)
+                else:
+                    from osint.scan_control import ScanStopped
+                    try:
+                        discovered = await control.run('Bağlantılı profiller', lambda: discover_linked_profiles(results, select_username_platforms(profile, USERNAME_PLATFORMS), client))
+                    except ScanStopped:
+                        discovered = []
+                results.extend(discovered)
+                if on_result:
+                    for result in discovered:
+                        try:
+                            on_result(result)
+                        except Exception:
+                            pass
 
     return results
 
 
-def run_username_check(username: str, *, profile: str = "standard") -> list[dict]:
-    return asyncio.run(check_username_async(username, profile=profile))
+def run_username_check(username: str, *, profile: str = "standard", discover_links: bool = False) -> list[dict]:
+    return asyncio.run(check_username_async(username, profile=profile, discover_links=discover_links))

@@ -1,0 +1,72 @@
+{
+  "Instagram": {
+    "positive_html": "<meta property=\"og:url\" content=\"https://www.instagram.com/sample/\">\n<meta property=\"og:type\" content=\"profile\">\n<title>(@sample) • Instagram photos and videos</title>",
+    "negative_html": "<title>Instagram</title>",
+    "negative_status": 200,
+    "negative_result": "unknown",
+    "reference": "instagram"
+  },
+  "Pinterest": {
+    "positive_html": "<link href=\"https://www.pinterest.com/sample/\" rel=\"canonical\">\n<meta content=\"profile\" property=\"og:type\">\n<title>(sample) - Profile | Pinterest</title>",
+    "negative_html": "<meta content=\"Pinterest\" property=\"og:site_name\">\n<title></title>",
+    "negative_status": 200,
+    "negative_result": "unknown",
+    "reference": "pinterest"
+  },
+  "Snapchat": {
+    "positive_html": "<link rel=\"canonical\" href=\"https://www.snapchat.com/@sample\">\n<meta property=\"og:url\" content=\"https://www.snapchat.com/@sample\">\n<title>(@sample) | Snapchat Stories, Spotlight &amp; Lenses</title>",
+    "negative_html": "<title data-react-helmet=\"true\">Snapchat</title>",
+    "negative_status": 404,
+    "negative_result": "not_found",
+    "reference": "teamsnapchat"
+  },
+  "YouTube": {
+    "positive_html": "<link rel=\"alternate\" media=\"handheld\" href=\"https://m.youtube.com/@sample\">\n<meta property=\"og:type\" content=\"profile\">\n<meta property=\"og:site_name\" content=\"YouTube\">\n<link rel=\"canonical\" href=\"https://www.youtube.com/channel/UCBR8-60-B28hp2BmDPdntcQ\">\n<meta property=\"og:url\" content=\"https://www.youtube.com/channel/UCBR8-60-B28hp2BmDPdntcQ\">",
+    "negative_html": "<title>404 Not Found</title>",
+    "negative_status": 404,
+    "negative_result": "not_found",
+    "reference": "youtube"
+  },
+  "Spotify": {
+    "positive_html": "<link rel=\"canonical\" href=\"https://open.spotify.com/user/sample\">\n<meta property=\"og:url\" content=\"https://open.spotify.com/user/sample\">\n<meta property=\"og:type\" content=\"profile\">",
+    "negative_html": "<title>Page not found</title>\n<meta property=\"og:site_name\" content=\"Spotify\">\n<h1>Page not found</h1>",
+    "negative_status": 404,
+    "negative_result": "not_found",
+    "reference": "spotify"
+  },
+  "Osu!": {
+    "positive_html": "<meta property=\"og:title\" content=\"sample · player info\">\n<meta property=\"og:site_name\" content=\"osu!\">\n<meta property=\"og:url\" content=\"https://osu.ppy.sh/users/2\">\n<link rel=\"canonical\" href=\"https://osu.ppy.sh/users/2\">",
+    "negative_html": "<meta property=\"og:site_name\" content=\"osu!\">\n<title>player info‬ | ‭osu!‬</title>\n<h1>User not found! ;_;</h1>",
+    "negative_status": 404,
+    "negative_result": "not_found",
+    "reference": "peppy"
+  },
+  "Audiomack": {
+    "positive_html": "<link rel=\"canonical\" href=\"https://audiomack.com/sample\">\n<meta property=\"profile:username\" content=\"sample\">\n<meta property=\"og:type\" content=\"profile\">",
+    "negative_html": "<title>Audiomack - Music platform empowering artists &amp; fans | Audiomack</title>\n<meta property=\"og:url\" content=\"https://audiomack.com/\">\n<meta property=\"og:site_name\" content=\"Audiomack\">\n<h1 class=\"NotFoundPage-title\">Page Not Found</h1>",
+    "negative_status": 200,
+    "negative_result": "not_found",
+    "reference": "audiomack"
+  },
+  "Jellyfin Weblate": {
+    "positive_html": "<h1>Users sample</h1>\n<a href=\"/user/sample/\"></a>\n<meta property=\"og:site_name\" content=\"Weblate\">",
+    "negative_html": "<h1>That Wasn&#x27;t Quite Right</h1>",
+    "negative_status": 404,
+    "negative_result": "not_found",
+    "reference": "joshuaboniface"
+  },
+  "Laracasts": {
+    "positive_html": "<meta property=\"og:url\" content=\"https://laracasts.com/@sample\">\n<meta property=\"og:type\" content=\"profile\">\n<title>Laracasts Profile: sample</title>",
+    "negative_html": "<meta property=\"og:site_name\" content=\"Laracasts\">\n<title>Uh-Oh: 404</title>\n<h1 id=\"go-title\" class=\"go-title font-pixel text-error text-7xl\">404</h1>",
+    "negative_status": 404,
+    "negative_result": "not_found",
+    "reference": "jeffreyway"
+  },
+  "TeknoSeyir": {
+    "positive_html": "<link rel=\"canonical\" href=\"https://teknoseyir.com/u/sample\">\n<meta property=\"og:url\" content=\"https://teknoseyir.com/u/sample\">\n<span class=\"username\">@sample</span>",
+    "negative_html": "<title>Sayfa bulunamadı - TeknoSeyir</title>\n<meta property=\"og:site_name\" content=\"TeknoSeyir\">\n<meta property=\"og:url\" content=\"https://teknoseyir.com/u/thneg9248629832f34c\">\n<h1>Üzgünüz! Aradığınız sayfa bulunamadı...</h1>",
+    "negative_status": 404,
+    "negative_result": "not_found",
+    "reference": "gamsizm"
+  }
+}

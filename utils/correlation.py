@@ -8,6 +8,7 @@ from difflib import SequenceMatcher
 from itertools import combinations
 from typing import Any
 from urllib.parse import urlparse
+from utils.public_data import profile_key
 
 
 WEIGHTS = {
@@ -17,6 +18,8 @@ WEIGHTS = {
     "same_avatar_hash": {"points": 30, "strength": "strong", "label": "same public avatar hash"},
     "same_website_domain": {"points": 26, "strength": "strong", "label": "same linked website"},
     "same_profile_domain": {"points": 6, "strength": "weak", "label": "same profile domain"},
+    "profile_link": {"points": 32, "strength": "strong", "label": "profile explicitly links to the other account"},
+    "reciprocal_profile_link": {"points": 35, "strength": "strong", "label": "both profiles link to each other"},
 }
 
 PENALTIES = {
@@ -70,13 +73,16 @@ def _extract_domain(value: object) -> str:
 
 def _extract_avatar_hash(metadata: dict[str, Any]) -> str:
     explicit = _normalize_text(metadata.get("avatar_hash", ""))
-    if re.fullmatch(r"[a-f0-9]{32}", explicit):
+    algorithm = str(metadata.get('hash_algorithm', '')).casefold()
+    if explicit and ((algorithm == 'sha256' and len(explicit) != 64) or (algorithm == 'md5' and len(explicit) != 32)):
+        return ''
+    if re.fullmatch(r"(?:[a-f0-9]{32}|[a-f0-9]{64})", explicit):
         return explicit
 
     avatar_url = str(metadata.get("avatar_url", "")).strip().casefold()
     if not avatar_url:
         return ""
-    match = re.search(r"([a-f0-9]{32})", avatar_url)
+    match = re.search(r"(?<![a-f0-9])([a-f0-9]{64}|[a-f0-9]{32})(?![a-f0-9])", avatar_url)
     return match.group(1) if match else ""
 
 
@@ -173,6 +179,18 @@ def _pairwise_evidence(left: dict[str, Any], right: dict[str, Any]) -> tuple[lis
 
     left_meta = dict(left.get("metadata", {}))
     right_meta = dict(right.get("metadata", {}))
+    left_profile = profile_key(left_meta.get('profile_url') or left.get('url', ''))
+    right_profile = profile_key(right_meta.get('profile_url') or right.get('url', ''))
+    left_public_links = left_meta.get('public_links', [])
+    right_public_links = right_meta.get('public_links', [])
+    left_links = {profile_key(url) for url in left_public_links if isinstance(url, str)} if isinstance(left_public_links, list) else set()
+    right_links = {profile_key(url) for url in right_public_links if isinstance(url, str)} if isinstance(right_public_links, list) else set()
+    left_to_right = bool(right_profile and right_profile in left_links)
+    right_to_left = bool(left_profile and left_profile in right_links)
+    if left_to_right or right_to_left:
+        evidence.append(_signal('profile_link', round(32 * multiplier), f"{left.get('url', '')} ↔ {right.get('url', '')}"))
+    if left_to_right and right_to_left:
+        evidence.append(_signal('reciprocal_profile_link', round(35 * multiplier)))
 
     left_username = _normalize_handle(left_meta.get("username", ""))
     right_username = _normalize_handle(right_meta.get("username", ""))
@@ -205,7 +223,8 @@ def _pairwise_evidence(left: dict[str, Any], right: dict[str, Any]) -> tuple[lis
 
     left_website = _extract_domain(left_meta.get("website", ""))
     right_website = _extract_domain(right_meta.get("website", ""))
-    if left_website and right_website and left_website == right_website:
+    shared_platforms = {'github.com', 'gitlab.com', 'instagram.com', 'facebook.com', 'twitter.com', 'x.com', 'linktr.ee', 'youtube.com', 'linkedin.com', 'tiktok.com'}
+    if left_website and right_website and left_website == right_website and left_website not in shared_platforms:
         points = round(WEIGHTS["same_website_domain"]["points"] * multiplier)
         evidence.append(_signal("same_website_domain", points, left_website))
 

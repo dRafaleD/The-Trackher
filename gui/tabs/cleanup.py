@@ -18,13 +18,13 @@ class CleanupTabMixin:
     def setup_cleaning_tab(self):
         tab = self.tabview.tab("Cleaner")
 
-        self.chk_shell = ctk.CTkCheckBox(tab, text="Shell History and Logs", font=self.font_ui)
+        self.chk_shell = ctk.CTkCheckBox(tab, text="Komut geçmişi ve günlükler", font=self.font_ui)
         self.chk_shell.grid(row=0, column=0, padx=30, pady=15, sticky="w")
         self.chk_shell.select()
 
         self.chk_browser = ctk.CTkCheckBox(
             tab,
-            text="Browser Cache and Cookies (SQLite Mode)",
+            text="Tarayıcı önbelleği ve çerezler",
             font=self.font_ui,
         )
         self.chk_browser.grid(row=1, column=0, padx=30, pady=15, sticky="w")
@@ -32,7 +32,7 @@ class CleanupTabMixin:
 
         self.chk_system = ctk.CTkCheckBox(
             tab,
-            text="System Traces (Temp, Trash, Thumbnails)",
+            text="Geçici dosyalar, çöp kutusu ve küçük resimler",
             font=self.font_ui,
         )
         self.chk_system.grid(row=2, column=0, padx=30, pady=15, sticky="w")
@@ -40,7 +40,7 @@ class CleanupTabMixin:
 
         self.chk_dryrun = ctk.CTkSwitch(
             tab,
-            text="SIMULATION (Dry-Run)",
+            text="Önizleme modu · Dosyaları koru",
             progress_color="#d35400",
             font=self.font_ui,
         )
@@ -49,7 +49,7 @@ class CleanupTabMixin:
 
         self.btn_clean = ctk.CTkButton(
             tab,
-            text="START CLEANING",
+            text="Temizliği başlat",
             font=self.font_ui,
             command=self.start_clean,
             fg_color="#c0392b",
@@ -58,6 +58,20 @@ class CleanupTabMixin:
             height=40,
         )
         self.btn_clean.grid(row=2, column=1, padx=100, pady=10)
+        self.chk_dryrun.grid_configure(padx=24)
+        self.btn_clean.grid_configure(padx=24)
+        self._decorate_tool_tab(tab, 'Daha temiz bir çalışma alanı',
+            'Önizleme modunda dosyaları değiştirmeden hangi izlerin temizlenebileceğini görün.')
+
+    def _decorate_tool_tab(self, tab, title, description):
+        for child in tab.winfo_children():
+            info = child.grid_info()
+            if info:
+                child.grid_configure(row=int(info['row']) + 2)
+        tab.grid_columnconfigure(0, weight=1)
+        tab.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(tab, text=title, text_color='#edf4fc', font=ctk.CTkFont(size=24, weight='bold')).grid(row=0, column=0, columnspan=2, sticky='w', padx=28, pady=(24, 4))
+        ctk.CTkLabel(tab, text=description, text_color='#91a4ba', wraplength=850, justify='left').grid(row=1, column=0, columnspan=2, sticky='w', padx=28, pady=(0, 24))
 
     def start_clean(self):
         dry_run = bool(self.chk_dryrun.get())
@@ -123,7 +137,7 @@ class CleanupTabMixin:
 
         label = ctk.CTkLabel(
             tab,
-            text="WARNING: Permanent overwrite is best-effort and cannot be undone.",
+            text="Kalıcı silme geri alınamaz. SSD ve benzeri depolamada tüm kopyaların silinmesi garanti edilemez.",
             text_color="#e74c3c",
             font=self.font_ui,
         )
@@ -131,7 +145,7 @@ class CleanupTabMixin:
 
         self.shred_path = ctk.CTkEntry(
             tab,
-            placeholder_text="Absolute path to file or directory...",
+            placeholder_text="Silinecek dosya veya klasörün tam yolu…",
             width=500,
             font=self.font_ui,
         )
@@ -139,7 +153,7 @@ class CleanupTabMixin:
 
         self.btn_shred = ctk.CTkButton(
             tab,
-            text="SHRED TARGET",
+            text="Kalıcı silmeyi başlat",
             font=self.font_ui,
             command=self.start_shred,
             fg_color="#8b0000",
@@ -147,6 +161,8 @@ class CleanupTabMixin:
             width=150,
         )
         self.btn_shred.grid(row=1, column=1, padx=10, pady=20)
+        self._decorate_tool_tab(tab, 'Kontrollü kalıcı silme',
+            'İşlem öncesinde hedef yolu ve onay ekranını dikkatle kontrol edin.')
 
     def start_shred(self):
         path_str = self.shred_path.get().strip()
