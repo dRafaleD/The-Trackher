@@ -575,7 +575,7 @@ python main.py --mentions "Python Software Foundation" --report html
   catalog profile links. HTTPS root/www redirects are bounded and validated.
   References do not establish ownership, subsidiaries or endorsement.
 - Mentions: up to 30 Google News RSS records, with duplicate grouping and
-  unverified relevance. This experimental public feed does not cover all blogs,
+  unverified relevance. This public feed does not cover all blogs,
   forums or news sources. Articles are not crawled.
 
 Each operation has a finite deadline and download limits. Provider blocks,
